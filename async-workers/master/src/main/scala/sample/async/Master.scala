@@ -73,16 +73,19 @@ class Responder extends Actor {
       val input = post.request.getParameter("input")
       master ! Request(input, timeout = Master.Timeout)
       become(respond(post))
+    case get: Get =>
+      master ! Request("ereht iH", timeout = Master.Timeout)
+      become(respond(get))
   }
 
-  def respond(post: Post): Receive = {
+  def respond(request: RequestMethod): Receive = {
     case Timeout =>
       EventHandler.debug(this, "Timeout")
-      post OK "Timeout"
+      request OK "Timeout"
       self.stop()
     case response: String =>
       EventHandler.debug(this, "Response: " + response)
-      post OK response
+      request OK response
       self.stop()
   }
 }
