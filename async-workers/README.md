@@ -36,5 +36,10 @@ and
 
     worker/target/dist/bin/start
 
-There is a simple ajax form in `web/index.html` that can be used to send
-requests to the master node via http post.
+You can then go to http://localhost:9090 to send a GET request to the master
+node and receive a greeting (or a timeout) in return.
+
+Or POST to http://localhost:9090 with an `input` parameter and you'll receive
+the input reversed. For example:
+
+    curl -d "input=test" http://localhost:9090
