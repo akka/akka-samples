@@ -2,19 +2,15 @@
 Async Workers Sample
 ====================
 
-This sample project requires [sbt] (version 0.7.7)
+This sample project requires [sbt] (version 0.10.1)
 
-[sbt]: http://code.google.com/p/simple-build-tool/
+[sbt]: http://github.com/harrah/xsbt
 
 
 Building
 --------
 
-To build the code first `sbt update` to fetch dependencies:
-
-    sbt update
-
-Then run `sbt dist` to create Akka microkernel distributions for master and
+Run `sbt dist` to create Akka microkernel distributions for master and
 worker nodes:
 
     sbt dist
