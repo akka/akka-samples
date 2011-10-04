@@ -1,11 +1,14 @@
+package sample.async
+
 import sbt._
 import sbt.Keys._
+import akka.sbt.AkkaKernelPlugin
 
 object AsyncWorkersBuild extends Build {
   lazy val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := "sample",
     version      := "0.1",
-    scalaVersion := "2.9.0-1"
+    scalaVersion := "2.9.1"
   )
 
   lazy val async = Project(
