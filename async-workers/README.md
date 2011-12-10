@@ -10,7 +10,7 @@ This sample project requires [sbt] (version 0.11.2)
 Building
 --------
 
-Run `sbt dist` to create Akka microkernel distributions for master and
+Run `sbt package dist` to create Akka microkernel distributions for master and
 worker nodes:
 
     sbt package dist
