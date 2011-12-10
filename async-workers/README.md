@@ -2,7 +2,7 @@
 Async Workers Sample
 ====================
 
-This sample project requires [sbt] (version 0.11.2)
+This sample project requires [sbt] version 0.11.2
 
 [sbt]: http://github.com/harrah/xsbt
 
