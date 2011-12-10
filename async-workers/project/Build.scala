@@ -22,7 +22,7 @@ object AsyncWorkersBuild extends Build {
     id = "delegation",
     base = file("delegation"),
     settings = defaultSettings ++ Seq(
-      libraryDependencies += "se.scalablesolutions.akka" % "akka-actor" % "1.1.3"
+      libraryDependencies += "se.scalablesolutions.akka" % "akka-actor" % "1.1"
     )
   )
 
@@ -31,7 +31,7 @@ object AsyncWorkersBuild extends Build {
     base = file("master"),
     dependencies = Seq(delegation),
     settings = defaultSettings ++ AkkaKernelPlugin.distSettings ++ Seq(
-      libraryDependencies += "se.scalablesolutions.akka" % "akka-kernel" % "1.1.3"
+      libraryDependencies += "se.scalablesolutions.akka" % "akka-kernel" % "1.1"
     )
   )
 
@@ -40,7 +40,7 @@ object AsyncWorkersBuild extends Build {
     base = file("worker"),
     dependencies = Seq(delegation),
     settings = defaultSettings ++ AkkaKernelPlugin.distSettings ++ Seq(
-      libraryDependencies += "se.scalablesolutions.akka" % "akka-kernel" % "1.1.3"
+      libraryDependencies += "se.scalablesolutions.akka" % "akka-kernel" % "1.1"
     )
   )
 

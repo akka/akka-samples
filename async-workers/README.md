@@ -2,7 +2,7 @@
 Async Workers Sample
 ====================
 
-This sample project requires [sbt] (version 0.10.1)
+This sample project requires [sbt] (version 0.11.2)
 
 [sbt]: http://github.com/harrah/xsbt
 
@@ -13,7 +13,7 @@ Building
 Run `sbt dist` to create Akka microkernel distributions for master and
 worker nodes:
 
-    sbt dist
+    sbt package dist
 
 The `master/target/dist` and `worker/target/dist` directories contain
 stand-alone Akka microkernels. For multiple worker nodes copy the worker dist
