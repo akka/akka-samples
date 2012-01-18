@@ -2,6 +2,19 @@
 Async Workers Sample
 ====================
 
+Async http request-response with a master-worker setup for delegating the work
+to a remote node.
+
+The main requirement from the client was that workers could come and go easily
+and the master node could be restarted without restarting the workers (so
+registration with automatic retries, connection failures handled). The work could
+vary a lot in time so timeouts were built-in and default delegation is by next
+available worker (rather than say round robin).
+
+
+sbt
+---
+
 This sample project requires [sbt] version 0.11.2
 
 [sbt]: http://github.com/harrah/xsbt
