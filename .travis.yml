@@ -16,5 +16,15 @@ cache:
     - $HOME/.ivy2/cache
     - $HOME/.sbt/boot
 
+env:
+  matrix:
+    - CMD="cd akka-sample-camel-java && sbt ++$TRAVIS_SCALA_VERSION test"
+    - CMD="cd akka-sample-camel-scala && sbt ++$TRAVIS_SCALA_VERSION test"
+    - CMD="cd akka-sample-cluster-java && sbt ++$TRAVIS_SCALA_VERSION multi-jvm/test"
+    - CMD="cd akka-sample-cluster-scala && sbt ++$TRAVIS_SCALA_VERSION multi-jvm/test"
+    - CMD="cd akka-sample-main-java && sbt ++$TRAVIS_SCALA_VERSION test"
+    - CMD="cd akka-sample-main-java && mvn test -P $TRAVIS_SCALA_VERSION"
+    - CMD="cd akka-sample-main-scala && sbt ++$TRAVIS_SCALA_VERSION test"
+
 script:
-  - sbt -J-XX:ReservedCodeCacheSize=128m ++$TRAVIS_SCALA_VERSION test && mvn test -P $TRAVIS_SCALA_VERSION
+  - eval "$CMD"
