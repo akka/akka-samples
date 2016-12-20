@@ -177,5 +177,5 @@ Press ctrl-c in the terminal window of the frontend to stop the factorial calcul
 
 ## Tests
 
-Tests can be found in [src/multi-jvm](src/multi-jvm). You can run them by typing `sbt multi-jvm/test`.
+Tests can be found in [src/multi-jvm](src/multi-jvm). You can run them by typing `sbt multi-jvm:test`.
 
