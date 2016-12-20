@@ -34,6 +34,10 @@ env:
     - CMD="cd akka-sample-persistence-java && sbt ++\$TRAVIS_SCALA_VERSION test"
     - CMD="cd akka-sample-persistence-java && mvn test -P \$TRAVIS_SCALA_VERSION"
     - CMD="cd akka-sample-persistence-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
+    - CMD="cd akka-sample-remote-java && sbt ++\$TRAVIS_SCALA_VERSION test"
+    - CMD="cd akka-sample-remote-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
+    - CMD="cd akka-sample-supervision-java && sbt ++\$TRAVIS_SCALA_VERSION test"
+    - CMD="cd akka-sample-supervision-java && mvn test -P \$TRAVIS_SCALA_VERSION"
 
 script:
   - eval "$CMD"

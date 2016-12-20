@@ -17,7 +17,7 @@ Note that if you are going to start the nodes on different machines you need to 
 
 Open [SimpleClusterApp.java](src/main/java/sample/cluster/simple/SimpleClusterApp.java).
 
-The small program together with its configuration starts an ActorSystem with the Cluster enabled. It joins the cluster and starts an actor that logs some membership events. Take a look at the [SimpleClusterListener.java](src/main/java/sample/cluster/simple/SimpleClusterListener.java) actor.
+The small program together with its configuration starts an ActorSystem with the Cluster enabled. It joins the cluster and starts an actor that logs some membership events. Take a look at the [SimpleClusterListener](src/main/java/sample/cluster/simple/SimpleClusterListener.java) actor.
 
 You can read more about the cluster concepts in the [documentation](http://doc.akka.io/docs/akka/2.4.14/java/cluster-usage.html).
 
