@@ -1,15 +1,23 @@
+/**
+ * Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+ */
+
 package sample.persistence;
 
 //#persistent-actor-example
+
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
-import akka.japi.Procedure;
+import akka.japi.pf.ReceiveBuilder;
+import akka.persistence.AbstractPersistentActor;
 import akka.persistence.SnapshotOffer;
-import akka.persistence.UntypedPersistentActor;
+import scala.PartialFunction;
+import scala.runtime.BoxedUnit;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+
 import static java.util.Arrays.asList;
 
 class Cmd implements Serializable {
@@ -43,7 +51,7 @@ class ExampleState implements Serializable {
     private final ArrayList<String> events;
 
     public ExampleState() {
-        this(new ArrayList<String>());
+        this(new ArrayList<>());
     }
 
     public ExampleState(ArrayList<String> events) {
@@ -51,7 +59,7 @@ class ExampleState implements Serializable {
     }
 
     public ExampleState copy() {
-        return new ExampleState(new ArrayList<String>(events));
+        return new ExampleState(new ArrayList<>(events));
     }
 
     public void update(Evt evt) {
@@ -68,9 +76,7 @@ class ExampleState implements Serializable {
     }
 }
 
-class ExamplePersistentActor extends UntypedPersistentActor {
-    @Override
-    public String persistenceId() { return "sample-id-1"; }
+class ExamplePersistentActor extends AbstractPersistentActor {
 
     private ExampleState state = new ExampleState();
 
@@ -79,49 +85,41 @@ class ExamplePersistentActor extends UntypedPersistentActor {
     }
 
     @Override
-    public void onReceiveRecover(Object msg) {
-        if (msg instanceof Evt) {
-            state.update((Evt) msg);
-        } else if (msg instanceof SnapshotOffer) {
-            state = (ExampleState)((SnapshotOffer)msg).snapshot();
-        } else {
-          unhandled(msg);
-        }
+    public String persistenceId() { return "sample-id-1"; }
+
+    @Override
+    public PartialFunction<Object, BoxedUnit> receiveRecover() {
+        return ReceiveBuilder.
+            match(Evt.class, state::update).
+            match(SnapshotOffer.class, ss -> state = (ExampleState) ss.snapshot()).build();
     }
 
     @Override
-    public void onReceiveCommand(Object msg) {
-        if (msg instanceof Cmd) {
-            final String data = ((Cmd)msg).getData();
-            final Evt evt1 = new Evt(data + "-" + getNumEvents());
-            final Evt evt2 = new Evt(data + "-" + (getNumEvents() + 1));
-            persistAll(asList(evt1, evt2), new Procedure<Evt>() {
-                public void apply(Evt evt) throws Exception {
+    public PartialFunction<Object, BoxedUnit> receiveCommand() {
+        return ReceiveBuilder.
+            match(Cmd.class, c -> {
+                final String data = c.getData();
+                final Evt evt1 = new Evt(data + "-" + getNumEvents());
+                final Evt evt2 = new Evt(data + "-" + (getNumEvents() + 1));
+                persistAll(asList(evt1, evt2), (Evt evt) -> {
                     state.update(evt);
                     if (evt.equals(evt2)) {
-                        getContext().system().eventStream().publish(evt);
+                        context().system().eventStream().publish(evt);
                     }
-                }
-            });
-        } else if (msg.equals("snap")) {
-            // IMPORTANT: create a copy of snapshot
-            // because ExampleState is mutable !!!
-            saveSnapshot(state.copy());
-        } else if (msg.equals("print")) {
-            System.out.println(state);
-        } else {
-          unhandled(msg);
-        }
+                });
+            }).
+            match(String.class, s -> s.equals("snap"), s -> saveSnapshot(state.copy())).
+            match(String.class, s -> s.equals("print"), s -> System.out.println(state)).
+            build();
     }
+
 }
 //#persistent-actor-example
 
 public class PersistentActorExample {
     public static void main(String... args) throws Exception {
         final ActorSystem system = ActorSystem.create("example");
-        final ActorRef persistentActor = 
-            system.actorOf(Props.create(ExamplePersistentActor.class), "persistentActor-4-java");
-
+        final ActorRef persistentActor = system.actorOf(Props.create(ExamplePersistentActor.class), "persistentActor-4-java8");
         persistentActor.tell(new Cmd("foo"), null);
         persistentActor.tell(new Cmd("baz"), null);
         persistentActor.tell(new Cmd("bar"), null);

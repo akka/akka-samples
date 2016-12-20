@@ -8,25 +8,43 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
-    <groupId>sample</groupId>
-    <artifactId>akka-sample-persistence-java8</artifactId>
+    <groupId>com.typesafe.akka.samples</groupId>
+    <artifactId>akka-sample-persistence-java</artifactId>
     <packaging>jar</packaging>
-    <version>2.4-SNAPSHOT</version>
+    <version>empty</version>
+
+    <profiles>
+        <profile>
+            <id>2.12.1</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <scalaBinaryVersion>2.12</scalaBinaryVersion>
+            </properties>
+        </profile>
+        <profile>
+            <id>2.11.8</id>
+            <properties>
+                <scalaBinaryVersion>2.11</scalaBinaryVersion>
+            </properties>
+        </profile>
+    </profiles>
 
     <dependencies>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-actor_2.11</artifactId>
+            <artifactId>akka-actor_${scalaBinaryVersion}</artifactId>
             <version>2.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-persistence_2.11</artifactId>
+            <artifactId>akka-persistence_${scalaBinaryVersion}</artifactId>
             <version>2.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-testkit_2.11</artifactId>
+            <artifactId>akka-testkit_${scalaBinaryVersion}</artifactId>
             <version>2.4-SNAPSHOT</version>
         </dependency>
         <dependency>
@@ -53,6 +71,13 @@
                 </configuration>
             </plugin>
         </plugins>
+        <extensions>
+            <extension>
+                <groupId>fr.brouillard.oss</groupId>
+                <artifactId>jgitver-maven-plugin</artifactId>
+                <version>0.1.1</version>
+            </extension>
+        </extensions>
     </build>
 
 </project>

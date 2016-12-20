@@ -1,46 +1,47 @@
+/**
+ * Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+ */
+
 package sample.persistence;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
-import akka.japi.Procedure;
-import akka.persistence.UntypedPersistentActor;
+import akka.japi.pf.ReceiveBuilder;
+import akka.persistence.AbstractPersistentActor;
+import scala.PartialFunction;
+import scala.runtime.BoxedUnit;
 
 import java.util.ArrayList;
 
 public class PersistentActorFailureExample {
-  public static class ExamplePersistentActor extends UntypedPersistentActor {
-    @Override
-    public String persistenceId() { return "sample-id-2"; }
-
+  public static class ExamplePersistentActor extends AbstractPersistentActor {
     private ArrayList<Object> received = new ArrayList<Object>();
 
     @Override
-    public void onReceiveCommand(Object message) throws Exception {
-      if (message.equals("boom")) {
-        throw new Exception("boom");
-      } else if (message.equals("print")) {
-        System.out.println("received " + received);
-      } else if (message instanceof String) {
-        String s = (String) message;
-        persist(s, new Procedure<String>() {
-          public void apply(String evt) throws Exception {
-            received.add(evt);
-          }
-        });
-      } else {
-        unhandled(message);
-      }
-    }
-    
+    public String persistenceId() { return "sample-id-2"; }
+
     @Override
-    public void onReceiveRecover(Object message) {
-      if (message instanceof String) {
-        received.add((String) message);
-      } else {
-        unhandled(message);
-      }
+    public PartialFunction<Object, BoxedUnit> receiveCommand() {
+      return ReceiveBuilder.
+        match(String.class, s -> s.equals("boom"), s -> {throw new RuntimeException("boom");}).
+        match(String.class, s -> s.equals("print"), s -> System.out.println("received " + received)).
+        match(String.class, s -> {
+          persist(s, evt -> {
+            received.add(evt);
+          });
+        }).
+        build();
     }
+
+    @Override
+    public PartialFunction<Object, BoxedUnit> receiveRecover() {
+      return ReceiveBuilder.
+        match(String.class, s -> received.add(s)).
+        build();
+    }
+
+
   }
 
   public static void main(String... args) throws Exception {
