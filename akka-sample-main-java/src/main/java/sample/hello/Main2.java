@@ -1,12 +1,7 @@
 package sample.hello;
 
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.Props;
-import akka.actor.Terminated;
-import akka.actor.UntypedActor;
-import akka.event.Logging;
-import akka.event.LoggingAdapter;
+import akka.actor.*;
+import akka.japi.pf.ReceiveBuilder;
 
 public class Main2 {
 
@@ -16,25 +11,18 @@ public class Main2 {
     system.actorOf(Props.create(Terminator.class, a), "terminator");
   }
 
-  public static class Terminator extends UntypedActor {
+  public static class Terminator extends AbstractLoggingActor {
 
-    private final LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     private final ActorRef ref;
 
     public Terminator(ActorRef ref) {
       this.ref = ref;
       getContext().watch(ref);
+      receive(ReceiveBuilder.
+        match(Terminated.class, t -> {
+          log().info("{} has terminated, shutting down system", ref.path());
+          context().system().terminate();
+        }).build());
     }
-
-    @Override
-    public void onReceive(Object msg) {
-      if (msg instanceof Terminated) {
-        log.info("{} has terminated, shutting down system", ref.path());
-        getContext().system().terminate();
-      } else {
-        unhandled(msg);
-      }
-    }
-
   }
 }

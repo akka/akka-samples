@@ -1,20 +1,19 @@
 package sample.hello;
 
-import akka.actor.UntypedActor;
+import akka.actor.AbstractActor;
+import akka.japi.pf.ReceiveBuilder;
 
-public class Greeter extends UntypedActor {
+public class Greeter extends AbstractActor {
 
   public static enum Msg {
     GREET, DONE;
   }
 
-  @Override
-  public void onReceive(Object msg) {
-    if (msg == Msg.GREET) {
-      System.out.println("Hello World!");
-      getSender().tell(Msg.DONE, getSelf());
-    } else
-      unhandled(msg);
+  public Greeter() {
+    receive(ReceiveBuilder.
+      matchEquals(Msg.GREET, m -> {
+        System.out.println("Hello World!");
+        sender().tell(Msg.DONE, self());
+      }).build());
   }
-
 }
