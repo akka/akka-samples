@@ -1,5 +1,3 @@
-Akka Sample Projects
---------------------
+## Akka Sample Projects
 
-Used to generate sample projects for the example project generator and
-can be used as examples of common akka use cases as is out of this repository
+This repository contains a number of projects that illustrate various usages of Akka. Samples are written in Scala and Java and use sbt or maven for build definitions.

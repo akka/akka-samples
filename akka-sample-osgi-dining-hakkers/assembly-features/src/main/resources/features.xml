@@ -13,7 +13,7 @@
 
     <feature name='uncommons-maths' description='Uncommons Maths' version='${uncommons-maths.version}' resolver='(obr)'>
         <!-- TODO replace this with upstream uncommons maths 1.2.3 which is OSGi enabled -->
-        <bundle start-level="20">mvn:com.typesafe.akka.akka-sample-osgi-dining-hakkers/uncommons/1.2.2</bundle>
+        <bundle start-level="20">mvn:com.typesafe.akka.akka-sample-osgi-dining-hakkers/uncommons/${project.version}</bundle>
     </feature>
 
     <feature name='netty' description='Netty feature' version='${netty.version}' resolver='(obr)'>

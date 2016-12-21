@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.typesafe.akka.akka-sample-osgi-dining-hakkers</groupId>
         <artifactId>project</artifactId>
-        <version>2.4-SNAPSHOT</version>
+        <version>1</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -14,11 +14,9 @@
     <packaging>bundle</packaging>
 
     <dependencies>
-
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-osgi_${scala.dep.version}</artifactId>
         </dependency>
-
     </dependencies>
 </project>

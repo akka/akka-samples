@@ -66,13 +66,6 @@
         </configuration>
       </plugin>
     </plugins>
-    <extensions>
-      <extension>
-        <groupId>fr.brouillard.oss</groupId>
-        <artifactId>jgitver-maven-plugin</artifactId>
-        <version>0.1.1</version>
-      </extension>
-    </extensions>
   </build>
 
 </project>

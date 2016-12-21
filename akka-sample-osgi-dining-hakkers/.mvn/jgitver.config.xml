@@ -1,0 +1,9 @@
+<configuration xmlns="http://jgitver.github.io/maven/configuration/1.0.0-beta"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xsi:schemaLocation="http://jgitver.github.io/maven/configuration/1.0.0-beta https://jgitver.github.io/maven/configuration/jgitver-configuration-v1_0_0-beta.xsd ">
+    <mavenLike>false</mavenLike>
+    <useCommitDistance>true</useCommitDistance>
+    <useDirty>true</useDirty>
+    <useGitCommitId>true</useGitCommitId>
+    <useDefaultBranchingPolicy>false</useDefaultBranchingPolicy>
+</configuration>
