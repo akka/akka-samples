@@ -11,7 +11,6 @@ import akka.actor.ActorRef;
 import akka.actor.ReceiveTimeout;
 import akka.actor.UntypedActor;
 
-//#aggregator
 public class StatsAggregator extends UntypedActor {
 
   final int expectedResults;
@@ -53,4 +52,3 @@ public class StatsAggregator extends UntypedActor {
   }
 
 }
-//#aggregator

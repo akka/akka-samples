@@ -1,6 +1,5 @@
 package sample.cluster.factorial;
 
-//#metrics-listener
 import akka.actor.UntypedActor;
 import akka.cluster.Cluster;
 import akka.cluster.ClusterEvent.CurrentClusterState;
@@ -68,4 +67,3 @@ public class MetricsListener extends UntypedActor {
   }
 
 }
-//#metrics-listener

@@ -11,7 +11,6 @@ import akka.actor.ActorRef;
 import akka.actor.Terminated;
 import akka.actor.UntypedActor;
 
-//#frontend
 public class TransformationFrontend extends UntypedActor {
 
   List<ActorRef> backends = new ArrayList<ActorRef>();
@@ -45,4 +44,3 @@ public class TransformationFrontend extends UntypedActor {
   }
 
 }
-//#frontend

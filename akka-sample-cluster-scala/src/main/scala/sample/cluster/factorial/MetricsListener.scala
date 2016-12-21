@@ -1,6 +1,5 @@
 package sample.cluster.factorial
 
-//#metrics-listener
 import akka.actor.ActorLogging
 import akka.actor.Actor
 import akka.cluster.Cluster
@@ -43,4 +42,3 @@ class MetricsListener extends Actor with ActorLogging {
     case _ => // No cpu info.
   }
 }
-//#metrics-listener

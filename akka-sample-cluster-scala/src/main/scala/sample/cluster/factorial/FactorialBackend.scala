@@ -9,7 +9,6 @@ import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.pattern.pipe
 
-//#backend
 class FactorialBackend extends Actor with ActorLogging {
 
   import context.dispatcher
@@ -28,7 +27,6 @@ class FactorialBackend extends Actor with ActorLogging {
   }
 
 }
-//#backend
 
 object FactorialBackend {
   def main(args: Array[String]): Unit = {

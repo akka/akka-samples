@@ -9,7 +9,6 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.routing.FromConfig;
 
-//#frontend
 public class FactorialFrontend extends UntypedActor {
   final int upToN;
   final boolean repeat;
@@ -59,6 +58,3 @@ public class FactorialFrontend extends UntypedActor {
   }
 
 }
-
-//#frontend
-

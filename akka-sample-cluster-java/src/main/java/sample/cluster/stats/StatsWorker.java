@@ -5,7 +5,6 @@ import java.util.Map;
 
 import akka.actor.UntypedActor;
 
-//#worker
 public class StatsWorker extends UntypedActor {
 
   Map<String, Integer> cache = new HashMap<String, Integer>();
@@ -27,4 +26,3 @@ public class StatsWorker extends UntypedActor {
   }
 
 }
-//#worker

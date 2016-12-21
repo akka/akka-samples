@@ -12,7 +12,6 @@ import akka.actor.ReceiveTimeout
 import scala.util.Try
 import scala.concurrent.Await
 
-//#frontend
 class FactorialFrontend(upToN: Int, repeat: Boolean) extends Actor with ActorLogging {
 
   val backend = context.actorOf(FromConfig.props(),
@@ -42,7 +41,6 @@ class FactorialFrontend(upToN: Int, repeat: Boolean) extends Actor with ActorLog
     1 to upToN foreach { backend ! _ }
   }
 }
-//#frontend
 
 object FactorialFrontend {
   def main(args: Array[String]): Unit = {
@@ -53,14 +51,12 @@ object FactorialFrontend {
 
     val system = ActorSystem("ClusterSystem", config)
     system.log.info("Factorials will start when 2 backend members in the cluster.")
-    //#registerOnUp
+
     Cluster(system) registerOnMemberUp {
       system.actorOf(Props(classOf[FactorialFrontend], upToN, true),
         name = "factorialFrontend")
     }
-    //#registerOnUp
 
-    //#registerOnRemoved
     Cluster(system).registerOnMemberRemoved {
       // exit JVM when ActorSystem has been terminated
       system.registerOnTermination(System.exit(0))
@@ -78,7 +74,5 @@ object FactorialFrontend {
         }
       }.start()
     }
-    //#registerOnRemoved
-
   }
 }

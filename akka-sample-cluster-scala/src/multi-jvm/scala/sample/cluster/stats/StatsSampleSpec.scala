@@ -11,7 +11,6 @@ import akka.cluster.MemberStatus
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.ClusterEvent.MemberUp
 
-//#MultiNodeConfig
 import akka.remote.testkit.MultiNodeConfig
 import com.typesafe.config.ConfigFactory
 
@@ -59,16 +58,11 @@ object StatsSampleSpecConfig extends MultiNodeConfig {
     """))
 
 }
-//#MultiNodeConfig
-
-//#concrete-tests
 // need one concrete test class per node
 class StatsSampleSpecMultiJvmNode1 extends StatsSampleSpec
 class StatsSampleSpecMultiJvmNode2 extends StatsSampleSpec
 class StatsSampleSpecMultiJvmNode3 extends StatsSampleSpec
-//#concrete-tests
 
-//#abstract-test
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.WordSpecLike
 import org.scalatest.Matchers
@@ -87,24 +81,17 @@ abstract class StatsSampleSpec extends MultiNodeSpec(StatsSampleSpecConfig)
 
   override def afterAll() = multiNodeSpecAfterAll()
 
-  //#abstract-test
-
   "The stats sample" must {
 
-    //#startup-cluster
     "illustrate how to startup cluster" in within(15 seconds) {
       Cluster(system).subscribe(testActor, classOf[MemberUp])
       expectMsgClass(classOf[CurrentClusterState])
 
-      //#addresses
       val firstAddress = node(first).address
       val secondAddress = node(second).address
       val thirdAddress = node(third).address
-      //#addresses
 
-      //#join
       Cluster(system) join firstAddress
-      //#join
 
       system.actorOf(Props[StatsWorker], "statsWorker")
       system.actorOf(Props[StatsService], "statsService")
@@ -116,9 +103,7 @@ abstract class StatsSampleSpec extends MultiNodeSpec(StatsSampleSpecConfig)
 
       testConductor.enter("all-up")
     }
-    //#startup-cluster
 
-    //#test-statsService
     "show usage of the statsService from one node" in within(15 seconds) {
       runOn(second) {
         assertServiceOk()
@@ -138,7 +123,6 @@ abstract class StatsSampleSpec extends MultiNodeSpec(StatsSampleSpecConfig)
       }
 
     }
-    //#test-statsService
 
     "show usage of the statsService from all nodes" in within(15 seconds) {
       assertServiceOk()

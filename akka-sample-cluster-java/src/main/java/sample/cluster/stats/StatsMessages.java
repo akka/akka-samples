@@ -2,7 +2,6 @@ package sample.cluster.stats;
 
 import java.io.Serializable;
 
-//#messages
 public interface StatsMessages {
 
   public static class StatsJob implements Serializable {
@@ -52,4 +51,3 @@ public interface StatsMessages {
   }
 
 }
-//#messages

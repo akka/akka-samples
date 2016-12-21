@@ -8,7 +8,6 @@ import akka.dispatch.Mapper;
 import static akka.dispatch.Futures.future;
 import static akka.pattern.Patterns.pipe;
 
-//#backend
 public class FactorialBackend extends UntypedActor {
 
   @Override
@@ -43,5 +42,3 @@ public class FactorialBackend extends UntypedActor {
     return acc;
   }
 }
-//#backend
-

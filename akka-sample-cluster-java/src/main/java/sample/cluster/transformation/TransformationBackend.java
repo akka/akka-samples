@@ -10,7 +10,6 @@ import akka.cluster.ClusterEvent.MemberUp;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
 
-//#backend
 public class TransformationBackend extends UntypedActor {
 
   Cluster cluster = Cluster.get(getContext().system());
@@ -57,4 +56,3 @@ public class TransformationBackend extends UntypedActor {
           BACKEND_REGISTRATION, getSelf());
   }
 }
-//#backend

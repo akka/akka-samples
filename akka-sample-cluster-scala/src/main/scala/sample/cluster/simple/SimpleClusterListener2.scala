@@ -11,9 +11,7 @@ class SimpleClusterListener2 extends Actor with ActorLogging {
 
   // subscribe to cluster changes, re-subscribe when restart 
   override def preStart(): Unit = {
-    //#subscribe
     cluster.subscribe(self, classOf[MemberEvent], classOf[UnreachableMember])
-    //#subscribe
   }
   override def postStop(): Unit = cluster.unsubscribe(self)
 

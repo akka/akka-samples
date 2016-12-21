@@ -121,7 +121,6 @@ abstract class StatsSampleSpec extends MultiNodeSpec(StatsSampleSpecConfig)
         expectMsgType[StatsResult](1.second).getMeanWordLength should be(3.875 +- 0.001)
       }
     }
-    //#test-statsService
 
     "show usage of the statsService from all nodes" in within(15 seconds) {
       assertServiceOk()

@@ -2,7 +2,6 @@ package sample.cluster.transformation;
 
 import java.io.Serializable;
 
-//#messages
 public interface TransformationMessages {
 
   public static class TransformationJob implements Serializable {
@@ -60,4 +59,3 @@ public interface TransformationMessages {
   public static final String BACKEND_REGISTRATION = "BackendRegistration";
 
 }
-//#messages

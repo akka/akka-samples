@@ -7,7 +7,6 @@ import akka.actor.UntypedActor;
 import akka.routing.ConsistentHashingRouter.ConsistentHashableEnvelope;
 import akka.routing.FromConfig;
 
-//#service
 public class StatsService extends UntypedActor {
 
   // This router is used both with lookup and deploy of routees. If you
@@ -43,6 +42,3 @@ public class StatsService extends UntypedActor {
     }
   }
 }
-
-//#service
-

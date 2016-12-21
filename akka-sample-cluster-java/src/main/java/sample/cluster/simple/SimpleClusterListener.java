@@ -17,10 +17,8 @@ public class SimpleClusterListener extends UntypedActor {
   //subscribe to cluster changes
   @Override
   public void preStart() {
-    //#subscribe
-    cluster.subscribe(getSelf(), ClusterEvent.initialStateAsEvents(), 
+    cluster.subscribe(getSelf(), ClusterEvent.initialStateAsEvents(),
         MemberEvent.class, UnreachableMember.class);
-    //#subscribe
   }
 
   //re-subscribe when restart
