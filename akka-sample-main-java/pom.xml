@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
-  <artifactId>akka-sample-main-lambda</artifactId>
+  <artifactId>akka-sample-main-java</artifactId>
   <groupId>com.typesafe.akka.samples</groupId>
   <name>Akka Main in Java</name>
   <version>empty</version>
@@ -35,7 +35,7 @@
     <dependency>
       <groupId>com.typesafe.akka</groupId>
       <artifactId>akka-actor_${scalaBinaryVersion}</artifactId>
-      <version>2.4.14</version>
+      <version>2.5-M2</version>
     </dependency>
   </dependencies>
 

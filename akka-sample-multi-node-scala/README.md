@@ -1,6 +1,6 @@
 This sample contains [sbt](http://www.scala-sbt.org/) build settings and test classes for illustrating multi-node testing with Akka.
 
-Please refer to the full documentation of [multi-node testing](http://doc.akka.io/docs/akka/2.4.14/dev/multi-node-testing.html) and the closely related [multi-jvm testing](http://doc.akka.io/docs/akka/2.4.14/dev/multi-jvm-testing.html) for details. There is also an section on [cluster testing](http://doc.akka.io/docs/akka/2.4.14/scala/cluster-usage.html#How_to_Test).
+Please refer to the full documentation of [multi-node testing](http://doc.akka.io/docs/akka/2.5-M2/dev/multi-node-testing.html) and the closely related [multi-jvm testing](http://doc.akka.io/docs/akka/2.5-M2/dev/multi-jvm-testing.html) for details. There is also an section on [cluster testing](http://doc.akka.io/docs/akka/2.5-M2/scala/cluster-usage.html#How_to_Test).
 
 ## sbt setup
 
@@ -26,5 +26,5 @@ In case you have many tests in the project it can be convenient to run a single 
 
     > multi-jvm:testOnly sample.multinode.MultiNodeSampleSpec
 
-The same test can be run on multiple machines as described in the [multi-node testing documentation](http://doc.akka.io/docs/akka/2.4.14/dev/multi-node-testing.html).
+The same test can be run on multiple machines as described in the [multi-node testing documentation](http://doc.akka.io/docs/akka/2.5-M2/dev/multi-node-testing.html).
 
