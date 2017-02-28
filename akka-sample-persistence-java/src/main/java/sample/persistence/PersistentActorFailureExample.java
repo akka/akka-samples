@@ -7,10 +7,7 @@ package sample.persistence;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
-import akka.japi.pf.ReceiveBuilder;
 import akka.persistence.AbstractPersistentActor;
-import scala.PartialFunction;
-import scala.runtime.BoxedUnit;
 
 import java.util.ArrayList;
 
@@ -22,25 +19,22 @@ public class PersistentActorFailureExample {
     public String persistenceId() { return "sample-id-2"; }
 
     @Override
-    public PartialFunction<Object, BoxedUnit> receiveCommand() {
-      return ReceiveBuilder.
-        match(String.class, s -> s.equals("boom"), s -> {throw new RuntimeException("boom");}).
-        match(String.class, s -> s.equals("print"), s -> System.out.println("received " + received)).
-        match(String.class, s -> {
-          persist(s, evt -> {
-            received.add(evt);
-          });
-        }).
-        build();
+    public Receive createReceive() {
+      return receiveBuilder()
+        .matchEquals("boom", s -> {throw new RuntimeException("boom");})
+        .matchEquals("print", s -> System.out.println("received " + received))
+        .match(String.class, s -> {
+          persist(s, evt -> received.add(evt));
+        })
+        .build();
     }
 
     @Override
-    public PartialFunction<Object, BoxedUnit> receiveRecover() {
-      return ReceiveBuilder.
-        match(String.class, s -> received.add(s)).
-        build();
+    public Receive createReceiveRecover() {
+      return receiveBuilder()
+        .match(String.class, s -> received.add(s))
+        .build();
     }
-
 
   }
 

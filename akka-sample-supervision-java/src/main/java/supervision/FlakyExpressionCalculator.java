@@ -2,9 +2,6 @@ package supervision;
 
 import akka.actor.*;
 import akka.japi.pf.DeciderBuilder;
-import akka.japi.pf.ReceiveBuilder;
-import scala.PartialFunction;
-import scala.runtime.BoxedUnit;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -105,9 +102,12 @@ public class FlakyExpressionCalculator extends AbstractLoggingActor {
   public FlakyExpressionCalculator(Expression expr, Position myPosition) {
     this.expr = expr;
     this.myPosition = myPosition;
+  }
 
-    receive(ReceiveBuilder.
-      match(Result.class, r -> expected.contains(r.getPosition()), r -> {
+  @Override
+  public Receive createReceive() {
+    return receiveBuilder()
+      .match(Result.class, r -> expected.contains(r.getPosition()), r -> {
         expected.remove(r.getPosition());
         results.put(r.getPosition(), r.getValue());
         if (results.size() == 2) {
@@ -115,15 +115,17 @@ public class FlakyExpressionCalculator extends AbstractLoggingActor {
           flakiness();
           Integer result = evaluate(expr, results.get(Left),results.get(Right));
           log().info("Evaluated expression {} to value {}", expr, result);
-          context().parent().tell(new Result(expr, result, myPosition), self());
+          getContext().parent().tell(new Result(expr, result, myPosition), self());
           // Don't forget to stop the actor after it has nothing more to do
-          context().stop(self());
+          getContext().stop(self());
         }
-      }).match(Result.class, r -> {
-      throw new IllegalStateException("Expected results for positions " +
-        expected.stream().map(Object::toString).collect(Collectors.joining(", ")) +
-        " but got position " + r.getPosition());
-    }).build());
+      })
+      .match(Result.class, r -> {
+        throw new IllegalStateException("Expected results for positions " +
+          expected.stream().map(Object::toString).collect(Collectors.joining(", ")) +
+          " but got position " + r.getPosition());
+      })
+      .build();
   }
 
   private Integer evaluate(Expression expr, Integer left, Integer right) {
