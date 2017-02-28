@@ -9,7 +9,6 @@ import akka.cluster.ddata.LWWMap
 import akka.cluster.ddata.LWWMapKey
 
 object ReplicatedCache {
-  import akka.cluster.ddata.Replicator._
 
   def props: Props = Props[ReplicatedCache]
 
@@ -28,7 +27,7 @@ class ReplicatedCache extends Actor {
   val replicator = DistributedData(context.system).replicator
   implicit val cluster = Cluster(context.system)
 
-  def dataKey(entryKey: String): LWWMapKey[Any] =
+  def dataKey(entryKey: String): LWWMapKey[String, Any] =
     LWWMapKey("cache-" + math.abs(entryKey.hashCode) % 100)
 
   def receive = {
@@ -40,7 +39,7 @@ class ReplicatedCache extends Actor {
       replicator ! Get(dataKey(key), ReadLocal, Some(Request(key, sender())))
     case g @ GetSuccess(LWWMapKey(_), Some(Request(key, replyTo))) =>
       g.dataValue match {
-        case data: LWWMap[_] => data.get(key) match {
+        case data: LWWMap[_, _] => data.asInstanceOf[LWWMap[String, Any]].get(key) match {
           case Some(value) => replyTo ! Cached(key, Some(value))
           case None        => replyTo ! Cached(key, None)
         }

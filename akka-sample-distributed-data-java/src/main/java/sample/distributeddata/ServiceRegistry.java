@@ -5,8 +5,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import scala.PartialFunction;
-import scala.runtime.BoxedUnit;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
@@ -27,7 +25,6 @@ import akka.cluster.ddata.Replicator.Update;
 import akka.cluster.ddata.Replicator.UpdateResponse;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import akka.japi.pf.ReceiveBuilder;
 
 @SuppressWarnings("unchecked")
 public class ServiceRegistry extends AbstractActor {
@@ -107,11 +104,12 @@ public class ServiceRegistry extends AbstractActor {
   private final Map<String, Set<ActorRef>> services = new HashMap<>();
   private boolean leader = false;
 
-  public ServiceRegistry() {
-    receive(matchCommands()
-        .orElse(matchChanged())
-        .orElse(matchWatch())
-        .orElse(matchOther()));
+  @Override
+  public Receive createReceive() {
+    return matchCommands()
+      .orElse(matchChanged())
+      .orElse(matchWatch())
+      .orElse(matchOther());
   }
 
   @Override
@@ -126,10 +124,10 @@ public class ServiceRegistry extends AbstractActor {
     super.postStop();
   }
 
-  private PartialFunction<Object, BoxedUnit> matchCommands() {
-    return ReceiveBuilder
-      .match(Register.class, r -> receiveRegister(r))
-      .match(Lookup.class, l -> receiveLookup(l))
+  private Receive matchCommands() {
+    return receiveBuilder()
+      .match(Register.class, this::receiveRegister)
+      .match(Lookup.class, this::receiveLookup)
       .build();
   }
 
@@ -157,13 +155,13 @@ public class ServiceRegistry extends AbstractActor {
     sender().tell(new Bindings(l.name, services.getOrDefault(l.name, Collections.emptySet())), self());
   }
 
-  private PartialFunction<Object, BoxedUnit> matchChanged() {
-    return ReceiveBuilder
+  private Receive matchChanged() {
+    return receiveBuilder()
       .match(Changed.class, c -> {
         if (c.key().equals(allServicesKey))
-        receiveAllServicesKeysChanged((Changed<GSet<ServiceKey>>) c);
+          receiveAllServicesKeysChanged((Changed<GSet<ServiceKey>>) c);
         else if (c.key() instanceof ServiceKey)
-        receiveServiceChanged((Changed<ORSet<ActorRef>>) c);
+          receiveServiceChanged((Changed<ORSet<ActorRef>>) c);
       })
       .build();
   }
@@ -192,8 +190,8 @@ public class ServiceRegistry extends AbstractActor {
     }
   }
 
-  private PartialFunction<Object, BoxedUnit> matchWatch() {
-    return ReceiveBuilder
+  private Receive matchWatch() {
+    return receiveBuilder()
         .match(ClusterEvent.LeaderChanged.class, c -> c.getLeader() != null,
           c -> receiveLeaderChanged(c.getLeader()))
         .match(Terminated.class, t -> receiveTerminated(t.actor()))
@@ -235,8 +233,8 @@ public class ServiceRegistry extends AbstractActor {
     }
   }
 
-  private PartialFunction<Object, BoxedUnit> matchOther() {
-    return ReceiveBuilder
+  private Receive matchOther() {
+    return receiveBuilder()
       .match(UpdateResponse.class, u -> {
         // ok
       })
