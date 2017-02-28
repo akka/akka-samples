@@ -1,7 +1,6 @@
 package sample.hello;
 
 import akka.actor.AbstractActor;
-import akka.japi.pf.ReceiveBuilder;
 
 public class Greeter extends AbstractActor {
 
@@ -9,11 +8,13 @@ public class Greeter extends AbstractActor {
     GREET, DONE;
   }
 
-  public Greeter() {
-    receive(ReceiveBuilder.
-      matchEquals(Msg.GREET, m -> {
+  @Override
+  public Receive createReceive() {
+    return receiveBuilder()
+      .matchEquals(Msg.GREET, m -> {
         System.out.println("Hello World!");
         sender().tell(Msg.DONE, self());
-      }).build());
+      })
+      .build();
   }
 }

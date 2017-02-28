@@ -2,9 +2,6 @@ package supervision;
 
 import akka.actor.*;
 import akka.japi.pf.DeciderBuilder;
-import akka.japi.pf.ReceiveBuilder;
-import scala.PartialFunction;
-import scala.runtime.BoxedUnit;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -61,15 +58,16 @@ class ArithmeticService extends AbstractLoggingActor {
     }
   }
 
-  ArithmeticService() {
-    receive(ReceiveBuilder.
-      match(Expression.class, expr -> {
+  @Override
+  public Receive createReceive() {
+    return receiveBuilder()
+      .match(Expression.class, expr -> {
         // We delegate the dangerous task of calculation to a worker, passing the
         // expression as a constructor argument to the actor.
-        ActorRef worker = context().actorOf(FlakyExpressionCalculator.props(expr, Left));
+        ActorRef worker = getContext().actorOf(FlakyExpressionCalculator.props(expr, Left));
         pendingWorkers.put(worker, sender());
-      }).
-      match(Result.class, r -> notifyConsumerSuccess(sender(), r.getValue())).build()
-    );
+      })
+      .match(Result.class, r -> notifyConsumerSuccess(sender(), r.getValue()))
+      .build();
   }
 }

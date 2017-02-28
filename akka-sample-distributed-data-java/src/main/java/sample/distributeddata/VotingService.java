@@ -4,15 +4,12 @@ import java.util.Optional;
 import java.util.HashMap;
 import java.math.BigInteger;
 import java.util.Map;
-import scala.PartialFunction;
-import scala.runtime.BoxedUnit;
 import scala.concurrent.duration.Duration;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.cluster.Cluster;
 import akka.cluster.ddata.*;
-import akka.japi.pf.ReceiveBuilder;
 
 import static akka.cluster.ddata.Replicator.*;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -47,7 +44,7 @@ public class VotingService extends AbstractActor {
 
   private final Key<Flag> openedKey = FlagKey.create("contestOpened");
   private final Key<Flag> closedKey = FlagKey.create("contestClosed");
-  private final Key<PNCounterMap> countersKey = PNCounterMapKey.create("contestCounters");
+  private final Key<PNCounterMap<String>> countersKey = PNCounterMapKey.create("contestCounters");
   private final WriteConsistency writeAll = new WriteAll(Duration.create(5, SECONDS));
   private final ReadConsistency readAll = new ReadAll(Duration.create(3, SECONDS));
 
@@ -56,17 +53,18 @@ public class VotingService extends AbstractActor {
     replicator.tell(new Subscribe<>(openedKey, self()), ActorRef.noSender());
   }
 
-  public VotingService() {
-    receive(ReceiveBuilder
+  @Override
+  public Receive createReceive() {
+    return receiveBuilder()
       .matchEquals(OPEN, cmd -> receiveOpen())
       .match(Changed.class, c -> c.key().equals(openedKey), c -> receiveOpenedChanged((Changed<Flag>) c))
       .matchEquals(GET_VOTES, cmd -> receiveGetVotesEmpty())
-      .build());
+      .build();
   }
 
 
   private void receiveOpen() {
-    Update<Flag> update = new Update<>(openedKey, Flag.create(), writeAll, curr -> curr.switchOn());
+    Update<Flag> update = new Update<>(openedKey, Flag.create(), writeAll, Flag::switchOn);
     replicator.tell(update, self());
     becomeOpen();
   }
@@ -74,7 +72,7 @@ public class VotingService extends AbstractActor {
   private void becomeOpen() {
     replicator.tell(new Unsubscribe<>(openedKey, self()), ActorRef.noSender());
     replicator.tell(new Subscribe<>(closedKey, self()), ActorRef.noSender());
-    context().become(matchOpen().orElse(matchGetVotes(true)));
+    getContext().become(matchOpen().orElse(matchGetVotes(true)));
   }
 
   private void receiveOpenedChanged(Changed<Flag> c) {
@@ -86,9 +84,9 @@ public class VotingService extends AbstractActor {
     sender().tell(new Votes(new HashMap<>(), false), self());
   }
 
-  private PartialFunction<Object, BoxedUnit> matchOpen() {
-    return ReceiveBuilder
-      .match(Vote.class, vote -> receiveVote(vote))
+  private Receive matchOpen() {
+    return receiveBuilder()
+      .match(Vote.class, this::receiveVote)
       .match(UpdateSuccess.class, u -> receiveUpdateSuccess())
       .matchEquals(CLOSE, cmd -> receiveClose())
       .match(Changed.class, c -> c.key().equals(closedKey), c -> receiveClosedChanged((Changed<Flag>) c))
@@ -96,7 +94,7 @@ public class VotingService extends AbstractActor {
   }
 
   private void receiveVote(Vote vote) {
-    Update<PNCounterMap> update = new Update<>(countersKey, PNCounterMap.create(), Replicator.writeLocal(),
+    Update<PNCounterMap<String>> update = new Update<>(countersKey, PNCounterMap.create(), Replicator.writeLocal(),
         curr -> curr.increment(node, vote.participant, 1));
     replicator.tell(update, self());
   }
@@ -106,39 +104,40 @@ public class VotingService extends AbstractActor {
   }
 
   private void receiveClose() {
-    Update<Flag> update = new Update<>(closedKey, Flag.create(), writeAll, curr -> curr.switchOn());
+    Update<Flag> update = new Update<>(closedKey, Flag.create(), writeAll, Flag::switchOn);
     replicator.tell(update, self());
-    context().become(matchGetVotes(false));
+    getContext().become(matchGetVotes(false));
   }
 
   private void receiveClosedChanged(Changed<Flag> c) {
     if (c.dataValue().enabled())
-      context().become(matchGetVotes(false));
+      getContext().become(matchGetVotes(false));
   }
 
-  private PartialFunction<Object, BoxedUnit> matchGetVotes(boolean open) {
-    return ReceiveBuilder
+  private Receive matchGetVotes(boolean open) {
+    return receiveBuilder()
       .matchEquals(GET_VOTES, s -> receiveGetVotes())
-      .match(NotFound.class, n -> n.key().equals(countersKey), n -> receiveNotFound(open, (NotFound<PNCounterMap>) n))
+      .match(NotFound.class, n -> n.key().equals(countersKey),
+        n -> receiveNotFound(open, (NotFound<PNCounterMap<String>>) n))
       .match(GetSuccess.class, g -> g.key().equals(countersKey),
-          g -> receiveGetSuccess(open, (GetSuccess<PNCounterMap>) g))
+        g -> receiveGetSuccess(open, (GetSuccess<PNCounterMap<String>>) g))
       .match(GetFailure.class, f -> f.key().equals(countersKey), f -> receiveGetFailure())
       .match(UpdateSuccess.class, u -> receiveUpdateSuccess()).build();
   }
 
   private void receiveGetVotes() {
     Optional<Object> ctx = Optional.of(sender());
-    replicator.tell(new Replicator.Get<PNCounterMap>(countersKey, readAll, ctx), self());
+    replicator.tell(new Replicator.Get<>(countersKey, readAll, ctx), self());
   }
 
 
-  private void receiveGetSuccess(boolean open, GetSuccess<PNCounterMap> g) {
+  private void receiveGetSuccess(boolean open, GetSuccess<PNCounterMap<String>> g) {
     Map<String, BigInteger> result = g.dataValue().getEntries();
     ActorRef replyTo = (ActorRef) g.getRequest().get();
     replyTo.tell(new Votes(result, open), self());
   }
 
-  private void receiveNotFound(boolean open, NotFound<PNCounterMap> n) {
+  private void receiveNotFound(boolean open, NotFound<PNCounterMap<String>> n) {
     ActorRef replyTo = (ActorRef) n.getRequest().get();
     replyTo.tell(new Votes(new HashMap<>(), open), self());
   }

@@ -1,7 +1,6 @@
 package sample.hello;
 
 import akka.actor.*;
-import akka.japi.pf.ReceiveBuilder;
 
 public class Main2 {
 
@@ -18,11 +17,16 @@ public class Main2 {
     public Terminator(ActorRef ref) {
       this.ref = ref;
       getContext().watch(ref);
-      receive(ReceiveBuilder.
-        match(Terminated.class, t -> {
+    }
+
+    @Override
+    public Receive createReceive() {
+      return receiveBuilder()
+        .match(Terminated.class, t -> {
           log().info("{} has terminated, shutting down system", ref.path());
-          context().system().terminate();
-        }).build());
+          getContext().system().terminate();
+        })
+        .build();
     }
   }
 }

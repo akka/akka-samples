@@ -5,9 +5,7 @@ import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
-import scala.PartialFunction;
 import scala.concurrent.duration.Duration;
-import scala.runtime.BoxedUnit;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
@@ -30,7 +28,6 @@ import akka.cluster.ddata.Replicator.UpdateSuccess;
 import akka.cluster.ddata.Replicator.UpdateTimeout;
 import akka.cluster.ddata.Replicator.WriteConsistency;
 import akka.cluster.ddata.Replicator.WriteMajority;
-import akka.japi.pf.ReceiveBuilder;
 
 @SuppressWarnings("unchecked")
 public class ShoppingCart extends AbstractActor {
@@ -130,37 +127,39 @@ public class ShoppingCart extends AbstractActor {
 
   @SuppressWarnings("unused")
   private final String userId;
-  private final Key<LWWMap<LineItem>> dataKey;
+  private final Key<LWWMap<String, LineItem>> dataKey;
 
   public ShoppingCart(String userId) {
     this.userId = userId;
     this.dataKey = LWWMapKey.create("cart-" + userId);
-
-    receive(matchGetCart()
-        .orElse(matchAddItem())
-        .orElse(matchRemoveItem())
-        .orElse(matchOther()));
   }
 
 
+  @Override
+  public Receive createReceive() {
+    return matchGetCart()
+      .orElse(matchAddItem())
+      .orElse(matchRemoveItem())
+      .orElse(matchOther());
+  }
+
   //#get-cart
-  private PartialFunction<Object, BoxedUnit> matchGetCart() {
-    return ReceiveBuilder
-      .matchEquals((GET_CART),
-          s -> receiveGetCart())
-      .match(GetSuccess.class, g -> isResponseToGetCart(g),
-          g -> receiveGetSuccess((GetSuccess<LWWMap<LineItem>>) g))
-        .match(NotFound.class, n -> isResponseToGetCart(n),
-          n -> receiveNotFound((NotFound<LWWMap<LineItem>>) n))
-        .match(GetFailure.class, f -> isResponseToGetCart(f),
-          f -> receiveGetFailure((GetFailure<LWWMap<LineItem>>) f))
+  private Receive matchGetCart() {
+    return receiveBuilder()
+      .matchEquals((GET_CART), s -> receiveGetCart())
+      .match(GetSuccess.class, this::isResponseToGetCart,
+          g -> receiveGetSuccess((GetSuccess<LWWMap<String, LineItem>>) g))
+        .match(NotFound.class, this::isResponseToGetCart,
+          n -> receiveNotFound((NotFound<LWWMap<String, LineItem>>) n))
+        .match(GetFailure.class, this::isResponseToGetCart,
+          f -> receiveGetFailure((GetFailure<LWWMap<String, LineItem>>) f))
       .build();
   }
 
 
   private void receiveGetCart() {
     Optional<Object> ctx = Optional.of(sender());
-    replicator.tell(new Replicator.Get<LWWMap<LineItem>>(dataKey, readMajority, ctx), 
+    replicator.tell(new Replicator.Get<>(dataKey, readMajority, ctx),
         self());
   }
 
@@ -169,41 +168,41 @@ public class ShoppingCart extends AbstractActor {
         (response.getRequest().orElse(null) instanceof ActorRef);
   }
 
-  private void receiveGetSuccess(GetSuccess<LWWMap<LineItem>> g) {
+  private void receiveGetSuccess(GetSuccess<LWWMap<String, LineItem>> g) {
     Set<LineItem> items = new HashSet<>(g.dataValue().getEntries().values());
     ActorRef replyTo = (ActorRef) g.getRequest().get();
     replyTo.tell(new Cart(items), self());
   }
 
-  private void receiveNotFound(NotFound<LWWMap<LineItem>> n) {
+  private void receiveNotFound(NotFound<LWWMap<String, LineItem>> n) {
     ActorRef replyTo = (ActorRef) n.getRequest().get();
     replyTo.tell(new Cart(new HashSet<>()), self());
   }
 
-  private void receiveGetFailure(GetFailure<LWWMap<LineItem>> f) {
+  private void receiveGetFailure(GetFailure<LWWMap<String, LineItem>> f) {
     // ReadMajority failure, try again with local read
     Optional<Object> ctx = Optional.of(sender());
-    replicator.tell(new Replicator.Get<LWWMap<LineItem>>(dataKey, Replicator.readLocal(), 
-        ctx), self());
+    replicator.tell(new Replicator.Get<>(dataKey, Replicator.readLocal(),
+      ctx), self());
   }
   //#get-cart
 
   //#add-item
-  private PartialFunction<Object, BoxedUnit> matchAddItem() {
-    return ReceiveBuilder
-      .match(AddItem.class, r -> receiveAddItem(r))
+  private Receive matchAddItem() {
+    return receiveBuilder()
+      .match(AddItem.class, this::receiveAddItem)
       .build();
   }
 
   private void receiveAddItem(AddItem add) {
-    Update<LWWMap<LineItem>> update = new Update<>(dataKey, LWWMap.create(), writeMajority,
+    Update<LWWMap<String, LineItem>> update = new Update<>(dataKey, LWWMap.create(), writeMajority,
         cart -> updateCart(cart, add.item));
     replicator.tell(update, self());
   }
 
   //#add-item
 
-  private LWWMap<LineItem> updateCart(LWWMap<LineItem> data, LineItem item) {
+  private LWWMap<String, LineItem> updateCart(LWWMap<String, LineItem> data, LineItem item) {
     if (data.contains(item.productId)) {
       LineItem existingItem = data.get(item.productId).get();
       int newQuantity = existingItem.quantity + item.quantity;
@@ -214,14 +213,14 @@ public class ShoppingCart extends AbstractActor {
     }
   }
 
-  private PartialFunction<Object, BoxedUnit> matchRemoveItem() {
-    return ReceiveBuilder
-      .match(RemoveItem.class, r -> receiveRemoveItem(r))
-      .match(GetSuccess.class, g -> isResponseToRemoveItem(g),
-          g -> receiveRemoveItemGetSuccess((GetSuccess<LWWMap<LineItem>>) g))
-      .match(GetFailure.class, f -> isResponseToRemoveItem(f),
-          f -> receiveRemoveItemGetFailure((GetFailure<LWWMap<LineItem>>) f))
-      .match(NotFound.class, n -> isResponseToRemoveItem(n), n -> {/* nothing to remove */})
+  private Receive matchRemoveItem() {
+    return receiveBuilder()
+      .match(RemoveItem.class, this::receiveRemoveItem)
+      .match(GetSuccess.class, this::isResponseToRemoveItem,
+          g -> receiveRemoveItemGetSuccess((GetSuccess<LWWMap<String, LineItem>>) g))
+      .match(GetFailure.class, this::isResponseToRemoveItem,
+          f -> receiveRemoveItemGetFailure((GetFailure<LWWMap<String, LineItem>>) f))
+      .match(NotFound.class, this::isResponseToRemoveItem, n -> {/* nothing to remove */})
       .build();
   }
 
@@ -230,24 +229,24 @@ public class ShoppingCart extends AbstractActor {
     // Try to fetch latest from a majority of nodes first, since ORMap
     // remove must have seen the item to be able to remove it.
     Optional<Object> ctx = Optional.of(rm);
-    replicator.tell(new Replicator.Get<LWWMap<LineItem>>(dataKey, readMajority, ctx), 
+    replicator.tell(new Replicator.Get<>(dataKey, readMajority, ctx),
         self());
   }
 
-  private void receiveRemoveItemGetSuccess(GetSuccess<LWWMap<LineItem>> g) {
+  private void receiveRemoveItemGetSuccess(GetSuccess<LWWMap<String, LineItem>> g) {
     RemoveItem rm = (RemoveItem) g.getRequest().get();
     removeItem(rm.productId);
   }
 
 
-  private void receiveRemoveItemGetFailure(GetFailure<LWWMap<LineItem>> f) {
+  private void receiveRemoveItemGetFailure(GetFailure<LWWMap<String, LineItem>> f) {
     // ReadMajority failed, fall back to best effort local value
     RemoveItem rm = (RemoveItem) f.getRequest().get();
     removeItem(rm.productId);
   }
 
   private void removeItem(String productId) {
-    Update<LWWMap<LineItem>> update = new Update<>(dataKey, LWWMap.create(), writeMajority,
+    Update<LWWMap<String, LineItem>> update = new Update<>(dataKey, LWWMap.create(), writeMajority,
         cart -> cart.remove(node, productId));
     replicator.tell(update, self());
   }
@@ -258,8 +257,8 @@ public class ShoppingCart extends AbstractActor {
   }
   //#remove-item
 
-  private PartialFunction<Object, BoxedUnit> matchOther() {
-    return ReceiveBuilder
+  private Receive matchOther() {
+    return receiveBuilder()
       .match(UpdateSuccess.class, u -> {
         // ok
       })
