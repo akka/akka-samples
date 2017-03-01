@@ -1,5 +1,6 @@
 package sample.javaslang;
 
+import akka.actor.Props;
 import akka.actor.UntypedAbstractActor;
 import javaslang.Tuple;
 import javaslang.Tuple1;
@@ -21,7 +22,7 @@ public class Minion extends UntypedAbstractActor {
   final private Maze maze;
 
   private Coords pos;
-  private List<Coords> visited;
+  private List<Coords> visited = List.empty();
 
   public Minion(Maze maze) {
     this.maze = maze;
@@ -54,6 +55,10 @@ public class Minion extends UntypedAbstractActor {
     });
   }
 
+  public static Props props(Maze maze) {
+    return Props.create(Minion.class, maze);
+  }
+
   interface Command {};
 
   @Patterns
@@ -81,6 +86,10 @@ public class Minion extends UntypedAbstractActor {
     public Stopped(Coords at, List<Coords> visited) {
       this.at = at;
       this.visited = visited;
+    }
+
+    public String toString() {
+      return "Stopped[at=" + at.toString() + ", visited=" + visited.size() + "]";
     }
 
     @Unapply
