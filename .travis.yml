@@ -45,6 +45,7 @@ env:
     - CMD="cd akka-sample-remote-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
     - CMD="cd akka-sample-supervision-java && sbt ++\$TRAVIS_SCALA_VERSION test"
     - CMD="cd akka-sample-supervision-java && mvn test -P \$TRAVIS_SCALA_VERSION"
+    - CMD="cd akka-sample-javaslang && mvn test -P \$TRAVIS_SCALA_VERSION"
 
 script:
   - eval "$CMD"
