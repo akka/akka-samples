@@ -1,6 +1,6 @@
 package sample.cluster.factorial;
 
-import akka.actor.UntypedActor;
+import akka.actor.AbstractActor;
 import akka.cluster.Cluster;
 import akka.cluster.ClusterEvent.CurrentClusterState;
 import akka.cluster.metrics.ClusterMetricsChanged;
@@ -12,7 +12,7 @@ import akka.cluster.metrics.ClusterMetricsExtension;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 
-public class MetricsListener extends UntypedActor {
+public class MetricsListener extends AbstractActor {
   LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
   Cluster cluster = Cluster.get(getContext().system());
@@ -23,32 +23,30 @@ public class MetricsListener extends UntypedActor {
   // Subscribe unto ClusterMetricsEvent events.
   @Override
   public void preStart() {
-	  extension.subscribe(getSelf());
+	  extension.subscribe(self());
   }
 
   // Unsubscribe from ClusterMetricsEvent events.
   @Override
   public void postStop() {
-	  extension.unsubscribe(getSelf());
+	  extension.unsubscribe(self());
   }
 
-
   @Override
-  public void onReceive(Object message) {
-    if (message instanceof ClusterMetricsChanged) {
-    	ClusterMetricsChanged clusterMetrics = (ClusterMetricsChanged) message;
-      for (NodeMetrics nodeMetrics : clusterMetrics.getNodeMetrics()) {
-        if (nodeMetrics.address().equals(cluster.selfAddress())) {
-          logHeap(nodeMetrics);
-          logCpu(nodeMetrics);
+  public Receive createReceive() {
+    return receiveBuilder()
+      .match(ClusterMetricsChanged.class, clusterMetrics -> {
+        for (NodeMetrics nodeMetrics : clusterMetrics.getNodeMetrics()) {
+          if (nodeMetrics.address().equals(cluster.selfAddress())) {
+            logHeap(nodeMetrics);
+            logCpu(nodeMetrics);
+          }
         }
-      }
-
-    } else if (message instanceof CurrentClusterState) {
-      // Ignore.
-    } else {
-      unhandled(message);
-    }
+      })
+      .match(CurrentClusterState.class, message -> {
+        // Ignore.
+      })
+      .build();
   }
 
   void logHeap(NodeMetrics nodeMetrics) {
