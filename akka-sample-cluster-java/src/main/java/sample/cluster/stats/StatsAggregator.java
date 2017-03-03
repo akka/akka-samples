@@ -9,13 +9,13 @@ import sample.cluster.stats.StatsMessages.StatsResult;
 import scala.concurrent.duration.Duration;
 import akka.actor.ActorRef;
 import akka.actor.ReceiveTimeout;
-import akka.actor.UntypedActor;
+import akka.actor.AbstractActor;
 
-public class StatsAggregator extends UntypedActor {
+public class StatsAggregator extends AbstractActor {
 
   final int expectedResults;
   final ActorRef replyTo;
-  final List<Integer> results = new ArrayList<Integer>();
+  final List<Integer> results = new ArrayList<>();
 
   public StatsAggregator(int expectedResults, ActorRef replyTo) {
     this.expectedResults = expectedResults;
@@ -28,27 +28,25 @@ public class StatsAggregator extends UntypedActor {
   }
 
   @Override
-  public void onReceive(Object message) {
-    if (message instanceof Integer) {
-      Integer wordCount = (Integer) message;
-      results.add(wordCount);
-      if (results.size() == expectedResults) {
-        int sum = 0;
-        for (int c : results)
-          sum += c;
-        double meanWordLength = ((double) sum) / results.size();
-        replyTo.tell(new StatsResult(meanWordLength), getSelf());
-        getContext().stop(getSelf());
-      }
-
-    } else if (message == ReceiveTimeout.getInstance()) {
-      replyTo.tell(new JobFailed("Service unavailable, try again later"),
-          getSelf());
-      getContext().stop(getSelf());
-
-    } else {
-      unhandled(message);
-    }
+  public Receive createReceive() {
+    return receiveBuilder()
+      .match(Integer.class, wordCount -> {
+        results.add(wordCount);
+        if (results.size() == expectedResults) {
+          int sum = 0;
+          for (int c : results)
+            sum += c;
+          double meanWordLength = ((double) sum) / results.size();
+          replyTo.tell(new StatsResult(meanWordLength), self());
+          getContext().stop(self());
+        }
+      })
+      .match(ReceiveTimeout.class, x -> {
+        replyTo.tell(new JobFailed("Service unavailable, try again later"),
+          self());
+        getContext().stop(self());
+      })
+      .build();
   }
 
 }
