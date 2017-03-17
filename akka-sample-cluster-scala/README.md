@@ -1,4 +1,4 @@
-This tutorial contains 4 samples illustrating different [Akka cluster](http://doc.akka.io/docs/akka/2.5-M2/scala/cluster-usage.html) features.
+This tutorial contains 4 samples illustrating different [Akka cluster](http://doc.akka.io/docs/akka/2.5.0/scala/cluster-usage.html) features.
 
 - Subscribe to cluster membership events
 - Sending messages to actors running on nodes in the cluster
@@ -19,7 +19,7 @@ Open [SimpleClusterApp.scala](src/main/scala/sample/cluster/simple/SimpleCluster
 
 The small program together with its configuration starts an ActorSystem with the Cluster enabled. It joins the cluster and starts an actor that logs some membership events. Take a look at the [SimpleClusterListener.scala](src/main/scala/sample/cluster/simple/SimpleClusterListener.scala) actor.
 
-You can read more about the cluster concepts in the [documentation](http://doc.akka.io/docs/akka/2.5-M2/scala/cluster-usage.html).
+You can read more about the cluster concepts in the [documentation](http://doc.akka.io/docs/akka/2.5.0/scala/cluster-usage.html).
 
 To run this sample, type `sbt "runMain sample.cluster.simple.SimpleClusterApp"` if it is not already started.
 
@@ -53,7 +53,7 @@ Look at the source code of the actor again. It registers itself as subscriber of
 
 ## Worker Dial-in Example
 
-In the previous sample we saw how to subscribe to cluster membership events. You can read more about it in the [documentation](http://doc.akka.io/docs/akka/2.5-M2/scala/cluster-usage.html#Subscribe_to_Cluster_Events). How can cluster membership events be used?
+In the previous sample we saw how to subscribe to cluster membership events. You can read more about it in the [documentation](http://doc.akka.io/docs/akka/2.5.0/scala/cluster-usage.html#Subscribe_to_Cluster_Events). How can cluster membership events be used?
 
 Let's take a look at an example that illustrates how workers, here named *backend*, can detect and register to new master nodes, here named *frontend*.
 
@@ -85,9 +85,9 @@ TransformationApp starts 5 actor systems (cluster members) in the same JVM proce
 
 ## Cluster Aware Routers
 
-All [routers](http://doc.akka.io/docs/akka/2.5-M2/scala/routing.html) can be made aware of member nodes in the cluster, i.e. deploying new routees or looking up routees on nodes in the cluster. When a node becomes unreachable or leaves the cluster the routees of that node are automatically unregistered from the router. When new nodes join the cluster additional routees are added to the router, according to the configuration. Routees are also added when a node becomes reachable again, after having been unreachable.
+All [routers](http://doc.akka.io/docs/akka/2.5.0/scala/routing.html) can be made aware of member nodes in the cluster, i.e. deploying new routees or looking up routees on nodes in the cluster. When a node becomes unreachable or leaves the cluster the routees of that node are automatically unregistered from the router. When new nodes join the cluster additional routees are added to the router, according to the configuration. Routees are also added when a node becomes reachable again, after having been unreachable.
 
-You can read more about cluster aware routers in the [documentation](http://doc.akka.io/docs/akka/2.5-M2/scala/cluster-usage.html#Cluster_Aware_Routers).
+You can read more about cluster aware routers in the [documentation](http://doc.akka.io/docs/akka/2.5.0/scala/cluster-usage.html#Cluster_Aware_Routers).
 
 Let's take a look at a few samples that make use of cluster aware routers.
 
@@ -125,7 +125,7 @@ StatsSample starts 4 actor systems (cluster members) in the same JVM process. It
 
 Let's take a look at how to use a cluster aware router on single master node that creates and deploys workers instead of looking them up.
 
-Open StatsSampleOneMaster.scala. To keep track of a single master we use the [Cluster Singleton](http://doc.akka.io/docs/akka/2.5-M2/contrib/cluster-singleton.html) in the contrib module. The `ClusterSingletonManager` is started on each node.
+Open StatsSampleOneMaster.scala. To keep track of a single master we use the [Cluster Singleton](http://doc.akka.io/docs/akka/2.5.0/contrib/cluster-singleton.html) in the contrib module. The `ClusterSingletonManager` is started on each node.
 
 We also need an actor on each node that keeps track of where current single master exists and delegates jobs to the `StatsService`. That is provided by the `ClusterSingletonProxy`.
 
@@ -149,7 +149,7 @@ StatsSampleOneMaster starts 4 actor systems (cluster members) in the same JVM pr
 
 The member nodes of the cluster collects system health metrics and publishes that to other nodes and to registered subscribers. This information is primarily used for load-balancing routers, such as the `AdaptiveLoadBalancingPool` and `AdaptiveLoadBalancingGroup` routers.
 
-You can read more about cluster metrics in the [documentation](http://doc.akka.io/docs/akka/2.5-M2/scala/cluster-usage.html#Cluster_Metrics).
+You can read more about cluster metrics in the [documentation](http://doc.akka.io/docs/akka/2.5.0/scala/cluster-usage.html#Cluster_Metrics).
 
 Let's take a look at this router in action. What can be more demanding than calculating factorials?
 

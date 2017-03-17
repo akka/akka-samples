@@ -10,7 +10,7 @@ It illustrates how current behavior can be replaced with `context.become`. Note 
 
 Start the application by typing `sbt "runMain sample.become.DiningHakkersOnBecome"`. In the log output you can see the actions of the `Hakker` actors.
 
-Read more about `become` in [the documentation](http://doc.akka.io/docs/akka/2.5-M2/scala/actors.html#Become_Unbecome).
+Read more about `become` in [the documentation](http://doc.akka.io/docs/akka/2.5.0/scala/actors.html#Become_Unbecome).
 
 ## Dining Hakkers with FSM
 
@@ -20,7 +20,7 @@ It illustrates how the states and transitions can be defined with the `akka.acto
 
 Start the application by typing `sbt "runMain sample.fsm.DiningHakkersOnFsm"`. In the log output you can see the actions of the `Hakker` actors.
 
-Read more about `akka.actor.FSM` in [the documentation](http://doc.akka.io/docs/akka/2.5-M2/scala/fsm.html).
+Read more about `akka.actor.FSM` in [the documentation](http://doc.akka.io/docs/akka/2.5.0/scala/fsm.html).
 
 ## Simple redelivering FSM
 
