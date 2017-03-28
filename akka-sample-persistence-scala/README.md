@@ -3,7 +3,6 @@ This tutorial contains examples that illustrate a subset of[Akka Persistence](ht
 - persistent actor
 - persistent actor snapshots
 - persistent actor recovery
-- persistent actor views
 
 Custom storage locations for the journal and snapshots can be defined in [application.conf](src/main/resources/application.conf).
 
@@ -24,10 +23,3 @@ To run this example, type `sbt "runMain sample.persistence.SnapshotExample"`. Wi
 [PersistentActorFailureExample.scala](src/main/scala/sample/persistence/PersistentActorFailureExample.scala) shows how a persistent actor can throw an exception, restart and restore the state by replaying the events.
 
 To run this example, type `sbt "runMain sample.persistence.PersistentActorFailureExample"`.
-
-## Persistent actor views
-
-[ViewExample.scala](src/main/scala/sample/persistence/ViewExample.scala) demonstrates how a view (`ExampleView`) is updated with the persistent message stream of a persistent actor (`ExamplePersistentActor`). Messages sent to the persistent actor are scheduled periodically. Views also support snapshotting to reduce recovery time.
-
-To run this example, type `sbt "runMain sample.persistence.ViewExample"`.
-
