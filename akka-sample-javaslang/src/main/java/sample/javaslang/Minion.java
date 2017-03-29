@@ -31,7 +31,9 @@ public class Minion extends UntypedAbstractActor {
   public void onReceive(Object message) {
     Option<Command> nextCommand = Match(message).of(
       Case(Move(Some($(maze::isLegal))), c -> {
-        visited = visited.append(this.pos);
+        if (this.pos != null) {
+          visited = visited.append(this.pos);
+        }
         this.pos = c.get();
         return Match(c.get()).of(
           Case($(maze::isFinish), Option.of(new Stuck())),
@@ -39,7 +41,7 @@ public class Minion extends UntypedAbstractActor {
         );
       }),
 
-      Case(Move(Some($(c -> visited.contains(c)))), Option.of(new Stuck())),
+      Case(Move(Some($(visited::contains))), Option.of(new Stuck())),
       Case(Move(Some($())), Option.of(new Stuck())),
       Case(Move(None()), Option.of(new Stuck())),
 
@@ -81,7 +83,7 @@ public class Minion extends UntypedAbstractActor {
   @Patterns
   static class Stopped implements Command {
     final private Coords at;
-    final private List<Coords> visited;
+    final List<Coords> visited;
 
     public Stopped(Coords at, List<Coords> visited) {
       this.at = at;

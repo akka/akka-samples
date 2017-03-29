@@ -5,6 +5,7 @@ import akka.actor.ActorSystem;
 import akka.pattern.PatternsCS;
 import akka.util.Timeout;
 import javaslang.collection.List;
+import javaslang.collection.HashMap;
 import javaslang.control.Option;
 import javaslang.control.Try;
 
@@ -19,15 +20,31 @@ import static javaslang.Patterns.*;
 
 public class MazeRunner {
 
+  final static List<String> maze = List.of(
+    "+--+--+--+--+--+--+--+--+--+--+",
+    "|           |        |     |  |",
+    "+  +--+--+  +  +--+  +  +  +  +",
+    "|     |     |  |     |  |  |  |",
+    "+--+  +  +--+  +  +--+--+  +  +",
+    "|  |  |     |  |              |",
+    "+  +  +--+  +  +--+  +--+  +--+",
+    "|  |  |        |     |     |  |",
+    "+  +  +  +--+--+  +--+--+  +  +",
+    "|     |  |        |  |     |  |",
+    "+--+--+--+  +--+--+  +  +--+  +",
+    "|                 |  |  |     |",
+    "+  +--+--+--+--+  +  +  +  +--+",
+    "|  |     |     |  |     |     |",
+    "+  +  +  +--+  +  +--+--+--+  +",
+    "|     |  |     |           |  |",
+    "+--+--+  +  +--+--+--+  +--+  +",
+    "|           |     |     |     |",
+    "+  +--+  +--+--+  +  +--+  +--+",
+    "|     |           |          ⚑|",
+    "+--+--+--+--+--+--+--+--+--+--+"
+  );
+
   public static final void main(String[] args) throws ExecutionException, InterruptedException {
-
-    final List<String> maze = List.of(
-      "┏━━━━━━┓",
-      "┃      ┃",
-      "┃     ⚑┃",
-      "┗━━━━━━┛"
-    );
-
     ActorSystem sys = ActorSystem.create("MazeRunner");
     ActorRef master = sys.actorOf(Master.props(new Maze(maze)));
 
@@ -43,6 +60,7 @@ public class MazeRunner {
       "Available commands are:\n" +
       "  spawn N - spawn N number of minions\n" +
       "  results - show minion results\n" +
+      "  heatmap - show minion journey heatmap\n" +
       "  q - quit\n"
     ));
 
@@ -66,6 +84,17 @@ public class MazeRunner {
             .thenApply(results -> Option.of(results.toString()))
             .toCompletableFuture()
         ),
+        Case(Success($("heatmap")), r ->
+          PatternsCS
+            .ask(master, new Master.GetResults(), Timeout.apply(1, TimeUnit.SECONDS))
+            .thenApply(results -> (List<Minion.Stopped>)results)
+            .thenApply(MazeRunner::getHeatMapValues)
+            .thenApply(MazeRunner::getHeatMapTiles)
+            .thenApply(MazeRunner::getHeatMap)
+            .thenApply(heatMap -> heatMap.mkString("\n"))
+            .thenApply(Option::of)
+            .toCompletableFuture()
+        ),
         Case(Success($()), command -> CompletableFuture.completedFuture(Option.of("Unknown command: " + command))),
         Case(Failure($()), ex -> CompletableFuture.completedFuture(Option.of("Was not able to get next command. (" + ex.getMessage() + ")")))
       );
@@ -74,6 +103,31 @@ public class MazeRunner {
 
   private static Option<Integer> tryParseInt(String s) {
     return Option.of(s.replace("spawn ", "")).flatMap(count -> Try.of(() -> Integer.valueOf(count)).toOption());
+  }
+
+  private static HashMap<Coords, Integer> getHeatMapValues(List<Minion.Stopped> minionResults) {
+    return minionResults.flatMap(stopped -> stopped.visited).foldLeft(HashMap.<Coords, Integer>empty(), (heatMap, coords) -> {
+      final Integer newValue = heatMap.get(coords).getOrElse(0) + 1;
+      return heatMap.put(coords, newValue);
+    });
+  }
+
+  private static HashMap<Coords, Character> getHeatMapTiles(HashMap<Coords, Integer> heatMap) {
+    final Integer hottestValue = heatMap.values().max().getOrElse(0);
+    final List<Character> tiles = List.of('█', '▓', '▒', '░');
+    return heatMap.mapValues(heat -> tiles.get((heat * tiles.size() - 1) / hottestValue));
+  }
+
+  private static List<String> getHeatMap(HashMap<Coords, Character> heatMap) {
+    return maze.zipWithIndex().map(rowAndY -> {
+      final String row = rowAndY._1();
+      final Long y = rowAndY._2();
+      return List.ofAll(row.toCharArray()).zipWithIndex().map(tileAndX -> {
+        final Long x = tileAndX._2();
+        final Coords coords = new Coords(x.intValue(), y.intValue());
+        return heatMap.get(coords).getOrElse('█');
+      }).mkString();
+    });
   }
 
 }

@@ -3,7 +3,7 @@ package sample.javaslang;
 import static javaslang.API.Case;
 import static javaslang.API.Match;
 
-class Coords {
+final class Coords {
   final public Integer x;
   final public Integer y;
 
@@ -23,5 +23,18 @@ class Coords {
 
   public String toString() {
     return "Coords[" + x + "," + y + "]";
+  }
+
+  public int hashCode() {
+    return (41 * (41 + x) + y);
+  }
+
+  public boolean equals(Object other) {
+    boolean result = false;
+    if (other instanceof Coords) {
+      Coords that = (Coords)other;
+      result = (this.x == that.x && this.y == that.y);
+    }
+    return result;
   }
 }
