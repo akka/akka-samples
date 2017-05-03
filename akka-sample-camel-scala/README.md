@@ -1,4 +1,4 @@
-This tutorial contains 3 samples of [Akka Camel](http://doc.akka.io/docs/akka/2.5.0/scala/camel.html).
+This tutorial contains 3 samples of [Akka Camel](http://doc.akka.io/docs/akka/2.5/scala/camel.html).
 
 - Asynchronous routing and transformation
 - Custom Camel route
@@ -6,7 +6,7 @@ This tutorial contains 3 samples of [Akka Camel](http://doc.akka.io/docs/akka/2.
 
 ## Asynchronous routing and transformation
 
-This example demonstrates how to implement consumer and producer actors that support [Asynchronous routing](http://doc.akka.io/docs/akka/2.5.0/scala/camel.html#Asynchronous_routing) with their Camel endpoints. The sample application transforms the content of the Akka homepage, [http://akka.io](http://akka.io), by replacing every occurrence of *Akka* with *AKKA*.
+This example demonstrates how to implement consumer and producer actors that support [Asynchronous routing](http://doc.akka.io/docs/akka/2.5/scala/camel.html#Asynchronous_routing) with their Camel endpoints. The sample application transforms the content of the Akka homepage, [http://akka.io](http://akka.io), by replacing every occurrence of *Akka* with *AKKA*.
 
 To run this example, start the application main class by running `sbt runMain "sample.camel.HttpExample"` if it's not already started. Then direct the browser to [http://localhost:8875](http://localhost:8875) and the transformed Akka homepage should be displayed. Please note that this example will probably not work if you're behind an HTTP proxy.
 

@@ -1,14 +1,14 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.5.0"
+val akkaVersion = "2.5.1"
 
 val `akka-sample-distributed-data-java` = project
   .in(file("."))
   .settings(multiJvmSettings: _*)
   .settings(
     organization := "com.typesafe.akka.samples",
-    scalaVersion := "2.12.1",
+    scalaVersion := "2.12.2",
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation", "-Xdiags:verbose"),
     javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m"),

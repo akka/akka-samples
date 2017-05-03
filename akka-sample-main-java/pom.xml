@@ -15,7 +15,7 @@
 
   <profiles>
     <profile>
-      <id>2.12.1</id>
+      <id>2.12.2</id>
       <activation>
         <activeByDefault>true</activeByDefault>
       </activation>
@@ -35,7 +35,7 @@
     <dependency>
       <groupId>com.typesafe.akka</groupId>
       <artifactId>akka-actor_${scalaBinaryVersion}</artifactId>
-      <version>2.5.0</version>
+      <version>2.5.1</version>
     </dependency>
   </dependencies>
 
