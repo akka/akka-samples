@@ -1,9 +1,9 @@
 organization := "com.typesafe.akka.samples"
 name := "akka-sample-camel-java"
 
-scalaVersion := "2.12.1"
+scalaVersion := "2.12.2"
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-camel" % "2.5.0",
+  "com.typesafe.akka" %% "akka-camel" % "2.5.1",
   "org.apache.camel" % "camel-jetty" % "2.10.3",
   "org.apache.camel" % "camel-quartz" % "2.10.3",
   "org.slf4j" % "slf4j-api" % "1.7.2",

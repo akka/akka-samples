@@ -89,6 +89,6 @@ After getting comfortable with the code, you can test your understanding by tryi
 
 You should also visit
 
-- [The Akka documentation](http://doc.akka.io/docs/akka/2.5.0/java.html)
-- [Documentation of supervision](http://doc.akka.io/docs/akka/2.5.0/java/fault-tolerance.html)
+- [The Akka documentation](http://doc.akka.io/docs/akka/2.5/java.html)
+- [Documentation of supervision](http://doc.akka.io/docs/akka/2.5/java/fault-tolerance.html)
 - [The Akka Team blog](http://blog.akka.io)

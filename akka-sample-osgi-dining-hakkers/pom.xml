@@ -9,19 +9,19 @@
 
     <profiles>
         <profile>
-            <id>2.12.1</id>
+            <id>2.12.2</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
-                <scalaVersion>2.12.1</scalaVersion>
+                <scalaVersion>2.12.2</scalaVersion>
                 <scalaBinaryVersion>2.12</scalaBinaryVersion>
             </properties>
         </profile>
         <profile>
-            <id>2.11.8</id>
+            <id>2.11.11</id>
             <properties>
-                <scalaVersion>2.11.8</scalaVersion>
+                <scalaVersion>2.11.11</scalaVersion>
                 <scalaBinaryVersion>2.11</scalaBinaryVersion>
             </properties>
         </profile>
@@ -29,7 +29,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <akka.version>2.5.0</akka.version>
+        <akka.version>2.5.1</akka.version>
         <!-- Support for eecap-1.8 (Java 8) is from 3.0.2 -->
         <!-- https://github.com/apache/karaf/blob/karaf-3.0.2/assemblies/features/framework/src/main/filtered-resources/resources/etc/config.properties -->
         <karaf.version>3.0.8</karaf.version>
