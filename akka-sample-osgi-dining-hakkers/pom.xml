@@ -19,9 +19,9 @@
             </properties>
         </profile>
         <profile>
-            <id>2.11.8</id>
+            <id>2.11.11</id>
             <properties>
-                <scalaVersion>2.11.8</scalaVersion>
+                <scalaVersion>2.11.11</scalaVersion>
                 <scalaBinaryVersion>2.11</scalaBinaryVersion>
             </properties>
         </profile>
