@@ -1,4 +1,4 @@
-In order to showcase the [remote capabilities of Akka](http://doc.akka.io/docs/akka/2.5-M2/scala/remoting.html) we thought a remote calculator could do the trick. This sample demonstrates both remote deployment and look-up of remote actors.
+In order to showcase the [remote capabilities of Akka](http://doc.akka.io/docs/akka/current/scala/remoting.html) we thought a remote calculator could do the trick. This sample demonstrates both remote deployment and look-up of remote actors.
 
 ## Lookup Remote Actors
 

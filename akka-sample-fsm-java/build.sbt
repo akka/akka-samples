@@ -1,7 +1,7 @@
 organization := "com.typesafe.akka.samples"
 name := "akka-sample-fsm-java"
 
-val akkaVersion = "2.5-M2"
+val akkaVersion = "2.5.2"
 
 scalaVersion := "2.12.1"
 libraryDependencies ++= Seq(
