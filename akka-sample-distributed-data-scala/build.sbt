@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.5.1"
+val akkaVersion = "2.5.2"
 
 val `akka-sample-distributed-data-scala` = project
   .in(file("."))
@@ -18,6 +18,7 @@ val `akka-sample-distributed-data-scala` = project
       "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
       "com.typesafe.akka" %% "akka-distributed-data" % akkaVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion,
+      "org.typelevel" %% "cats" % "0.9.0",
       "org.scalatest" %% "scalatest" % "3.0.1" % Test),
     fork in run := true,
     // disable parallel tests
