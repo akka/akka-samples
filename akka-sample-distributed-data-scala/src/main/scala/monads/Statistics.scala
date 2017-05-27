@@ -1,6 +1,7 @@
 package monads
 
-
+import cats.{~>, Monad => CatsMonads}
+import cats.implicits._
 /**
   * 统计的Monad
   */
@@ -25,3 +26,30 @@ object Statistics {
       map(event.updateStatistics(_))
   }
 }*/
+
+sealed trait Event
+
+sealed trait Statistics
+
+object Statistics {
+
+  case class StatisticsOps(stats: Statistics) {
+    def update(event: Event) = stats
+  }
+
+  implicit def toOps(stats: Statistics): StatisticsOps = StatisticsOps(stats)
+
+  trait StatisticsAlg[F[_]] {
+    def update(event: Event): F[Statistics]
+  }
+
+  class UpdateStatistics[F[_]: CatsMonads](statAlg: StatisticsAlg[F]) {
+    def update(event: Event): F[Statistics] = statAlg.update(event)
+  }
+
+  class OptionInterpreter(stats: Statistics) extends StatisticsAlg[Option] {
+    override def update(event: Event) = Option(stats.update(event))
+  }
+  val result = new UpdateStatistics(new OptionInterpreter(new Statistics {})).update(new Event {})
+}
+
