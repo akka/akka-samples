@@ -2,6 +2,11 @@ package sample.sharding
 
 import akka.actor._
 
+/**
+ * This is just an example: cluster sharding would be overkill for just keeping some counters,
+ * but becomes useful when you have a collection of 'heavy' actors (in terms of processing or state)
+ * so you need to distribute them across several nodes.
+ */
 object Counter {
   case class Increment(counterId: Int)
   case class Decrement(counterId: Int)
