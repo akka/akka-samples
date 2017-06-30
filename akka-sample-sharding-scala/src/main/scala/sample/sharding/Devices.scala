@@ -43,7 +43,7 @@ class Devices extends Actor with ActorLogging {
   def receive = {
     case UpdateDevice =>
       val deviceId = random.nextInt(numberOfDevices)
-      val temperature = random.nextDouble() * 100
+      val temperature = 5 + 30 * random.nextDouble()
       val msg = Device.RecordTemperature(deviceId, temperature)
       log.info(s"Sending $msg");
       deviceRegion ! msg
