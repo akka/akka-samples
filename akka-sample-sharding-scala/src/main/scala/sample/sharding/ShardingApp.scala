@@ -24,7 +24,7 @@ object ShardingApp {
       // Create an Akka system
       val system = ActorSystem("ShardingSystem", config)
       // Create an actor that starts the sharding and sends random messages
-      system.actorOf(Props[Counters])
+      system.actorOf(Props[Devices])
     }
   }
 

@@ -6,7 +6,7 @@ First of all, make sure the correct settings in [application.conf](src/main/reso
 
 Open [ShardingApp.scala](src/main/scala/sample/sharding/ShardingApp.scala).
 
-This small program starts an ActorSystem with Cluster Sharding enabled. It joins the cluster and starts a `Counters` actor. This actor starts the infrastructure to shard `Counter` instances and starts sending messages to arbitrary counters.
+This small program starts an ActorSystem with Cluster Sharding enabled. It joins the cluster and starts a `Devices` actor. This actor starts the infrastructure to shard `Device` instances and starts sending messages to arbitrary devices.
 
 To run this sample, type `sbt "runMain sample.sharding.ShardingApp"` if it is not already started.
 
@@ -18,7 +18,7 @@ In the first terminal window, start the first seed node with the following comma
 
 2551 corresponds to the port of the first seed-nodes element in the configuration. In the log output you see that the cluster node has been started and changed status to 'Up'.
 
-You'll see a log message when `Counters` sends a message to manipulate a counter, and for each of those you'll see a log message from the `Counter` showing the action taken and the new counter value.
+You'll see a log message when `Devices` sends a message to record the current temperature, and for each of those you'll see a log message from the `Device` showing the action taken and the new average temperature.
 
 In the second terminal window, start the second seed node with the following command:
 
@@ -26,7 +26,7 @@ In the second terminal window, start the second seed node with the following com
 
 2552 corresponds to the port of the second seed-nodes element in the configuration. In the log output you see that the cluster node has been started and joins the other seed node and becomes a member of the cluster. Its status changed to 'Up'. Switch over to the first terminal window and see in the log output that the member joined.
 
-Some of the counters that were originally on the `ActorSystem` on port 2551 will be migrated to the newly joined `ActorSystem` on port 2552. The migration is straightforward: the old actor is stopped and a fresh actor is started on the newly created `ActorSystem`. Notice this means the counter is reset to zero: if you want your state to be persisted you'll need to take care of this yourself. For this reason Cluster Sharding and Akka Persistence are such a popular combination.
+Some of the devices that were originally on the `ActorSystem` on port 2551 will be migrated to the newly joined `ActorSystem` on port 2552. The migration is straightforward: the old actor is stopped and a fresh actor is started on the newly created `ActorSystem`. Notice this means the average is reset: if you want your state to be persisted you'll need to take care of this yourself. For this reason Cluster Sharding and Akka Persistence are such a popular combination.
 
 Start another node in the third terminal window with the following command:
 
