@@ -6,7 +6,7 @@ First of all, make sure the correct settings in [application.conf](src/main/reso
 
 Open [ShardingApp.scala](src/main/scala/sample/sharding/ShardingApp.scala).
 
-This small program starts an ActorSystem with Cluster Sharding enabled.It joins the cluster and starts a `Counters` actor. This actor starts the infrastructure to shard `Counter` instances and starts sending messages to arbitrary counters.
+This small program starts an ActorSystem with Cluster Sharding enabled. It joins the cluster and starts a `Counters` actor. This actor starts the infrastructure to shard `Counter` instances and starts sending messages to arbitrary counters.
 
 To run this sample, type `sbt "runMain sample.sharding.ShardingApp"` if it is not already started.
 
