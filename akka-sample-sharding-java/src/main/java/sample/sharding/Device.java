@@ -14,8 +14,9 @@ public class Device extends AbstractActor {
   private List<Double> temperatures = new ArrayList<Double>();
 
   public static class RecordTemperature implements Serializable {
-    final Integer deviceId;
-    final Double temperature;
+    public final Integer deviceId;
+    public final Double temperature;
+
     public RecordTemperature(Integer deviceId, Double temperature) {
       this.deviceId = deviceId;
       this.temperature = temperature;
