@@ -1,4 +1,4 @@
-This tutorial contains a sample illustrating [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/scala/cluster-sharding.html#an-example).
+This tutorial contains a sample illustrating [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/java/cluster-sharding.html#an-example).
 
 ## Example overview
 
