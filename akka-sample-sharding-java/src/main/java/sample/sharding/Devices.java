@@ -27,7 +27,7 @@ public class Devices extends AbstractActor {
 
   private final Integer numberOfDevices = 50;
 
-  ShardRegion.MessageExtractor messageExtractor = new ShardRegion.MessageExtractor() {
+  static ShardRegion.MessageExtractor messageExtractor = new ShardRegion.MessageExtractor() {
     @Override
       public String entityId(Object message) {
         if (message instanceof Device.RecordTemperature)
