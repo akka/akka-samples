@@ -1,5 +1,13 @@
 package advancedscala.chapter01
 
+import cats.Show
+import cats.instances.int._
+import cats.instances.string._
+import cats.syntax.show._
+
+import cats.Eq
+import cats.syntax.eq._
+import cats.instances.option._
 /**
   * Created by liaoshifu on 2017/6/1
   */
@@ -49,6 +57,22 @@ case class Cat(
               color: String
               )
 
+object Cat {
+  implicit val catShow = Show.show[Cat] { cat =>
+    val name = cat.name.show
+    val age = cat.age.show
+    val color = cat.color.show
+    s"$name is a $age year-old $color cats."
+  }
+
+  implicit val catEq = Eq.instance[Cat] { (c1, c2) =>
+    val eqName = c1.name === c2.name
+    val eqAge = c1.age === c2.age
+    val eqColor = c1.color === c2.color
+
+    eqName && eqAge && eqColor
+  }
+}
 object PrintableSyntax {
   implicit class PrintOps[A](value: A) {
     def format(implicit printer: Printable[A]): String = printer.format(value)
@@ -66,5 +90,21 @@ object PrintableSyntaxApp {
     val cat = Cat("Wade", 33, "Red")
     println(s"the Cat format is: ${cat.format}")
     cat.print
+  }
+}
+
+object ShowApp {
+  def main(args: Array[String]): Unit = {
+    println(Cat("Garfield", 35, "ginger and black").show)
+
+    val cat1 = Cat("Garfield", 35, "orange and black")
+    val cat2 = Cat("Heathliff", 30, "orange and black")
+
+    println(cat1 === cat2)
+    
+    val oc1 = Option(cat1)
+    val oc2 = Option(cat2)
+    println(oc1 === oc2)
+    println(oc1 =!= oc2)
   }
 }
