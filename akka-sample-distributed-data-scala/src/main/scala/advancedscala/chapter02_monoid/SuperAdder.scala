@@ -1,4 +1,4 @@
-package advancedscala.chapter02
+package advancedscala.chapter02_monoid
 
 /**
   * Super Adder

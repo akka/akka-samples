@@ -1,4 +1,4 @@
-package advancedscala.chapter01
+package advancedscala.chapter01_typeclass
 
 import cats.Show
 import cats.instances.int._

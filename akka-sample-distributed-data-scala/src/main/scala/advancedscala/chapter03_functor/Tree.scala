@@ -1,4 +1,4 @@
-package advancedscala.chapter03
+package advancedscala.chapter03_functor
 
 /**
   * Functor exercise

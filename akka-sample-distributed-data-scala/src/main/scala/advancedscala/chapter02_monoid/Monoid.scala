@@ -1,4 +1,4 @@
-package advancedscala.chapter02
+package advancedscala.chapter02_monoid
 
 trait Monoid[A] extends Semigroup[A] {
   //def combine(x: A, y: A): A
