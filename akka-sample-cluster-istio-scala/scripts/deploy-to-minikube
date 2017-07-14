@@ -1,0 +1,250 @@
+#!/usr/bin/env bash
+
+set -e
+
+(which minikube &>/dev/null) || (echo '* missing minikube, is it installed?' && exit 1)
+(which kubectl &>/dev/null) || (echo '* missing kubectl, is it installed?' && exit 1)
+(which docker &>/dev/null) || (echo '* missing docker; is it installed?' && exit 1)
+(which mvn &>/dev/null) || (echo '* missing sbt; is it installed?' && exit 1)
+(which istioctl &>/dev/null) || (echo '* missing istioctl; ensure that Istio is installed and `istioctl` is available on your PATH. More info: https://istio.io/docs/tasks/installing-istio.html' && exit 1)
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../" && pwd)"
+ISTIO_PATH="$(cd "$(dirname "$(which istioctl)")/.." && pwd)"
+
+wait-for-pods() {
+    echo -n 'waiting...'
+    while (kubectl get pods 2>&1 | grep '0/\|1/2\|No resources') &>/dev/null; do echo -n '.' && sleep 1; done
+    echo
+}
+
+istioctl-kube-inject() {
+    # Several hacky things here...
+    # kube-inject doesn't currently support StatefulSet, so we hack output to
+    # Deployment and then turn it back into StatefulSet
+    # and add back the service name that is strips
+    # Lastly, if we're not a StatefulSet we strip the trailing --- as there's a bug
+    # in istioctl where it adds this delimeter even if it doesn't convert JSON to YAML,
+    # thus causing the JSON to be invalid
+
+    # Most of this can be removed when this PR is merged: https://github.com/istio/pilot/pull/896/files
+
+    if grep -q '"kind":\s*"StatefulSet"' "$1"; then
+        service_name="$(cat "$1" | sed -n 's/".*serviceName"\s*:\s*"\([^"]*\)".*,/\1/p' | sed 's/^ *//;s/ *$//')"
+
+        cat "$1" |
+        sed 's/"kind": "StatefulSet"/"kind": "Deployment"/' |
+        "$ISTIO_PATH/bin/istioctl" kube-inject -f - |
+        sed 's/kind: Deployment/kind: StatefulSet/' |
+        sed "s/^spec:$/spec:\n  serviceName: $service_name/" |
+        sed 's/status: {}//' |
+        sed 's/strategy: {}//'
+    else
+        cat "$1" |
+        "$ISTIO_PATH/bin/istioctl" kube-inject -f - |
+        sed 's/---$//'
+    fi
+}
+
+echo '*********************************'
+echo '***  Resetting minikube       ***'
+echo '*********************************'
+
+(minikube delete || true) &>/dev/null
+
+minikube start --memory 8192
+
+eval $(minikube docker-env)
+
+echo '*********************************'
+echo '***  Building images          ***'
+echo '*********************************'
+
+(cd "$ROOT" && sbt clean docker:publishLocal)
+docker images
+
+echo '*********************************'
+echo '***  Deploying istio/addons   ***'
+echo '*********************************'
+
+kubectl apply -f "$ISTIO_PATH/install/kubernetes/istio-rbac-beta.yaml"
+kubectl apply -f "$ISTIO_PATH/install/kubernetes/istio.yaml"
+kubectl apply -f "$ISTIO_PATH/install/kubernetes/addons/prometheus.yaml"
+kubectl apply -f "$ISTIO_PATH/install/kubernetes/addons/grafana.yaml"
+kubectl apply -f "$ISTIO_PATH/install/kubernetes/addons/servicegraph.yaml"
+#wait-for-pods
+
+echo '*********************************'
+echo '***  Deploying app            ***'
+echo '*********************************'
+
+cat << EOF # |  kubectl create -f -
+{
+  "apiVersion": "v1",
+  "kind": "Service",
+  "metadata": {
+    "labels": {
+      "app": "sample"
+    },
+    "name": "sample"
+  },
+  "spec": {
+    "ports": [
+      {
+        "name": "akka-remote-backend",
+        "port": 2551,
+        "protocol": "TCP",
+        "targetPort": 2551
+      },
+      {
+        "name": "akka-remote-frontend",
+        "port": 2552,
+        "protocol": "TCP",
+        "targetPort": 2552
+      }
+    ],
+    "selector": {
+      "app": "sample"
+    }
+  }
+}
+EOF
+
+STATEFUL_SET="$(mktemp)"
+
+cat << EOT > "$STATEFUL_SET"
+{
+  "apiVersion": "apps/v1beta1",
+  "kind": "StatefulSet",
+  "metadata": {
+    "name": "sample"
+  },
+  "spec": {
+    "serviceName": "sample",
+    "replicas": 1,
+    "template": {
+      "metadata": {
+        "labels": {
+          "app": "sample"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "backend",
+            "image": "com-typesafe-akka-samples/akka-sample-cluster-istio-scala-backend",
+            "imagePullPolicy": "Never",
+            "ports": [
+              {
+                "containerPort": 2551,
+                "name": "akka-remote-backend"
+              }
+            ],
+            "resources": {
+              "limits": {
+                "cpu": "250m",
+                "memory": "384Mi"
+              },
+              "requests": {
+                "cpu": "250m",
+                "memory": "384Mi"
+              }
+            },
+            "env": [
+              {
+                "name": "AKKA_ACTOR_SYSTEM_NAME",
+                "value": "sample-actor-system"
+              },
+              {
+                "name": "AKKA_REMOTING_BIND_PORT",
+                "value": "2551"
+              },
+              {
+                "name": "AKKA_REMOTING_BIND_HOST",
+                "valueFrom": {
+                  "fieldRef": {
+                    "fieldPath": "metadata.name"
+                  }
+                }
+              },
+              {
+                "name": "AKKA_SEED_NODE_PORT",
+                "value": "2551"
+              },
+              {
+                "name": "AKKA_SEED_NODE_HOST",
+                "value": "sample-0"
+              }
+            ],
+            "readinessProbe": {
+              "tcpSocket": {
+                "port": 2551
+              },
+              "initialDelaySeconds": 30,
+              "timeoutSeconds": 30
+            }
+          },
+          {
+            "name": "frontend",
+            "image": "com-typesafe-akka-samples/akka-sample-cluster-istio-scala-frontend",
+            "imagePullPolicy": "Never",
+            "ports": [
+              {
+                "hostPort": 2552,
+                "containerPort": 2552,
+                "name": "akka-remote-frontend"
+              }
+            ],
+            "resources": {
+              "limits": {
+                "cpu": "250m",
+                "memory": "384Mi"
+              },
+              "requests": {
+                "cpu": "250m",
+                "memory": "384Mi"
+              }
+            },
+            "env": [
+              {
+                "name": "AKKA_ACTOR_SYSTEM_NAME",
+                "value": "sample-actor-system"
+              },
+              {
+                "name": "AKKA_REMOTING_BIND_PORT",
+                "value": "2552"
+              },
+              {
+                "name": "AKKA_REMOTING_BIND_HOST",
+                "valueFrom": {
+                  "fieldRef": {
+                    "fieldPath": "metadata.name"
+                  }
+                }
+              },
+              {
+                "name": "AKKA_SEED_NODE_PORT",
+                "value": "2551"
+              },
+              {
+                "name": "AKKA_SEED_NODE_HOST",
+                "value": "sample-0"
+              }
+            ],
+            "readinessProbe": {
+              "tcpSocket": {
+                "port": 2552
+              },
+              "initialDelaySeconds": 30,
+              "timeoutSeconds": 30
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+EOT
+#cat "$STATEFUL_SET" | kubectl create -f -
+istioctl-kube-inject "$STATEFUL_SET" | kubectl create -f -
+
+echo use kubectl to inspect cluster state
