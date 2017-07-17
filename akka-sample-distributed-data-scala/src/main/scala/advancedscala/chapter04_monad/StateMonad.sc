@@ -1,5 +1,7 @@
 import cats.data.State
 
+import scala.util.Try
+
 val a = State[Int, String] { state =>
   (state, s"The state is $state")
 }
@@ -68,22 +70,91 @@ val (sp, rp) = program.run(2).value
 // Exercise
 type CalcState[A] = State[List[Int], A]
 
-def eval(op: String)(ophands: List[Int]): Int = op match {
+/*def eval(op: String)(ophands: List[Int]): Int = op match {
   case "*" => ophands.head * ophands.tail.head
   case "+" => ophands.head + ophands.tail.head
   case _ => op.toInt
+}*/
+def operand(num: Int): CalcState[Int] = State[List[Int], Int] { stack =>
+  (num :: stack, num)
 }
-def evalOne(sym: String): CalcState[Int] = State[List[Int], Int] { oldStack =>
-  val newStack = eval(sym)(oldStack) :: oldStack
-  val result = eval(sym)(oldStack)
-  (newStack, result)
+
+def operator(func: (Int, Int) => Int): CalcState[Int] = State[List[Int], Int] { //oldStack =>
+  /*lazy val (op1, op2, other) = (oldStack.tail.head, oldStack.head, oldStack.tail.tail)
+  val result = func(op1, op2)
+  (result :: other, result)*/
+  //oldStack match {
+    case a :: b :: tail =>
+      val ans = func(a, b)
+      (ans :: tail, ans)
+    case _ =>
+      sys.error("Fail")
+  //}
 }
+def evalOne(sym: String): CalcState[Int] =
+  sym match {
+    case "*" =>
+      operator(_ * _)
+    case "+" =>
+      operator(_ + _)
+    case "-" =>
+      operator(_ - _)
+    case "/" =>
+      operator(_ / _)
+    case num =>
+      operand(num.toInt)
+  }
+
 
 evalOne("42").run(Nil).value
 
 val p1 = for {
   _ <- evalOne("1")
   _ <- evalOne("2")
-  ans <- evalOne("+")
+  _ <- evalOne("+")
+  _ <- evalOne("3")
+  _ <- evalOne("*")
+  _ <- evalOne("36")
+  _ <- evalOne("/")
+  _ <- evalOne("6")
+  _ <- evalOne("-")
+  _ <- evalOne("3")
+  //_ <- evalOne("+")
+  r <- evalOne("*")
+} yield r
+p1.run(Nil).value
+
+import cats.syntax.applicative._
+
+def evalAll(input: List[String]): CalcState[Int] =
+  input.foldLeft(0.pure[CalcState]) { (a, b) =>
+    a.flatMap(_ => evalOne(b))
+  }
+
+val p2 = evalAll(List("1", "2", "+", "3", "*"))
+p2.run(Nil).value
+0.pure[CalcState]//.run(Nil).value
+1.pure[CalcState].run(Nil).value
+
+/*
+def evalAll2(input: List[String]): CalcState[Int] = input match {
+  case Nil => 1.pure[CalcState]
+  case h :: t =>
+    for {
+      _ <- evalOne(h)
+      r <- evalAll2(t)
+    } yield r
+}
+
+val p3 = evalAll2(List("1", "2", "+"))
+p3.run(Nil).value
+
+*/
+
+val p5 = for {
+  _ <- evalAll(List("1", "2", "*"))
+  _ <- evalOne("3")
+  _ <- evalAll(List("3", "5", "+"))
+  ans <- evalOne("*")
 } yield ans
-p1.runA(Nil).value
+p5.run(Nil).value
