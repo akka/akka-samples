@@ -88,3 +88,4 @@ for {
   b <- branch(leaf(a - 10), leaf( a + 20))
   c <- branch(leaf(b - 3), leaf(b + 6))
 } yield c
+
