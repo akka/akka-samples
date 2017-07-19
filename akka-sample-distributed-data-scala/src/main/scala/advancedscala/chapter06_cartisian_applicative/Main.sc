@@ -135,3 +135,52 @@ for {
   x <- f1
   y <- f2
 } yield (x, y)
+
+// Validated
+//import cats.Cartesian
+import cats.data.Validated
+//imp
+type AllErrorOr[A] = Validated[List[String], A]
+
+Cartesian[AllErrorOr].product(
+  Validated.invalid(List("Error 1")),
+  Validated.invalid(List("Error 2"))
+)
+
+val v = Validated.valid[String, Int](123)
+val i = Validated.invalid[String, Int]("Badness")
+
+import cats.syntax.validated._
+123.valid[String]
+"Badness".invalid[Int]
+
+Validated.fromEither[String, Int](Left("Badness"))
+Validated.fromOption[String, Int](None, "Badness")
+
+(
+  "Error 1".invalid[Int] |@|
+  "Error 2".invalid[Int] |@|
+  10.valid[String]
+).tupled
+
+(
+  List("Error 1").invalid[Int] |@|
+  List("Error 2").invalid[Int] |@|
+  2.valid[List[String]]
+).tupled
+
+(
+  10.valid[List[String]] |@|
+  9.valid[List[String]] |@|
+  2.valid[List[String]]
+).tupled
+
+123.valid[String].bimap(_ + "!", _ * 10)
+"?".invalid[Int].bimap(_ + "!", _ * 10)
+
+123.valid[String].ensure("Negative!")(_ > 0)
+
+(-1).valid[String].ensure("Negative!")(_ > 0)
+
+"fail".invalid[Int].getOrElse(0)
+"fail".invalid[Int].fold(_ + "@@!!", _.toString)
