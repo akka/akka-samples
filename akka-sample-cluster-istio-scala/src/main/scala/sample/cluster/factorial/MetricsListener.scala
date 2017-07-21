@@ -1,4 +1,4 @@
-package sample.cluster.factorial.frontend
+package sample.cluster.factorial
 
 import akka.actor.{Actor, ActorLogging}
 import akka.cluster.Cluster

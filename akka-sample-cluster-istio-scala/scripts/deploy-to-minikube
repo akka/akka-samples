@@ -45,13 +45,13 @@ istioctl-kube-inject() {
     fi
 }
 
-echo '*********************************'
-echo '***  Resetting minikube       ***'
-echo '*********************************'
+echo '****************************'
+echo '***  Resetting minikube  ***'
+echo '****************************'
 
-(minikube delete || true) &>/dev/null
+#(minikube delete || true) &>/dev/null
 
-minikube start --memory 8192
+#minikube start --memory 8192
 
 eval $(minikube docker-env)
 
@@ -59,25 +59,25 @@ echo '*********************************'
 echo '***  Building images          ***'
 echo '*********************************'
 
-(cd "$ROOT" && sbt clean docker:publishLocal)
-docker images
+#(cd "$ROOT" && sbt clean docker:publishLocal)
+#docker images
 
 echo '*********************************'
 echo '***  Deploying istio/addons   ***'
 echo '*********************************'
 
-kubectl apply -f "$ISTIO_PATH/install/kubernetes/istio-rbac-beta.yaml"
-kubectl apply -f "$ISTIO_PATH/install/kubernetes/istio.yaml"
-kubectl apply -f "$ISTIO_PATH/install/kubernetes/addons/prometheus.yaml"
-kubectl apply -f "$ISTIO_PATH/install/kubernetes/addons/grafana.yaml"
-kubectl apply -f "$ISTIO_PATH/install/kubernetes/addons/servicegraph.yaml"
+#kubectl apply -f "$ISTIO_PATH/install/kubernetes/istio-rbac-beta.yaml"
+#kubectl apply -f "$ISTIO_PATH/install/kubernetes/istio.yaml"
+#kubectl apply -f "$ISTIO_PATH/install/kubernetes/addons/prometheus.yaml"
+#kubectl apply -f "$ISTIO_PATH/install/kubernetes/addons/grafana.yaml"
+#kubectl apply -f "$ISTIO_PATH/install/kubernetes/addons/servicegraph.yaml"
 #wait-for-pods
 
 echo '*********************************'
 echo '***  Deploying app            ***'
 echo '*********************************'
 
-cat << EOF # |  kubectl create -f -
+cat << EOF | kubectl create -f -
 {
   "apiVersion": "v1",
   "kind": "Service",
@@ -88,18 +88,12 @@ cat << EOF # |  kubectl create -f -
     "name": "sample"
   },
   "spec": {
+    "clusterIP": "None",
     "ports": [
       {
-        "name": "akka-remote-backend",
+        "name": "sample",
         "port": 2551,
-        "protocol": "TCP",
         "targetPort": 2551
-      },
-      {
-        "name": "akka-remote-frontend",
-        "port": 2552,
-        "protocol": "TCP",
-        "targetPort": 2552
       }
     ],
     "selector": {
@@ -108,6 +102,8 @@ cat << EOF # |  kubectl create -f -
   }
 }
 EOF
+
+exit
 
 STATEFUL_SET="$(mktemp)"
 
@@ -130,41 +126,19 @@ cat << EOT > "$STATEFUL_SET"
       "spec": {
         "containers": [
           {
-            "name": "backend",
-            "image": "com-typesafe-akka-samples/akka-sample-cluster-istio-scala-backend",
+            "name": "sample",
+            "image": "com-typesafe-akka-samples/akka-sample-cluster-istio-scala",
             "imagePullPolicy": "Never",
             "ports": [
               {
                 "containerPort": 2551,
-                "name": "akka-remote-backend"
+                "name": "sample"
               }
             ],
-            "resources": {
-              "limits": {
-                "cpu": "250m",
-                "memory": "384Mi"
-              },
-              "requests": {
-                "cpu": "250m",
-                "memory": "384Mi"
-              }
-            },
             "env": [
               {
                 "name": "AKKA_ACTOR_SYSTEM_NAME",
                 "value": "sample-actor-system"
-              },
-              {
-                "name": "AKKA_REMOTING_BIND_PORT",
-                "value": "2551"
-              },
-              {
-                "name": "AKKA_REMOTING_BIND_HOST",
-                "valueFrom": {
-                  "fieldRef": {
-                    "fieldPath": "metadata.name"
-                  }
-                }
               },
               {
                 "name": "AKKA_SEED_NODE_PORT",
@@ -172,67 +146,20 @@ cat << EOT > "$STATEFUL_SET"
               },
               {
                 "name": "AKKA_SEED_NODE_HOST",
-                "value": "sample-0"
+                "value": "sample-0.sample.default.svc.cluster.local"
+              },
+              {
+                "name": "AKKA_REMOTING_HOST",
+                "value": "\$HOSTNAME.sample.default.svc.cluster.local"
+              },
+              {
+                "name": "AKKA_REMOTING_PORT",
+                "value": "2551"
               }
             ],
             "readinessProbe": {
               "tcpSocket": {
                 "port": 2551
-              },
-              "initialDelaySeconds": 30,
-              "timeoutSeconds": 30
-            }
-          },
-          {
-            "name": "frontend",
-            "image": "com-typesafe-akka-samples/akka-sample-cluster-istio-scala-frontend",
-            "imagePullPolicy": "Never",
-            "ports": [
-              {
-                "hostPort": 2552,
-                "containerPort": 2552,
-                "name": "akka-remote-frontend"
-              }
-            ],
-            "resources": {
-              "limits": {
-                "cpu": "250m",
-                "memory": "384Mi"
-              },
-              "requests": {
-                "cpu": "250m",
-                "memory": "384Mi"
-              }
-            },
-            "env": [
-              {
-                "name": "AKKA_ACTOR_SYSTEM_NAME",
-                "value": "sample-actor-system"
-              },
-              {
-                "name": "AKKA_REMOTING_BIND_PORT",
-                "value": "2552"
-              },
-              {
-                "name": "AKKA_REMOTING_BIND_HOST",
-                "valueFrom": {
-                  "fieldRef": {
-                    "fieldPath": "metadata.name"
-                  }
-                }
-              },
-              {
-                "name": "AKKA_SEED_NODE_PORT",
-                "value": "2551"
-              },
-              {
-                "name": "AKKA_SEED_NODE_HOST",
-                "value": "sample-0"
-              }
-            ],
-            "readinessProbe": {
-              "tcpSocket": {
-                "port": 2552
               },
               "initialDelaySeconds": 30,
               "timeoutSeconds": 30
@@ -244,7 +171,9 @@ cat << EOT > "$STATEFUL_SET"
   }
 }
 EOT
-#cat "$STATEFUL_SET" | kubectl create -f -
+
+# piping through istio appears broken atm -- if you skip this step cluster should bootstrap correctly
+
 istioctl-kube-inject "$STATEFUL_SET" | kubectl create -f -
 
-echo use kubectl to inspect cluster state
+kubectl get all
