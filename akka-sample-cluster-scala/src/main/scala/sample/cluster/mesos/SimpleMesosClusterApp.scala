@@ -13,6 +13,8 @@ object SimpleMesosClusterApp {
 
     val clusterName: String = marathonConfig.getString("akka.cluster.name")
 
+     System.out.print(marathonConfig)
+
     // Create an Akka system
     val system = ActorSystem(clusterName, marathonConfig)
 

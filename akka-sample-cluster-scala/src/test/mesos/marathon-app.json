@@ -1,0 +1,46 @@
+{
+  "id": "/akka-cluster",
+  "cmd": null,
+  "cpus": 1,
+  "mem": 128,
+  "disk": 0,
+  "instances": 0,
+  "container": {
+    "type": "DOCKER",
+    "volumes": [],
+    "docker": {
+      "image": "akka-samples/akka-sample-cluster-scala:latest",
+      "network": "BRIDGE",
+      "portMappings": [
+        {
+          "containerPort": 2551,
+          "hostPort": 0,
+          "servicePort": 10000,
+          "protocol": "tcp",
+          "name": "cluster",
+          "labels": {}
+        }
+      ],
+      "privileged": false,
+      "parameters": [
+        {
+          "key": "network",
+          "value": "mesos_app_net"
+        }
+      ],
+      "forcePullImage": false
+    }
+  },
+  "env": {
+    "AKKA_CLUSTER_DISCOVERY_URL": "http://172.16.121.5:8080/v2/apps/akka-cluster/tasks",
+    "LIBPROCESS_IP": "172.16.121.4"
+  },
+  "portDefinitions": [
+    {
+      "port": 10000,
+      "protocol": "tcp",
+      "name": "2551",
+      "labels": {}
+    }
+  ]
+}
