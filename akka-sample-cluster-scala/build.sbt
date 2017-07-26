@@ -5,7 +5,7 @@ val akkaVersion = "2.5.3"
 
 lazy val dockerSettings = Seq(
   dockerBaseImage := "openjdk:8-jre",
-  dockerRepository := Some("akka-samples"),
+  dockerRepository := Some("akkasamples"),
   packageName := "akka-sample-cluster-scala",
   dockerExposedPorts := Seq(2551),
   version := "latest",

@@ -31,7 +31,7 @@ object MarathonConfig {
   lazy val hostExternalPort: String = discoverHostPort()
 
   /**
-    * Use Marathon API to discover other existing nodes for this app.
+    * Use Marathon API to discover other running tasks for this app.
     *
     * A task  may come as:
     *
@@ -54,8 +54,9 @@ object MarathonConfig {
           ],
           appId: "/akka-cluster"
       }
+    * This method extracts the host and the port of each task
     *
-    * @return an array of strings with IP:PORT
+    * @return an array of strings with akka.tcp://{cluster-name}@{IP}:{PORT}
     */
   def getSeedNodes(): Seq[String] = {
     val url: String = config.getString("akka.cluster.discovery.url")
@@ -68,7 +69,6 @@ object MarathonConfig {
       tmpCfg = ConfigFactory
         .parseURL(new URL(url),
                     ConfigParseOptions.defaults().setSyntax(ConfigSyntax.JSON))
-//        .parseFileAnySyntax(new File("/Users/ddascal/tmp/marathon-tasks.json"))
         .resolve()
     } else {
       tmpCfg = ConfigFactory
@@ -76,15 +76,33 @@ object MarathonConfig {
         .resolve()
     }
 
-    //ipAddresses[0].ipAddress
+    System.out.print(tmpCfg)
 
     var seq: Seq[String] = Seq()
     tmpCfg.getConfigList("tasks").forEach(
       (item: Config) =>
-//        seq = seq :+ ("akka.tcp://%s@%s:%s" format(clusterName, item.getString("host"), item.getIntList("ports").get(portIndex).toString)))
-        seq = seq :+ ("akka.tcp://%s@%s:%s" format(clusterName, item.getString("host"), "9001")))
+        seq = seq :+ ("akka.tcp://%s@%s:%s" format(clusterName, item.getString("host"), item.getIntList("ports").get(portIndex).toString)))
+//        seq = seq :+ ("akka.tcp://%s@%s:%s" format(clusterName, item.getConfigList("ipAddresses").get(0).getString("ipAddress"), item.getIntList("ports").get(portIndex).toString)))
 
     seq
+  }
+
+  /**
+    * Returns the private IP address associated with the docker container
+    * I.e. 172.17.0.7
+    * @return IP Address as String
+    */
+  def getDockerPrivateAddress: String = {
+    import java.net.NetworkInterface
+
+    import scala.collection.JavaConversions._
+
+    NetworkInterface.getNetworkInterfaces
+      .find(_.getName equals "eth0")
+      .flatMap { interface =>
+        interface.getInetAddresses.find(_.isSiteLocalAddress).map(_.getHostAddress)
+      }
+      .getOrElse("127.0.0.1")
   }
 
   def discoverAkkaConfig(): Config = {
@@ -96,8 +114,11 @@ object MarathonConfig {
 
     //seedNodes.mkString("\n")
 
+    val privateDockerContainerAddress: String = getDockerPrivateAddress
+
     ConfigFactory.parseString(seedNodes)
       .withValue("akka.remote.netty.tcp.hostname", ConfigValueFactory.fromAnyRef(hostExternalIP))
+      .withValue("akka.remote.netty.tcp.bind-hostname", ConfigValueFactory.fromAnyRef(privateDockerContainerAddress))
       .withValue("akka.remote.netty.tcp.port", ConfigValueFactory.fromAnyRef(hostExternalPort))
       .withFallback(config)
       .resolve()

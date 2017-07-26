@@ -9,7 +9,7 @@
     "type": "DOCKER",
     "volumes": [],
     "docker": {
-      "image": "akka-samples/akka-sample-cluster-scala:latest",
+      "image": "akkasamples/akka-sample-cluster-scala:latest",
       "network": "BRIDGE",
       "portMappings": [
         {
