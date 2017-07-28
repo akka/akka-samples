@@ -1,10 +1,10 @@
 {
   "id": "/akka-cluster",
   "cmd": null,
-  "cpus": 1,
-  "mem": 128,
+  "cpus": 0.1,
+  "mem": 256,
   "disk": 0,
-  "instances": 0,
+  "instances": 2,
   "container": {
     "type": "DOCKER",
     "volumes": [],
@@ -22,18 +22,13 @@
         }
       ],
       "privileged": false,
-      "parameters": [
-        {
-          "key": "network",
-          "value": "mesos_app_net"
-        }
-      ],
+      "parameters": [],
       "forcePullImage": false
     }
   },
   "env": {
-    "AKKA_CLUSTER_DISCOVERY_URL": "http://172.16.121.5:8080/v2/apps/akka-cluster/tasks",
-    "LIBPROCESS_IP": "172.16.121.4"
+    "AKKA_CLUSTER_DISCOVERY_URL": "http://192.168.99.101:8080/v2/apps/akka-cluster/tasks",
+    "LIBPROCESS_IP": "192.168.99.101"
   },
   "portDefinitions": [
     {

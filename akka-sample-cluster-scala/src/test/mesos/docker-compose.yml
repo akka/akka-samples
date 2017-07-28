@@ -2,63 +2,44 @@ version: "3"
 
 services:
   zookeeper:
-    image: netflixoss/exhibitor:1.5.2
+    image: zookeeper:3.4
     hostname: zookeeper
-    ports:
-      - "2181:2181"
-    networks:
-      app_net:
-        ipv4_address: 172.16.121.2
+    network_mode: host
+    pid: host
+    userns_mode: host
+    privileged: true
 
   mesos-master:
     image: mesosphere/mesos-master:1.2.1
+    network_mode: host
+    pid: host
+    userns_mode: host
     privileged: true
-    hostname: localhost
-    ports:
-      - "5050:5050"
-    networks:
-      app_net:
-        ipv4_address: 172.16.121.3
-    links:
-      - zookeeper
-    depends_on:
-      - zookeeper
     environment:
-      MESOS_ZK: zk://zookeeper:2181/mesos
+      MESOS_ZK: zk://${DOCKER_IP}:2181/mesos
       MESOS_QUORUM: 1
       MESOS_CLUSTER: docker-compose
 #      MESOS_REGISTRY: replicated_log # default is in_memory for some reason
-      MESOS_HOSTNAME: localhost
-      MESOS_WORK_DIR: /var/tmp/mesos
-      MESOS_LOG_DIR: /var/log/mesos
-      LIBPROCESS_IP: 172.16.121.3
-
+      MESOS_HOSTNAME: ${DOCKER_IP}
 
   mesos-slave:
     image: mesosphere/mesos-slave:1.2.1
+    network_mode: host
+    pid: host
+    userns_mode: host
     privileged: true
-    hostname: localhost
-    ports:
-      - "5051:5051"
-    networks:
-      app_net:
-        ipv4_address: 172.16.121.4
-    links:
-      - zookeeper:zookeeper
-      - mesos-master:master.mesos
-    depends_on:
-      - zookeeper
-      - mesos-master
     environment:
-      MESOS_MASTER: zk://zookeeper:2181/mesos
+      MESOS_MASTER: zk://${DOCKER_IP}:2181/mesos
       MESOS_CONTAINERIZERS: docker
       MESOS_PORT: 5051
       MESOS_RESOURCES: ports(*):[11000-11999]
-      MESOS_HOSTNAME: localhost
-      MESOS_WORK_DIR: /var/tmp/mesos
-      MESOS_LOG_DIR: /var/log/mesos
-      LIBPROCESS_IP: 172.16.121.4
+      MESOS_HOSTNAME: ${DOCKER_IP}
+#      LIBPROCESS_IP: ${DOCKER_IP}
+      MESOS_ADVERTISE_IP: ${DOCKER_IP}
+      MESOS_WORK_DIR: /tmp/mesos
     volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - /usr/local/bin/docker:/usr/bin/docker
       - /var/run/docker.sock:/var/run/docker.sock
 
   marathon:
@@ -66,29 +47,17 @@ services:
     entrypoint:
       - ./bin/start
       - --disable_ha
-    hostname: localhost
-    ports:
-     - "8080:8080"
-    networks:
-      app_net:
-        ipv4_address: 172.16.121.5
-    links:
-      - zookeeper
-      - mesos-master
+      - --http_port
+      - "8080"
+    network_mode: host
+    pid: host
+    userns_mode: host
+    privileged: true
     depends_on:
       - zookeeper
       - mesos-master
       - mesos-slave
     environment:
-      - MARATHON_ZK=zk://zookeeper:2181/marathon
-      - MARATHON_MASTER=zk://zookeeper:2181/mesos
-      - LIBPROCESS_IP=172.16.121.5
-
-networks:
-  app_net:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-      -
-        subnet: 172.16.121.0/24
+      - MARATHON_ZK=zk://${DOCKER_IP}:2181/marathon
+      - MARATHON_MASTER=zk://${DOCKER_IP}:2181/mesos
+      - LIBPROCESS_IP=${DOCKER_IP}
