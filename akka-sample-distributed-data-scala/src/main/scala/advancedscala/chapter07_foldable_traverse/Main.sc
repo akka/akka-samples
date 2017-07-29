@@ -1,94 +1,105 @@
-import cats.Applicative
-import cats.syntax.cartesian._
-import cats.instances.future._
-import cats.syntax.applicative._
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
+def show[A](list: List[A]): String =
+  list.foldLeft("nil")((accum, item) => s"$item then $accum")
 
-def getUptime(host: String): Future[Int] =
-  Future(host.length * 60)
+show(Nil)
+show(List("James", "Wade", "Bosh"))
 
-def newCombine(
-              accum: Future[List[Int]],
-              host: String
-              ): Future[List[Int]] = {
-  (accum |@| getUptime(host)).map(_ :+ _)
+List(1, 5, 7).foldLeft(List.empty[Int])((b, i) => i :: b)
+List(1, 5, 7).foldRight(List.empty[Int])( _ :: _)
+
+def listMap[A, B](l: List[A])(f: A => B): List[B] = l.foldRight(List.empty[B]) { (i, acc) =>
+  f(i) :: acc
 }
 
-val hostnames = List(
-  "spark.apache.org",
-  "www.playframework.com",
-  "akka.io",
-  "www.scala-lang.org"
-)
-
-import scala.language.higherKinds
-
-def listTraverse[F[_]: Applicative, A, B](
-                                         list: List[A]
-                                         )(func: A => F[B]): F[List[B]] =
-  list.foldLeft(List.empty[B].pure[F]) { (fb, a) =>
-    (fb |@| func(a)).map(_ :+ _)
+def listFlatMap[A, B](l: List[A])(f: A => List[B]): List[B] =
+  l.foldRight(List.empty[B]) { (i, acc) =>
+    f(i) ::: acc
   }
 
-def listSequence[F[_]: Applicative, B](list: List[F[B]]): F[List[B]] =
-  listTraverse(list)(identity)
+def listFilter[A](l: List[A])(f: A => Boolean): List[A] =
+  l.foldRight(List.empty[A]) { (i, acc) =>
+    if (f(i)) i :: acc
+    else acc
+  }
 
-Await.result(
-  listSequence(hostnames.map(getUptime)),
-  1 second
-)
+def listSum(l: List[Int]) = l.foldRight(0)((i, acc) => i + acc)
 
-import cats.instances.vector._
-listSequence(List(Vector(1, 2)))
-listSequence(List(Vector(1, 2), Vector(3, 5, 7)))
-listSequence((List(Vector(1, 3, 7), Vector(2, 9), Vector(8, 10, 6, 5))))
+listMap(List(1, 3, 5))(2 +)
+listFlatMap(List(1, 3, 5))(a => List(a * 2))
+listFilter(List(1, 3, 5))(_ > 3)
+listSum(List(1, 3, 5))
+
+import cats.{Eval, Foldable}
+import cats.instances.list._
+
+import scala.concurrent.{Await, Future}
+
+val ints = List(1, 3, 5)
+Foldable[List].foldLeft(ints, 0)(_ + _)
+
+import cats.instances.map._
+import cats.instances.stream._
+
+type StringMap[A] = Map[String, A]
+val stringMap = Map("a" -> "b", "c" -> "d")
+Foldable[StringMap].foldLeft(stringMap, "nil")(_ + "!" + _)
+
+def bigdata = (1 to 100000).toStream
+//bigdata.foldRight(0)(_ + _)
+
+val eval = Foldable[Stream].foldRight(bigdata, Eval.now(0)) { (num, eval) =>
+  eval.map(_ + num)
+}
+eval.value
 
 import cats.instances.option._
 
-def process(inputs: List[Int]) =
-  listTraverse(inputs)(n => if (n % 2 == 0) Some(n) else None)
+Foldable[Option].nonEmpty(Option(30))
+Foldable[Option].nonEmpty(None)
 
-process(List(1, 3, 6))
-process(List(2, 4, 6))
+import cats.instances.double._
+Foldable[List].combineAll(List(10.5, 90.2, 300))
 
-import cats.data.Validated
-import cats.instances.list._
+val hostnames = List(
+  "spark.apache.org",
+  "www.akka.io",
+  "www.playframework.com",
+  "www.scala-lang.org"
+)
 
-type ErrorsOr[A] = Validated[List[String], A]
+def getUptime(hostname: String): Future[Int] = Future(hostname.length * 60)
 
-def process2(inputs: List[Int]): ErrorsOr[List[Int]] =
-  listTraverse(inputs) { n =>
-    if (n % 2 == 0)
-      Validated.valid(n)
-    else
-      Validated.invalid(List(s"$n is not even"))
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+
+val allUptimes: Future[List[Int]] = hostnames.foldLeft(
+  Future(List.empty[Int])) { (accum, host) =>
+    val uptime = getUptime(host)
+    for {
+      acc <- accum
+      ut <- uptime
+    } yield acc :+ ut
   }
+Await.result(allUptimes, 1 second)
 
-process2(List(2, 4, 6))
-process2(List(1, 3, 5, 6, 8, 9))
+val al2 = Future.traverse(hostnames)(getUptime)
+Await.result(al2, 1 second)
 
-import cats.Traverse
-Await.result(
-  Traverse[List].traverse(hostnames)(getUptime),
-  1 second
-)
+import cats.Applicative
+import cats.instances.future._
+import cats.syntax.applicative._
 
-val numbers = List(Future(3), Future(5), Future(9))
-Await.result(
-  Traverse[List].sequence(numbers),
-  2 seconds
-)
+List.empty[Int].pure[Future]
 
-import cats.syntax.traverse._
-Await.result(hostnames.traverse(getUptime), 1 second)
-Await.result(numbers.sequence, 1 second)
+def oldCombine(
+              accum: Future[List[Int]],
+              host: String
+              ): Future[List[Int]] = {
+  val t = getUptime(host)
+  for {
+    acc <- accum
+    ut <- t
+  } yield ut :: acc
 
-val eithers: List[Either[String, String]] = List(
-  Right("Wow!"),
-  Right("Such cool!")
-)
-
-eithers.sequence
+}
