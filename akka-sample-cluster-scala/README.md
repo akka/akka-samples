@@ -51,23 +51,6 @@ Shut down one of the nodes by pressing 'ctrl-c' in one of the terminal windows. 
 
 Look at the source code of the actor again. It registers itself as subscriber of certain cluster events. It gets notified with an snapshot event, `CurrentClusterState` that holds full state information of the cluster. After that it receives events for changes that happen in the cluster.
 
-### With Apache Mesos
-
-Build the Docker image first:
-
-    sbt docker:publishLocal
-    
-    
-Then start a local Mesos cluster with Marathon framework:
-    
-    cd ./src/test/mesos
-    docker-compose up
-    
-Then deploy the Marathon App:
-
-    TBD        
-    
-
 ## Worker Dial-in Example
 
 In the previous sample we saw how to subscribe to cluster membership events. You can read more about it in the [documentation](http://doc.akka.io/docs/akka/2.5/scala/cluster-usage.html#Subscribe_to_Cluster_Events). How can cluster membership events be used?
