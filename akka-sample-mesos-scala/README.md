@@ -8,7 +8,7 @@ This tutorial is inspired from [akka-sample-cluster-scala](../akka-sample-cluste
 
 ## A Simple Cluster with Mesos
 
-Open [mesos.conf](src/main/resources/mesos.conf)
+Open [application.conf](src/main/resources/application.conf)
 
 To enable cluster capabilities in your Akka project you should, at a minimum, add the remote settings, and use `akka.cluster.ClusterActorRefProvider`. 
 The `akka.cluster.seed-nodes` should normally also be added to your application.conf file.
@@ -19,7 +19,7 @@ In Mesos the seed nodes can be discovered automatically, through the Mesos API, 
 The property `akka.cluster.discovery.url` defines the URL to the API. This example builds on the Marathon API that list the running tasks for a particular application.
 
 The Marathon application deploys one or more Docker containers in Mesos with the same Akka project. 
-A sample API response listing the running tasks in Marathon is:
+Once an app is deployed via Marathon, the API lists all the tasks for that app in Mesos:
 
 ```json
 {

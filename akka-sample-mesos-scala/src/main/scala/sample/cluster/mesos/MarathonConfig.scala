@@ -76,13 +76,10 @@ object MarathonConfig {
         .resolve()
     }
 
-    System.out.print(tmpCfg)
-
     var seq: Seq[String] = Seq()
     tmpCfg.getConfigList("tasks").forEach(
       (item: Config) =>
         seq = seq :+ ("akka.tcp://%s@%s:%s" format(clusterName, item.getString("host"), item.getIntList("ports").get(portIndex).toString)))
-//        seq = seq :+ ("akka.tcp://%s@%s:%s" format(clusterName, item.getConfigList("ipAddresses").get(0).getString("ipAddress"), item.getIntList("ports").get(portIndex).toString)))
 
     seq
   }
@@ -110,9 +107,6 @@ object MarathonConfig {
     val seedNodes = getSeedNodes().map { address =>
       s"""akka.cluster.seed-nodes += "$address""""
     }.mkString("\n")
-
-
-    //seedNodes.mkString("\n")
 
     val privateDockerContainerAddress: String = getDockerPrivateAddress
 
