@@ -90,7 +90,7 @@ This local example works only with Docker Machine. If you're using Docker for Ma
     #   otherwise the image is pulled from Docker Hub
     $ sbt docker:publishLocal
         
-Learn more about how to setup a new Docker Machine see [https://docs.docker.com/machine/](https://docs.docker.com/machine/) .        
+Learn more about how to setup a new Docker Machine at [https://docs.docker.com/machine/](https://docs.docker.com/machine/) .        
     
 Once the cluster is up and running you should have Mesos UI running at `http://192.168.99.100:5050/` and Marathon UI at `http://192.168.99.100:8080` ( assuming the IP of the docker-machine is `1892.168.99.100` )
     
@@ -99,7 +99,7 @@ To deploy the application in Marathon open [marathon-app-local.json](src/test/me
     curl http://`docker-machine ip default`:8080/v2/apps/ --data @marathon-app-local.json -H 'Content-Type:application/json'   
 
 Open Mesos UI to view the logs of the new running tasks. There should be 2 tasks running.
-In the log output of the tasks you see that the cluster node have been started with status 'Up'. The 2 instances should have joined the cluster.
+In the log output of the tasks you should see that the cluster nodes have been started with status 'Up'. The 2 instances should have joined the cluster.
 
 ```
 [main] [akka.remote.Remoting] Remoting started; listening on addresses :[akka.tcp://my-mesos-cluster@192.168.99.100:11579]
@@ -124,7 +124,7 @@ These logs show 2 instances running on ports `11448` and `11579`.
 
 Start even more nodes by going into Marathon UI and scale up the `akka-cluster` app. 
 
-To see how members are removed from the cluster scale down the app in Marathon to fewer instanced. You should then see in the logs messages like:
+To see how members are removed from the cluster scale down the app in Marathon to fewer instances. You should then see in the logs messages like:
 
 ```
 Member is Removed: akka.tcp://my-mesos-cluster@192.168.99.100:11257 after Exiting
