@@ -1,14 +1,14 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.5.2"
+val akkaVersion = "2.5.4"
 
 val `akka-sample-distributed-data-scala` = project
   .in(file("."))
   .settings(multiJvmSettings: _*)
   .settings(
     organization := "com.typesafe.akka.samples",
-    scalaVersion := "2.12.2",
+    scalaVersion := "2.12.3",
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
     javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m"),
@@ -19,6 +19,8 @@ val `akka-sample-distributed-data-scala` = project
       "com.typesafe.akka" %% "akka-distributed-data" % akkaVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion,
       "org.typelevel" %% "cats" % "0.9.0",
+      "org.typelevel" %% "spire" % "0.14.1",
+      "org.scalacheck" %% "scalacheck" % "1.13.4" % "test",
       "org.scalatest" %% "scalatest" % "3.0.1" % Test),
     fork in run := true,
     // disable parallel tests
