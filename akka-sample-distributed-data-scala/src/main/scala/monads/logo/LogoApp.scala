@@ -17,8 +17,8 @@ object LogoApp {
         p2 <- right(p1, Degree(90))
         p3 <- forward(p2, 10)
         _ <- showPosition(p3)
-        //p4 <- backward(p3, 20) // Here the computation stops, because result will be None
-        //_ <- showPosition(p4)
+        p4 <- backward(p3, 20) // Here the computation stops, because result will be None
+        _ <- showPosition(p4)
       } yield ()
   }
 

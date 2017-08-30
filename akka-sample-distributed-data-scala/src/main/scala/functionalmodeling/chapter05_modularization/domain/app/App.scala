@@ -31,7 +31,7 @@ object App {
   def composite(no: String, name: String, cr: Amount, db: Amount) = (for {
     a <- open(no, name, BigDecimal(0.4).some, None, Savings)
     t <- postTransactions(a, cr, db)
-  } yield t) >=> computeInterest >=> computeTax
+  } yield t) >=> computeInterest >=> computeTax            // >=> equals andThen
 
   def main(args: Array[String]): Unit = {
     val x = composite("a-123", "lshoo", 20000, 200)(AccountRepositoryInMemory)

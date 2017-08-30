@@ -21,6 +21,7 @@ val `akka-sample-distributed-data-scala` = project
       "org.typelevel" %% "cats" % "0.9.0",
       "org.typelevel" %% "spire" % "0.14.1",
       "org.scalaz" %% "scalaz-core" % "7.2.15",
+      "org.scalaz" %% "scalaz-concurrent" % "7.2.15",
       "org.scalacheck" %% "scalacheck" % "1.13.4" % "test",
       "org.scalatest" %% "scalatest" % "3.0.1" % Test),
     fork in run := true,
