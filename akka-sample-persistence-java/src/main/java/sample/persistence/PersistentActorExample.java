@@ -10,6 +10,7 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.persistence.AbstractPersistentActor;
+import akka.persistence.RecoveryCompleted;
 import akka.persistence.SnapshotOffer;
 
 import java.io.Serializable;
@@ -87,8 +88,17 @@ class ExamplePersistentActor extends AbstractPersistentActor {
     @Override
     public Receive createReceiveRecover() {
         return receiveBuilder()
-            .match(Evt.class, state::update)
-            .match(SnapshotOffer.class, ss -> state = (ExampleState) ss.snapshot())
+            .match(Evt.class, e -> {
+                state.update(e);
+                System.out.println("Recover from event " + e.getData());
+            })
+            .match(SnapshotOffer.class, ss -> {
+                state = (ExampleState) ss.snapshot();
+                System.out.println("Recover from snapshot " + ss);
+            })
+            .match(RecoveryCompleted.class, rc -> {
+                System.out.println("Recovery complete. state = " + state);
+            })
             .build();
     }
 
