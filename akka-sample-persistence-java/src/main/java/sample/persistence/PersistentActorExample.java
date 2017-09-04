@@ -88,17 +88,8 @@ class ExamplePersistentActor extends AbstractPersistentActor {
     @Override
     public Receive createReceiveRecover() {
         return receiveBuilder()
-            .match(Evt.class, e -> {
-                state.update(e);
-                System.out.println("Recover from event " + e.getData());
-            })
-            .match(SnapshotOffer.class, ss -> {
-                state = (ExampleState) ss.snapshot();
-                System.out.println("Recover from snapshot " + ss);
-            })
-            .match(RecoveryCompleted.class, rc -> {
-                System.out.println("Recovery complete. state = " + state);
-            })
+            .match(Evt.class, e -> state.update(e))
+            .match(SnapshotOffer.class, ss -> state = (ExampleState) ss.snapshot())
             .build();
     }
 
