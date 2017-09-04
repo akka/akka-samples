@@ -18,6 +18,7 @@ val `akka-sample-distributed-data-scala` = project
       "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
       "com.typesafe.akka" %% "akka-distributed-data" % akkaVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion,
+      "com.typesafe.slick" %% "slick" % "3.2.1",
       "org.typelevel" %% "cats" % "0.9.0",
       "org.typelevel" %% "spire" % "0.14.1",
       "org.scalaz" %% "scalaz-core" % "7.2.15",
