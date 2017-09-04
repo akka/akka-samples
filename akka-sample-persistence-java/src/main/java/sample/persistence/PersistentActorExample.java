@@ -10,7 +10,6 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.persistence.AbstractPersistentActor;
-import akka.persistence.RecoveryCompleted;
 import akka.persistence.SnapshotOffer;
 
 import java.io.Serializable;
