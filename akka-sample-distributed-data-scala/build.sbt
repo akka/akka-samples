@@ -20,6 +20,7 @@ val `akka-sample-distributed-data-scala` = project
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion,
       "com.h2database"  %  "h2" % "1.4.196",
       "com.typesafe.slick" %% "slick" % "3.2.1",
+      "com.chuusai" %% "shapeless" % "2.3.2",
       "org.typelevel" %% "cats" % "0.9.0",
       "org.typelevel" %% "spire" % "0.14.1",
       "org.scalaz" %% "scalaz-core" % "7.2.15",

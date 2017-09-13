@@ -34,9 +34,9 @@ object JSONProtocols {
 
   implicit val accountFormat = jsonFormat5(Account.apply)
 
-  implicit object OpenedFormat extends RootJsonFormat[Opened] {
+  /*implicit object OpenedFormat extends RootJsonFormat[Opened] {
     override def write(o: Opened) = JsObject(
       "no" -> JsString(o.no),
     )
-  }
+  }*/
 }

@@ -54,8 +54,8 @@ object Event {
   def snapshot(es: List[Event[_]]): String \/ Map[String, Account] =
     es.reverse.foldLeft(Map.empty[String, Account]) { (a, e) => updateState(e, a) }.right
 
-  def snapshotFromJson(es: List[String]): String \/ Map[String, Account] =
-    es.reverse.foldLeft(Map.empty[String, Account]) { (a, e) => updateState(e.parseJson.convertTo[Event[_]], a) }.right
+  def snapshotFromJson(es: List[String]): String \/ Map[String, Account] = ???
+    //es.reverse.foldLeft(Map.empty[String, Account]) { (a, e) => updateState(e.parseJson.convertTo[Event[_]], a) }.right
 
 }
 

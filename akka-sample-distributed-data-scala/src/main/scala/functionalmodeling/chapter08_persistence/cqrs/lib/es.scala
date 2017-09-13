@@ -32,6 +32,7 @@ trait Snapshot[A <: Aggregate] {
 }
 
 trait Commands[A] {
+  // Free Monad step 2
   type Command[A] = Free[Event, A]
 }
 
