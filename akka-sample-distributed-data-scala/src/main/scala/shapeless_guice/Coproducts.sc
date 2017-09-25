@@ -115,3 +115,29 @@ h1.updatedAt(Nat._1, "bar").updatedAt(Nat._2, false)
 val p = Person("james", 33, List("Cav", "Mia"))
 
 "adbc" :: p :: 33 :: true :: HNil
+
+
+import shapeless.syntax.std.tuple._
+(1, "foo", true, 20.5).tail
+
+case class Address(street: String, city: String, postcode: String)
+case class Person3(name: String, age: Int, address: Address)
+
+val ageLens = lens[Person3].age
+val addressLens = lens[Person3].address
+
+val person = Person3("Joe Grey", 38, Address("Southover Street", "Brighton", "BN2 9UA"))
+
+val address1 = addressLens.get(person)
+//typed[Address](address1)
+val age1 = ageLens.get(person)
+assert(age1 == 38)
+
+val person2 = ageLens.set(person)(40)
+assert(person2.age == 40)
+
+val cityLens = lens[Address].city
+val cityOfPersonLens = cityLens compose addressLens
+cityOfPersonLens.get(person)
+
+val person3 = cityOfPersonLens.set(person)("Chiago")

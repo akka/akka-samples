@@ -6,6 +6,8 @@ final case class Employee(
                          manager: Boolean
                          )
 
+final case class Employee2(name: String, age: Int, manager: Boolean, depth: Option[String])
+
 final case class IceCream(
                            name: String,
                            numCherries: Int,

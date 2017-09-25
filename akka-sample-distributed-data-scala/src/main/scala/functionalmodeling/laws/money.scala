@@ -1,16 +1,10 @@
-package functionalmodeling
+package functionalmodeling.laws
 
-import cats._
-import cats.data._
+import cats.{Eq, Monoid, Order}
+
 import cats.implicits._
 
-/**
-  * https://debasishg.blogspot.in/2017/06/domain-models-algebraic-laws-and-unit.html
-  * https://debasishg.blogspot.in/2017/06/domain-models-early-abstractions-and.html
-  */
-object AlgebraicLawsAndUnitTest {
-
-  sealed trait Currency
+sealed trait Currency
   case object USD extends Currency
   case object AUD extends Currency
   case object JPY extends Currency
@@ -51,7 +45,7 @@ object AlgebraicLawsAndUnitTest {
     final val exchangeRateWithUSD: Map[Currency, BigDecimal] =
       Map(AUD -> 0.76, JPY -> 0.009, INR -> 0.016, USD -> 1.0)
 
-    val moneyAddMonoid: Monoid[Money] = new Monoid[Money] {
+    val MoneyAddMonoid: Monoid[Money] = new Monoid[Money] {
       override def combine(x: Money, y: Money): Money = add(x, y)
 
       override def empty: Money = zeroMoney
@@ -80,4 +74,3 @@ object AlgebraicLawsAndUnitTest {
       override def empty: Money = zeroMoney
     }
   }
-}

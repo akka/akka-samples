@@ -3,6 +3,8 @@ import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
 val akkaVersion = "2.5.4"
 
+val elastic4sVersion = "5.5.3"      // 5.5.3
+
 val `akka-sample-distributed-data-scala` = project
   .in(file("."))
   .settings(multiJvmSettings: _*)
@@ -26,8 +28,16 @@ val `akka-sample-distributed-data-scala` = project
       "org.scalaz" %% "scalaz-core" % "7.2.15",
       "org.scalaz" %% "scalaz-concurrent" % "7.2.15",
       "io.spray" %%  "spray-json" % "1.3.3",
+      "io.monix" %% "monix" % "2.3.0",
       "com.github.nscala-time" %% "nscala-time" % "2.16.0",
-      "org.scalacheck" %% "scalacheck" % "1.13.4" % "test",
+      "com.sksamuel.elastic4s" %% "elastic4s-core" % elastic4sVersion,
+      "com.sksamuel.elastic4s" %% "elastic4s-http" % elastic4sVersion,
+      "com.sksamuel.elastic4s" %% "elastic4s-streams" % elastic4sVersion,
+      "com.sksamuel.elastic4s" %% "elastic4s-testkit" % elastic4sVersion % Test,
+      "com.sksamuel.elastic4s" %% "elastic4s-embedded" % elastic4sVersion % Test,
+      "org.scalacheck" %% "scalacheck" % "1.13.4" % Test,
+      "org.specs2" %% "specs2-core" % "3.9.5" % Test,
+      "org.specs2" %% "specs2-scalacheck" % "3.9.5",
       "org.scalatest" %% "scalatest" % "3.0.1" % Test),
     fork in run := true,
     // disable parallel tests
