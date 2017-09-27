@@ -14,7 +14,8 @@ val `akka-sample-distributed-data-scala` = project
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
     javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m"),
-    libraryDependencies ++= Seq(
+    addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
+      libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-actor" % akkaVersion,
       "com.typesafe.akka" %% "akka-remote" % akkaVersion,
       "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
