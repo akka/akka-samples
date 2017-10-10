@@ -5,11 +5,11 @@ import simulacrum._
 /**
   * http://eed3si9n.com/herding-cats/
   */
-@typeclass trait CanAppend[A] {
+/*@typeclass trait CanAppend[A] {
   @op("|+|") def append(a1: A, a2: A): A
-}
+}*/
 
-object HerdingCatsApp {
+/*object HerdingCatsApp {
 
   def main(args: Array[String]): Unit = {
 
@@ -21,4 +21,4 @@ object HerdingCatsApp {
 
     println(1 |+| 2)
   }
-}
+}*/

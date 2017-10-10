@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.5.4"
+val akkaVersion = "2.5.6"
 
 val elastic4sVersion = "5.5.3"      // 5.5.3
 
@@ -19,8 +19,12 @@ val `akka-sample-distributed-data-scala` = project
       "com.typesafe.akka" %% "akka-actor" % akkaVersion,
       "com.typesafe.akka" %% "akka-remote" % akkaVersion,
       "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
+      "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
       "com.typesafe.akka" %% "akka-distributed-data" % akkaVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion,
+        "org.iq80.leveldb"            % "leveldb"          % "0.7",
+        "org.fusesource.leveldbjni"   % "leveldbjni-all"   % "1.8",
+        "com.twitter"              %% "chill-akka"                  % "0.9.2",
       "com.h2database"  %  "h2" % "1.4.196",
       "com.typesafe.slick" %% "slick" % "3.2.1",
       "com.chuusai" %% "shapeless" % "2.3.2",
@@ -29,6 +33,7 @@ val `akka-sample-distributed-data-scala` = project
       "org.scalaz" %% "scalaz-core" % "7.2.15",
       "org.scalaz" %% "scalaz-concurrent" % "7.2.15",
       "io.spray" %%  "spray-json" % "1.3.3",
+      "org.scalameta" %% "scalameta" % "1.8.0",
       "io.monix" %% "monix" % "2.3.0",
       "com.github.nscala-time" %% "nscala-time" % "2.16.0",
       "com.sksamuel.elastic4s" %% "elastic4s-core" % elastic4sVersion,
@@ -39,7 +44,7 @@ val `akka-sample-distributed-data-scala` = project
       "org.scalacheck" %% "scalacheck" % "1.13.4" % Test,
       "org.specs2" %% "specs2-core" % "3.9.5" % Test,
       "org.specs2" %% "specs2-scalacheck" % "3.9.5",
-      "org.scalatest" %% "scalatest" % "3.0.1" % Test),
+      "org.scalatest" %% "scalatest" % "3.0.1"),
     fork in run := true,
     // disable parallel tests
     parallelExecution in Test := false,
