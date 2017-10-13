@@ -3,6 +3,8 @@ import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
 val akkaVersion = "2.5.6"
 
+val akkaHttpVersion = "10.0.10"
+
 val elastic4sVersion = "5.5.3"      // 5.5.3
 
 val `akka-sample-distributed-data-scala` = project
@@ -22,6 +24,9 @@ val `akka-sample-distributed-data-scala` = project
       "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
       "com.typesafe.akka" %% "akka-distributed-data" % akkaVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion,
+        "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
+        "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpVersion,
+        "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test,
         "org.iq80.leveldb"            % "leveldb"          % "0.7",
         "org.fusesource.leveldbjni"   % "leveldbjni-all"   % "1.8",
         "com.twitter"              %% "chill-akka"                  % "0.9.2",
