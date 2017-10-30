@@ -34,13 +34,14 @@ object AkkaSamplePlugin extends sbt.AutoPlugin {
                      |=======================
                      |
                      |""".stripMargin,
-    bodyTransformation := { case s =>
-      val r = """\[(.+)\]\(src/(.+)\)""".r
-      val lines0 = s.split('\n').toList
-      val lines = lines0 map { line =>
-        r.replaceAllIn(line, """\[$1\]\(""" + baseUrl.value + "/" + baseProject.value + """/src/$2\)""")
-      }
-      lines.mkString("\n")
+    bodyTransformation := { case body =>
+      val r = """\[([^]]+)\]\(([^)]+)\)""".r
+      r.replaceAllIn(body,
+        _ match {
+          case r(lbl, uri) if !uri.contains("http") => s"""[$lbl](${baseUrl.value}/${baseProject.value}/$uri)"""
+          case r(lbl, uri) => s"[$lbl]($uri)"
+        }
+      )
     },
     templateName := baseProject.value.replaceAll("-sample-", "-samples-")
   )
