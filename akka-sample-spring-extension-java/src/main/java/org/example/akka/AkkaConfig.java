@@ -12,7 +12,6 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class AkkaConfig {
-	public static final String DISPATCHER_BLOCKING_IO = "default-blocking-io-dispatcher";
 
 	@Autowired
 	private ApplicationContext applicationContext;
