@@ -13,22 +13,22 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AkkaConfig {
 	public static final String DISPATCHER_BLOCKING_IO = "default-blocking-io-dispatcher";
-	
-    @Autowired
-    private ApplicationContext applicationContext;
 
-    @Autowired
-    private SpringExtension springExtension;
+	@Autowired
+	private ApplicationContext applicationContext;
 
-    @Bean(destroyMethod = "terminate")
-    public ActorSystem actorSystem() {    	
-        ActorSystem actorSystem = ActorSystem.create("akka-system", akkaConfiguration());
-        springExtension.initialize(applicationContext);
-        return actorSystem;
-    }
+	@Autowired
+	private SpringExtension springExtension;
 
-    @Bean
-    public Config akkaConfiguration() {
-    	return ConfigFactory.load();
-    }
+	@Bean(destroyMethod = "terminate")
+	public ActorSystem actorSystem() {
+		ActorSystem actorSystem = ActorSystem.create("akka-system", akkaConfiguration());
+		springExtension.initialize(applicationContext);
+		return actorSystem;
+	}
+
+	@Bean
+	public Config akkaConfiguration() {
+		return ConfigFactory.load();
+	}
 }

@@ -6,33 +6,33 @@ import org.springframework.context.ApplicationContext;
 
 public class SpringActorProducer implements IndirectActorProducer {
 
-    final private ApplicationContext applicationContext;
-    final private String actorBeanName;
-    final private Object[] args;
-    
-    public SpringActorProducer(ApplicationContext applicationContext, String actorBeanName) {
-        this.applicationContext = applicationContext;
-        this.actorBeanName = actorBeanName;
-        this.args = null;
-    }
+	final private ApplicationContext applicationContext;
+	final private String actorBeanName;
+	final private Object[] args;
 
-    public SpringActorProducer(ApplicationContext applicationContext, String actorBeanName, Object... args) {
-        this.applicationContext = applicationContext;
-        this.actorBeanName = actorBeanName;
-        this.args = args;
-    }
+	public SpringActorProducer(ApplicationContext applicationContext, String actorBeanName) {
+		this.applicationContext = applicationContext;
+		this.actorBeanName = actorBeanName;
+		this.args = null;
+	}
 
-    @Override
-    public Actor produce() {
-        if (args == null) {
-            return (Actor) applicationContext.getBean(actorBeanName);
-        } else {
-            return (Actor) applicationContext.getBean(actorBeanName, args);
-        }
-    }
+	public SpringActorProducer(ApplicationContext applicationContext, String actorBeanName, Object... args) {
+		this.applicationContext = applicationContext;
+		this.actorBeanName = actorBeanName;
+		this.args = args;
+	}
 
-    @Override
-    public Class<? extends Actor> actorClass() {
-        return (Class<? extends Actor>) applicationContext.getType(actorBeanName);
-    }
+	@Override
+	public Actor produce() {
+		if (args == null) {
+			return (Actor) applicationContext.getBean(actorBeanName);
+		} else {
+			return (Actor) applicationContext.getBean(actorBeanName, args);
+		}
+	}
+
+	@Override
+	public Class<? extends Actor> actorClass() {
+		return (Class<? extends Actor>) applicationContext.getType(actorBeanName);
+	}
 }

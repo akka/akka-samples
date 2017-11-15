@@ -14,10 +14,10 @@ public class MyActor extends AbstractActor {
 
 	@Autowired
 	private MyActorService myActorService;
-	
+
 	private String attribute;
 	private Integer attribute2;
-	
+
 	public MyActor(String attribute, Integer attribute2) {
 		super();
 		this.attribute = attribute;
@@ -28,7 +28,7 @@ public class MyActor extends AbstractActor {
 		this.attribute = "Default value";
 		this.attribute2 = Integer.MAX_VALUE;
 	}
-	
+
 	@Override
 	public Receive createReceive() {
 		return receiveBuilder().match(Message.class, msg -> {
