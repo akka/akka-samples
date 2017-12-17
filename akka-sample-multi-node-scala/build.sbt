@@ -1,14 +1,14 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.5.4"
+val akkaVersion = "2.5.8"
 
 val `akka-sample-multi-node-scala` = project
   .in(file("."))
   .settings(multiJvmSettings: _*)
   .settings(
     organization := "com.typesafe.akka.samples",
-    scalaVersion := "2.12.2",
+    scalaVersion := "2.12.4",
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-actor" % akkaVersion,
       "com.typesafe.akka" %% "akka-remote" % akkaVersion,

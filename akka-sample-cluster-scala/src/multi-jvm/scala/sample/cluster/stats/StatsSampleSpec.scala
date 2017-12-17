@@ -26,8 +26,6 @@ object StatsSampleSpecConfig extends MultiNodeConfig {
   nodeList foreach { role =>
     nodeConfig(role) {
       ConfigFactory.parseString(s"""
-      # Disable legacy metrics in akka-cluster.
-      akka.cluster.metrics.enabled=off
       # Enable metrics extension in akka-cluster-metrics.
       akka.extensions=["akka.cluster.metrics.ClusterMetricsExtension"]
       # Sigar native library extract location during tests.
@@ -40,7 +38,8 @@ object StatsSampleSpecConfig extends MultiNodeConfig {
   // note that no fixed host names and ports are used
   commonConfig(ConfigFactory.parseString("""
     akka.actor.provider = cluster
-    akka.remote.log-remote-lifecycle-events = off
+    # not using Artery in test due small /dev/shm in Travis
+    akka.remote.artery.enabled = off
     akka.cluster.roles = [compute]
     #//#router-lookup-config
     akka.actor.deployment {
