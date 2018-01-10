@@ -1,0 +1,33 @@
+package sample.persistence.multidc.protobuf;
+
+option java_package = "sample.persistence.multidc.protobuf";
+option optimize_for = SPEED;
+
+// state
+
+message State {
+  repeated string users = 1;
+}
+
+// commands
+
+message GiveThumbsUp {
+  required string resourceId = 1;
+  required string userId = 2;
+}
+
+message GetCount {
+  required string resourceId = 1;
+}
+
+message GetUsers {
+  required string resourceId = 1;
+}
+
+// events
+
+message GaveThumbsUp {
+  required string userId = 1;
+}
+
+

@@ -60,7 +60,7 @@ public class ThumbsUpCounter
     }
   }
 
-  public static class GetUsers {
+  public static class GetUsers implements Command {
     public final String resourceId;
 
     public GetUsers(String resourceId) {

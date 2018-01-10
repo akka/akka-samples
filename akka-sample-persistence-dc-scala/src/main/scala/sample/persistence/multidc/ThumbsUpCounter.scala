@@ -1,9 +1,17 @@
 package sample.persistence.multidc
 
+import akka.Done
+import akka.actor.Props
+import akka.cluster.sharding.ShardRegion
+import akka.cluster.sharding.ShardRegion.StartEntity
+import akka.persistence.multidc.PersistenceMultiDcSettings
+import akka.persistence.multidc.SpeculativeReplicatedEvent
 import akka.persistence.multidc.scaladsl.ReplicatedEntity;
 
 object ThumbsUpCounter {
-  sealed trait Command
+  sealed trait Command {
+    def resourceId: String
+  }
 
   final case class GiveThumbsUp(resourceId: String, userId: String) extends Command
 
@@ -18,6 +26,24 @@ object ThumbsUpCounter {
   final case class State(users: Set[String]) {
     def add(userId: String): State = copy(users + userId)
   }
+
+  def shardingProps(settings: PersistenceMultiDcSettings): Props =
+    ReplicatedEntity.clusterShardingProps(ShardingTypeName, () => new ThumbsUpCounter, settings)
+
+  val ShardingTypeName = "counter"
+
+  val extractEntityId: ShardRegion.ExtractEntityId = {
+    case cmd: Command => (cmd.resourceId, cmd)
+    case evt: SpeculativeReplicatedEvent => (evt.entityId, evt)
+  }
+
+  val MaxShards = 100
+  def shardId(entityId: String): String = (math.abs(entityId.hashCode) % MaxShards).toString
+  val extractShardId: ShardRegion.ExtractShardId = {
+    case cmd: Command   => shardId(cmd.resourceId)
+    case evt: SpeculativeReplicatedEvent => shardId(evt.entityId)
+    case StartEntity(entityId)           => shardId(entityId)
+  }
 }
 
 class ThumbsUpCounter
@@ -29,7 +55,10 @@ class ThumbsUpCounter
   override def commandHandler: CommandHandler = CommandHandler { (ctx, state, cmd) =>
     cmd match {
       case GiveThumbsUp(_, userId) =>
-        Effect.persist(GaveThumbsUp(userId))
+        Effect.persist(GaveThumbsUp(userId)).andThen { state2 =>
+          log.info("Thumbs-up by {}, total count {}", userId, state2.users.size)
+          ctx.sender() ! state2.users.size
+        }
       case GetCount(_) =>
         ctx.sender() ! state.users.size
         Effect.none
