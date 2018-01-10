@@ -30,7 +30,7 @@ object ThumbsUpHttp {
 
     val api = pathPrefix("thumbs-up") {
       concat(
-        // example: curl http://0.0.0.0:22551/thumbs-up/a
+        // example: curl http://127.0.0.1:22551/thumbs-up/a
         get {
           path(Segment) { resourceId ⇒
             onComplete((counterRegion ? ThumbsUpCounter.GetUsers(resourceId))
@@ -43,7 +43,7 @@ object ThumbsUpHttp {
             }
           }
         },
-        // example: curl -X POST http://0.0.0.0:22551/thumbs-up/a/u1
+        // example: curl -X POST http://127.0.0.1:22551/thumbs-up/a/u1
         post {
           path(Segment / Segment) { (resourceId, userId) ⇒
             onComplete((counterRegion ? ThumbsUpCounter.GiveThumbsUp(resourceId, userId)).mapTo[Int]) {

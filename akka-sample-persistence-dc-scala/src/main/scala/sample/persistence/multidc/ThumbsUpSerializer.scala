@@ -39,49 +39,34 @@ class ThumbsUpSerializer(val system: akka.actor.ExtendedActorSystem)
   }
 
   private def stateToBinary(a: ThumbsUpCounter.State): Array[Byte] = {
-    val builder = ThumbsUpMessages.State.newBuilder()
-    builder.addAllUsers(a.users.asJava)
-    builder.build().toByteArray()
+    ThumbsUpMessages.State.newBuilder()
+     .addAllUsers(a.users.asJava)
+     .build().toByteArray()
   }
 
   private def giveThumbsUpToBinary(a: ThumbsUpCounter.GiveThumbsUp): Array[Byte] = {
-    giveThumbsUpToProto(a).build().toByteArray()
-  }
-
-  private def giveThumbsUpToProto(a: ThumbsUpCounter.GiveThumbsUp): ThumbsUpMessages.GiveThumbsUp.Builder = {
-    val builder = ThumbsUpMessages.GiveThumbsUp.newBuilder()
-    builder.setResourceId(a.resourceId).setUserId(a.userId)
-    builder
+    ThumbsUpMessages.GiveThumbsUp.newBuilder()
+      .setResourceId(a.resourceId)
+      .setUserId(a.userId)
+      .build().toByteArray()
   }
 
   private def getCountToBinary(a: ThumbsUpCounter.GetCount): Array[Byte] = {
-    getCountToProto(a).build().toByteArray()
-  }
-
-  private def getCountToProto(a: ThumbsUpCounter.GetCount): ThumbsUpMessages.GetCount.Builder = {
-    val builder = ThumbsUpMessages.GetCount.newBuilder()
-    builder.setResourceId(a.resourceId)
-    builder
+    ThumbsUpMessages.GetCount.newBuilder()
+      .setResourceId(a.resourceId)
+      .build().toByteArray()
   }
 
   private def getUsersToBinary(a: ThumbsUpCounter.GetUsers): Array[Byte] = {
-    getUsersToProto(a).build().toByteArray()
-  }
-
-  private def getUsersToProto(a: ThumbsUpCounter.GetUsers): ThumbsUpMessages.GetUsers.Builder = {
-    val builder = ThumbsUpMessages.GetUsers.newBuilder()
-    builder.setResourceId(a.resourceId)
-    builder
+    ThumbsUpMessages.GetUsers.newBuilder()
+      .setResourceId(a.resourceId)
+      .build().toByteArray()
   }
 
   private def gaveThumbsUpToBinary(a: ThumbsUpCounter.GaveThumbsUp): Array[Byte] = {
-    gaveThumbsUpToProto(a).build().toByteArray()
-  }
-
-  private def gaveThumbsUpToProto(a: ThumbsUpCounter.GaveThumbsUp): ThumbsUpMessages.GaveThumbsUp.Builder = {
-    val builder = ThumbsUpMessages.GaveThumbsUp.newBuilder()
-    builder.setUserId(a.userId)
-    builder
+    ThumbsUpMessages.GaveThumbsUp.newBuilder()
+      .setUserId(a.userId)
+      .build().toByteArray()
   }
 
   override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef = manifest match {

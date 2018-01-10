@@ -91,11 +91,6 @@ object ThumbsUpApp {
       CassandraLauncher.DefaultTestConfigResource,
       clean = false,
       port = 9042)
-
-    // shut the cassandra instance down when the JVM stops
-    sys.addShutdownHook {
-      CassandraLauncher.stop()
-    }
   }
 
 }
