@@ -21,7 +21,7 @@ The small program together with its configuration starts an ActorSystem with the
 
 You can read more about the cluster concepts in the [documentation](http://doc.akka.io/docs/akka/2.5.0/java/cluster-usage.html).
 
-To run this sample, type `sbt "runMain sample.cluster.simple.SimpleClusterApp"` if it is not already started.
+To run this sample, type `sbt "runMain sample.cluster.simple.SimpleClusterApp"` if it is not already started. If you are using maven, use `mvn compile exec:java -Dexec.mainClass="sample.cluster.simple.SimpleClusterApp"` instead. To pass parameters to maven add `-Dexec.args="..."`.
 
 `SimpleClusterApp` starts three actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and then open three terminal windows.
 
