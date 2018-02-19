@@ -13,28 +13,10 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
-  <profiles>
-    <profile>
-      <id>2.12.4</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <properties>
-        <scalaBinaryVersion>2.12</scalaBinaryVersion>
-      </properties>
-    </profile>
-    <profile>
-      <id>2.11.11</id>
-      <properties>
-        <scalaBinaryVersion>2.11</scalaBinaryVersion>
-      </properties>
-    </profile>
-  </profiles>
-
   <dependencies>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-actor_${scalaBinaryVersion}</artifactId>
+      <artifactId>akka-actor_2.12</artifactId>
       <version>2.5.8</version>
     </dependency>
   </dependencies>
