@@ -1,8 +1,8 @@
-package sample.javaslang;
+package sample.vavr;
 
-import javaslang.collection.List;
-import javaslang.control.Option;
-import javaslang.match.annotation.Patterns;
+import io.vavr.collection.List;
+import io.vavr.control.Option;
+import io.vavr.match.annotation.Patterns;
 
 import java.util.Arrays;
 import java.util.Collections;

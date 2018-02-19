@@ -1,22 +1,21 @@
-package sample.javaslang;
+package sample.vavr;
 
 import akka.actor.Props;
 import akka.actor.UntypedAbstractActor;
-import javaslang.Tuple;
-import javaslang.Tuple1;
-import javaslang.Tuple2;
-import javaslang.collection.List;
-import javaslang.control.Option;
-import javaslang.match.annotation.Patterns;
-import javaslang.match.annotation.Unapply;
+import io.vavr.Tuple;
+import io.vavr.Tuple1;
+import io.vavr.Tuple2;
+import io.vavr.collection.List;
+import io.vavr.control.Option;
+import io.vavr.match.annotation.Patterns;
+import io.vavr.match.annotation.Unapply;
 
-import static javaslang.Patterns.Some;
-import static sample.javaslang.Minion_MovePatterns.*;
+import static io.vavr.API.*;
+import static io.vavr.Patterns.*;
+import static sample.vavr.MinionPatterns.*;
+import static io.vavr.Predicates.instanceOf;
 
-import static javaslang.API.*;
-import static javaslang.Patterns.*;
-import static javaslang.Predicates.*;
-
+@Patterns
 public class Minion extends UntypedAbstractActor {
 
   final private Maze maze;
@@ -30,7 +29,7 @@ public class Minion extends UntypedAbstractActor {
 
   public void onReceive(Object message) {
     Option<Command> nextCommand = Match(message).of(
-      Case(Move(Some($(maze::isLegal))), c -> {
+      Case($Move($Some($(maze::isLegal))), c -> {
         if (this.pos != null) {
           visited = visited.append(this.pos);
         }
@@ -41,11 +40,11 @@ public class Minion extends UntypedAbstractActor {
         );
       }),
 
-      Case(Move(Some($(visited::contains))), Option.of(new Stuck())),
-      Case(Move(Some($())), Option.of(new Stuck())),
-      Case(Move(None()), Option.of(new Stuck())),
+      Case($Move($Some($(visited::contains))), Option.of(new Stuck())),
+      Case($Move($Some($())), Option.of(new Stuck())),
+      Case($Move($None()), Option.of(new Stuck())),
 
-      Case(instanceOf(Stuck.class), s -> {
+      Case($(instanceOf(Stuck.class)), s -> {
         getContext().parent().tell(new Stopped(this.pos, this.visited), self());
         getContext().stop(self());
         return Option.none();
@@ -63,26 +62,17 @@ public class Minion extends UntypedAbstractActor {
 
   interface Command {};
 
-  @Patterns
-  static class Move implements Command {
-    final private Option<Coords> to;
+  static class Move implements Minion.Command {
+    final Option<Coords> to;
 
     public Move(Option<Coords> offset) {
       this.to = offset;
     }
 
-    @Unapply
-    static Tuple1<Option<Coords>> Move(Move move) {
-      return Tuple.of(move.to);
-    }
   }
 
-  static class Stuck implements Command {
-  }
-
-  @Patterns
-  static class Stopped implements Command {
-    final private Coords at;
+  static class Stopped implements Minion.Command {
+    final Coords at;
     final List<Coords> visited;
 
     public Stopped(Coords at, List<Coords> visited) {
@@ -94,9 +84,18 @@ public class Minion extends UntypedAbstractActor {
       return "Stopped[at=" + at.toString() + ", visited=" + visited.size() + "]";
     }
 
-    @Unapply
-    static Tuple2<Coords, List<Coords>> Stopped(Stopped stopped) {
-      return Tuple.of(stopped.at, stopped.visited);
-    }
   }
+
+  static class Stuck implements Minion.Command { }
+
+  @Unapply
+  static Tuple1<Option<Coords>> Move(Minion.Move move) {
+    return Tuple.of(move.to);
+  }
+
+  @Unapply
+  static Tuple2<Coords, List<Coords>> Stopped(Minion.Stopped stopped) {
+    return Tuple.of(stopped.at, stopped.visited);
+  }
+
 }
