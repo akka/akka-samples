@@ -1,13 +1,13 @@
-package sample.javaslang;
+package sample.vavr;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.pattern.PatternsCS;
 import akka.util.Timeout;
-import javaslang.collection.List;
-import javaslang.collection.HashMap;
-import javaslang.control.Option;
-import javaslang.control.Try;
+import io.vavr.collection.List;
+import io.vavr.collection.HashMap;
+import io.vavr.control.Option;
+import io.vavr.control.Try;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -15,8 +15,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import static javaslang.API.*;
-import static javaslang.Patterns.*;
+import static io.vavr.API.*;
+import static io.vavr.Patterns.*;
 
 public class MazeRunner {
 
@@ -68,23 +68,23 @@ public class MazeRunner {
       System.out.println(output.get().getOrElse(""));
       System.out.print("> ");
       output = Match(Try.of(br::readLine)).of(
-        Case(Success($("q")), CompletableFuture.completedFuture(Option.none())),
-        Case(Success($(s -> s.startsWith("spawn "))), s ->
+        Case($Success($("q")), CompletableFuture.completedFuture(Option.none())),
+        Case($Success($(s -> s.startsWith("spawn "))), s ->
           Match(tryParseInt(s)).of(
-            Case(Some($()), i -> {
+            Case($Some($()), i -> {
               master.tell(new Master.Start(i), ActorRef.noSender());
               return CompletableFuture.completedFuture(Option.of("Spawning " + i + " minions."));
             }),
-            Case(None(), CompletableFuture.completedFuture(Option.of("Unable to parse minion count to spawn.")))
+            Case($None(), CompletableFuture.completedFuture(Option.of("Unable to parse minion count to spawn.")))
           )
         ),
-        Case(Success($("results")), r ->
+        Case($Success($("results")), r ->
           PatternsCS
             .ask(master, new Master.GetResults(), Timeout.apply(1, TimeUnit.SECONDS))
             .thenApply(results -> Option.of(results.toString()))
             .toCompletableFuture()
         ),
-        Case(Success($("heatmap")), r ->
+        Case($Success($("heatmap")), r ->
           PatternsCS
             .ask(master, new Master.GetResults(), Timeout.apply(1, TimeUnit.SECONDS))
             .thenApply(results -> (List<Minion.Stopped>)results)
@@ -95,8 +95,8 @@ public class MazeRunner {
             .thenApply(Option::of)
             .toCompletableFuture()
         ),
-        Case(Success($()), command -> CompletableFuture.completedFuture(Option.of("Unknown command: " + command))),
-        Case(Failure($()), ex -> CompletableFuture.completedFuture(Option.of("Was not able to get next command. (" + ex.getMessage() + ")")))
+        Case($Success($()), command -> CompletableFuture.completedFuture(Option.of("Unknown command: " + command))),
+        Case($Failure($()), ex -> CompletableFuture.completedFuture(Option.of("Was not able to get next command. (" + ex.getMessage() + ")")))
       );
     } while (output.get().isDefined());
   }
@@ -121,10 +121,10 @@ public class MazeRunner {
   private static List<String> getHeatMap(HashMap<Coords, Character> heatMap) {
     return maze.zipWithIndex().map(rowAndY -> {
       final String row = rowAndY._1();
-      final Long y = rowAndY._2();
+      final Integer y = rowAndY._2();
       return List.ofAll(row.toCharArray()).zipWithIndex().map(tileAndX -> {
-        final Long x = tileAndX._2();
-        final Coords coords = new Coords(x.intValue(), y.intValue());
+        final Integer x = tileAndX._2();
+        final Coords coords = new Coords(x, y);
         return heatMap.get(coords).getOrElse('█');
       }).mkString();
     });

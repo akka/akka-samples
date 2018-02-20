@@ -4,15 +4,16 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
-  <artifactId>akka-sample-javaslang</artifactId>
+  <artifactId>akka-sample-vavr</artifactId>
   <groupId>com.typesafe.akka.samples</groupId>
-  <name>Akka with Javaslang</name>
+  <name>Akka with Vavr</name>
   <version>empty</version>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <vavr.version>0.9.2</vavr.version>
   </properties>
-
+  
   <dependencies>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
@@ -20,9 +21,14 @@
       <version>2.5.8</version>
     </dependency>
     <dependency>
-      <groupId>io.javaslang</groupId>
-      <artifactId>javaslang</artifactId>
-      <version>2.0.5</version>
+      <groupId>io.vavr</groupId>
+      <artifactId>vavr</artifactId>
+      <version>${vavr.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.vavr</groupId>
+      <artifactId>vavr-match</artifactId>
+      <version>${vavr.version}</version>
     </dependency>
   </dependencies>
 
