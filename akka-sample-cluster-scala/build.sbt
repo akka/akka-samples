@@ -1,14 +1,14 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.5.12"
+val akkaVersion = "2.5.13"
 
 lazy val `akka-sample-cluster-scala` = project
   .in(file("."))
   .settings(multiJvmSettings: _*)
   .settings(
     organization := "com.typesafe.akka.samples",
-    scalaVersion := "2.12.4",
+    scalaVersion := "2.12.6",
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
     javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m", "-Djava.library.path=./target/native"),

@@ -9,7 +9,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <akka.version>2.5.12</akka.version>
+        <akka.version>2.5.13</akka.version>
         <!-- Support for eecap-1.8 (Java 8) is from 3.0.2 -->
         <!-- https://github.com/apache/karaf/blob/karaf-3.0.2/assemblies/features/framework/src/main/filtered-resources/resources/etc/config.properties -->
         <karaf.version>3.0.8</karaf.version>
@@ -20,7 +20,7 @@
         <paxexam.version>2.6.0</paxexam.version>
         <paxswissbox.version>1.6.0</paxswissbox.version>
         <protobuf.version>2.5.0</protobuf.version>
-        <scala.version>2.12.4</scala.version>
+        <scala.version>2.12.6</scala.version>
         <scala.dep.version>2.12</scala.dep.version>
         <typesafe.config.version>1.3.0</typesafe.config.version>
         <leveldb.version>0.7</leveldb.version>

@@ -1,10 +1,10 @@
-val akkaVersion = "2.5.12"
+val akkaVersion = "2.5.13"
 
 val `akka-sample-sharding-java` = project
   .in(file("."))
   .settings(
     organization := "com.typesafe.akka.samples",
-    scalaVersion := "2.12.4",
+    scalaVersion := "2.12.6",
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
     javacOptions in doc in Compile := Seq("-Xdoclint:none"),
