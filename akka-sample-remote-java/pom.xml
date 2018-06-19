@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <artifactId>akka-sample-remote-java</artifactId>
   <groupId>com.typesafe.akka.samples</groupId>
-  <name>Akka Main in Java</name>
+  <name>Akka Remote in Java</name>
   <version>empty</version>
 
   <properties>
