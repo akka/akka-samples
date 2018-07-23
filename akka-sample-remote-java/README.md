@@ -1,3 +1,7 @@
+**DISCLAIMER**: We recommend [Akka Cluster](https://doc.akka.io/docs/akka/2.5/cluster-usage.html) over using remoting directly. As remoting is the underlying module that allows for Cluster, it is still useful to understand details about it though. Akka remoting is designed for communication in a peer-to-peer fashion and it is not a good fit for client-server setups. 
+
+# Akka Remote Calculator
+
 In order to showcase the [remote capabilities of Akka](http://doc.akka.io/docs/akka/2.5/java/remoting.html) we thought a remote calculator could do the trick. This sample demonstrates both remote deployment and look-up of remote actors.
 
 ## Lookup Remote Actors
