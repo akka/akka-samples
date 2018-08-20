@@ -97,13 +97,10 @@ class ExamplePersistentActor extends AbstractPersistentActor {
         return receiveBuilder()
             .match(Cmd.class, c -> {
                 final String data = c.getData();
-                final Evt evt1 = new Evt(data + "-" + getNumEvents());
-                final Evt evt2 = new Evt(data + "-" + (getNumEvents() + 1));
-                persistAll(asList(evt1, evt2), (Evt evt) -> {
-                    state.update(evt);
-                    if (evt.equals(evt2)) {
-                        getContext().system().eventStream().publish(evt);
-                    }
+                final Evt evt = new Evt(data + "-" + getNumEvents());
+                persist(evt, (Evt event) -> {
+                    state.update(event);
+                    getContext().system().eventStream().publish(event);
                 });
             })
             .matchEquals("snap", s -> saveSnapshot(state.copy()))
