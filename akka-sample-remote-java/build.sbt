@@ -3,7 +3,7 @@ name := "akka-sample-remote-java"
 
 scalaVersion := "2.12.6"
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-remote" % "2.5.13"
+  "com.typesafe.akka" %% "akka-remote" % "2.5.15"
 )
 
 licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
