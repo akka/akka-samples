@@ -8,9 +8,9 @@ crossScalaVersions := Seq("2.12.6", "2.11.11")
 
 val AkkaVersion = "2.5.15"
 val AkkaAddOnsVersion = "1.1.0"
-val AkkaPersistenceCassandraVersion = "0.80"
-val AkkaHttpVersion = "10.0.10"
-val AkkaClusterManagementVersion = "0.8.0"
+val AkkaPersistenceCassandraVersion = "0.89"
+val AkkaHttpVersion = "10.1.4"
+val AkkaClusterManagementVersion = "0.17.0"
 
 credentials += Credentials(Path.userHome / ".lightbend" / "commercial.credentials")
 resolvers += "com-mvn" at "https://repo.lightbend.com/commercial-releases/"
