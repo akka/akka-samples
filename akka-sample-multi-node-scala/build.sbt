@@ -14,7 +14,7 @@ val `akka-sample-multi-node-scala` = project
       "com.typesafe.akka" %% "akka-actor" % akkaVersion,
       "com.typesafe.akka" %% "akka-remote" % akkaVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion,
-      "org.scalatest" %% "scalatest" % "3.0.1" % Test),
+      "org.scalatest" %% "scalatest" % "3.0.5" % Test),
     // disable parallel tests
     parallelExecution in Test := false,
     licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))

@@ -11,7 +11,7 @@ val `akka-sample-sharding-java` = project
     javacOptions in doc in Compile := Seq("-Xdoclint:none"),
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
-      "org.scalatest" %% "scalatest" % "3.0.1" % Test),
+      "org.scalatest" %% "scalatest" % "3.0.5" % Test),
     fork in run := true,
     mainClass in (Compile, run) := Some("sample.sharding.ShardingApp"),
     // disable parallel tests
