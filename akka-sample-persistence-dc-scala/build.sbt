@@ -4,6 +4,7 @@ name := "akka-sample-persistence-dc-scala"
 enablePlugins(ProtobufPlugin)
 
 scalaVersion := "2.12.6"
+crossScalaVersions := Seq("2.12.6", "2.11.11")
 
 val AkkaVersion = "2.5.15"
 val AkkaAddOnsVersion = "1.1.0"

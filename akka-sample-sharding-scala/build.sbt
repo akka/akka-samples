@@ -9,6 +9,7 @@ lazy val `akka-sample-sharding-scala` = project
   .settings(
     organization := "com.typesafe.akka.samples",
     scalaVersion := "2.12.6",
+    crossScalaVersions := Seq("2.12.6", "2.11.11"),
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
     javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m", "-Djava.library.path=./target/native"),
