@@ -2,7 +2,6 @@ organization := "com.typesafe.akka.samples"
 name := "akka-sample-persistence-scala"
 
 scalaVersion := "2.12.6"
-crossScalaVersions := Seq("2.12.6", "2.11.11")
 libraryDependencies ++= Seq(
   "com.typesafe.akka"          %% "akka-persistence" % "2.5.15",
   "org.iq80.leveldb"            % "leveldb"          % "0.7",

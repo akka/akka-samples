@@ -9,7 +9,6 @@ val `akka-sample-cluster-java` = project
   .settings(
     organization := "com.typesafe.akka.samples",
     scalaVersion := "2.12.6",
-    crossScalaVersions := Seq("2.12.6", "2.11.11"),
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
     javacOptions in doc in Compile := Seq("-Xdoclint:none"),

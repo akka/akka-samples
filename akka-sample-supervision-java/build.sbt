@@ -4,7 +4,6 @@ name := "akka-sample-supervision-java"
 val akkaVersion = "2.5.15"
 
 scalaVersion := "2.12.6"
-crossScalaVersions := Seq("2.12.6", "2.11.11")
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %%      "akka-actor" % akkaVersion,
   "com.typesafe.akka" %%    "akka-testkit" % akkaVersion % Test,
