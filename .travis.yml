@@ -32,21 +32,21 @@ env:
     - CMD="cd akka-sample-distributed-data-java && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
     - CMD="cd akka-sample-distributed-data-scala && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
     - CMD="cd akka-sample-fsm-java && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-fsm-java && mvn test -P \$TRAVIS_SCALA_VERSION"
+    - CMD="cd akka-sample-fsm-java && mvn test
     - CMD="cd akka-sample-fsm-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
     - CMD="cd akka-sample-main-java && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-main-java && mvn test -P \$TRAVIS_SCALA_VERSION"
+    - CMD="cd akka-sample-main-java && mvn test
     - CMD="cd akka-sample-main-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
     - CMD="cd akka-sample-multi-node-scala && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
-    - CMD="cd akka-sample-osgi-dining-hakkers && mvn compile -P \$TRAVIS_SCALA_VERSION"
+    - CMD="cd akka-sample-osgi-dining-hakkers && mvn compile
     - CMD="cd akka-sample-persistence-java && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-persistence-java && mvn test -P \$TRAVIS_SCALA_VERSION"
+    - CMD="cd akka-sample-persistence-java && mvn test
     - CMD="cd akka-sample-persistence-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
     - CMD="cd akka-sample-remote-java && sbt ++\$TRAVIS_SCALA_VERSION test"
     - CMD="cd akka-sample-remote-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
     - CMD="cd akka-sample-supervision-java && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-supervision-java && mvn test -P \$TRAVIS_SCALA_VERSION"
-    - CMD="cd akka-sample-vavr && mvn test -P \$TRAVIS_SCALA_VERSION"
+    - CMD="cd akka-sample-supervision-java && mvn test
+    - CMD="cd akka-sample-vavr && mvn test
 
 script:
   - eval "$CMD"
