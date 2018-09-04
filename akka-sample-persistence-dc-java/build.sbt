@@ -7,9 +7,9 @@ scalaVersion := "2.12.6"
 
 val AkkaVersion = "2.5.15"
 val AkkaAddOnsVersion = "1.1.0"
-val AkkaPersistenceCassandraVersion = "0.80"
-val AkkaHttpVersion = "10.0.10"
-val AkkaClusterManagementVersion = "0.8.0"
+val AkkaPersistenceCassandraVersion = "0.89"
+val AkkaHttpVersion = "10.1.4"
+val AkkaClusterManagementVersion = "0.17.0"
 
 credentials += Credentials(Path.userHome / ".lightbend" / "commercial.credentials")
 resolvers += "com-mvn" at "https://repo.lightbend.com/commercial-releases/"
@@ -28,7 +28,7 @@ libraryDependencies ++= Seq(
   "com.lightbend.akka.management" %% "akka-management" % AkkaClusterManagementVersion,
   "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaClusterManagementVersion,
   "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % AkkaPersistenceCassandraVersion % "test",
-  "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 )
 
 licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
