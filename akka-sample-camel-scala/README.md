@@ -1,3 +1,5 @@
+# The Akka Camel module is deprecated in favour of [Alpakka](https://developer.lightbend.com/docs/alpakka/current/), a Reactive Enterprise Integration library for Java and Scala, based on Reactive Streams and Akka.
+
 This tutorial contains 3 samples of [Akka Camel](http://doc.akka.io/docs/akka/2.5/scala/camel.html).
 
 - Asynchronous routing and transformation
