@@ -1,7 +1,7 @@
 package sample.typed
 
 import akka.NotUsed
-import akka.actor.typed.scaladsl.{Behaviors, ActorContext}
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 
 import scala.concurrent.duration._
@@ -52,18 +52,19 @@ object Chopstick {
   * Some fsm hakker messages
   */
 sealed trait HakkerMessage
-final case class Think() extends HakkerMessage
-final case class Eat() extends HakkerMessage
-final case class HakkerChopstickAnswer(msg: ChopstickAnswer) extends HakkerMessage
+case object Think extends HakkerMessage
+case object Eat extends HakkerMessage
 
 /*
 * A hakker is an awesome dude or dudette who either thinks about hacking or has to eat ;-)
 */
 class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[ChopstickMessage]) {
 
+  final case class ChopstickAnswerAdaptor(msg: ChopstickAnswer) extends HakkerMessage
+
   lazy val waiting: Behavior[HakkerMessage] =
-    Behaviors.receivePartial[HakkerMessage] {
-      case (ctx, Think()) =>
+    Behaviors.receivePartial {
+      case (ctx, Think) =>
         println("%s starts to think".format(name))
         startThinking(ctx, 5.seconds)
     }
@@ -71,12 +72,14 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
   //When a hakker is thinking it can become hungry
   //and try to pick up its chopsticks and eat
   lazy val thinking: Behavior[HakkerMessage] =
-    Behaviors.receivePartial[HakkerMessage] {
-      case (ctx, Eat()) =>
-        val adapter = ctx.messageAdapter(HakkerChopstickAnswer)
-        left ! Take(adapter)
-        right ! Take(adapter)
-        hungry
+    Behaviors.setup { ctx =>
+      val adapter = ctx.messageAdapter(ChopstickAnswerAdaptor)
+      Behaviors.receiveMessagePartial {
+        case Eat =>
+          left ! Take(adapter)
+          right ! Take(adapter)
+          hungry
+      }
     }
 
   //When a hakker is hungry it tries to pick up its chopsticks and eat
@@ -84,14 +87,14 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
   //If the hakkers first attempt at grabbing a chopstick fails,
   //it starts to wait for the response of the other grab
   lazy val hungry: Behavior[HakkerMessage] =
-    Behaviors.receiveMessagePartial[HakkerMessage] {
-      case HakkerChopstickAnswer(Taken(`left`)) =>
+    Behaviors.receiveMessagePartial {
+      case ChopstickAnswerAdaptor(Taken(`left`)) =>
         waitForOtherChopstick(chopstickToWaitFor = right, takenChopstick = left)
 
-      case HakkerChopstickAnswer(Taken(`right`)) =>
+      case ChopstickAnswerAdaptor(Taken(`right`)) =>
         waitForOtherChopstick(chopstickToWaitFor = left, takenChopstick = right)
 
-      case HakkerChopstickAnswer(Busy(denied)) =>
+      case ChopstickAnswerAdaptor(Busy(denied)) =>
         firstChopstickDenied(denied = denied)
     }
 
@@ -101,50 +104,55 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
   def waitForOtherChopstick(chopstickToWaitFor: ActorRef[ChopstickMessage],
                             takenChopstick: ActorRef[ChopstickMessage]): Behavior[HakkerMessage] =
 
-    Behaviors.receivePartial[HakkerMessage] {
-      case (ctx, HakkerChopstickAnswer(Taken(`chopstickToWaitFor`))) =>
-        println("%s has picked up %s and %s and starts to eat".format(name, left.path.name, right.path.name))
-        startEating(ctx, 5.seconds)
+    Behaviors.setup { ctx =>
+      val adapter = ctx.messageAdapter(ChopstickAnswerAdaptor)
+      Behaviors.receiveMessagePartial {
+        case ChopstickAnswerAdaptor(Taken(`chopstickToWaitFor`)) =>
+          println("%s has picked up %s and %s and starts to eat".format(name, left.path.name, right.path.name))
+          startEating(ctx, 5.seconds)
 
-      case (ctx, HakkerChopstickAnswer(Busy(`chopstickToWaitFor`))) =>
-        val adapter = ctx.messageAdapter(HakkerChopstickAnswer)
-        takenChopstick ! Put(adapter)
-        startThinking(ctx, 10.milliseconds)
+        case ChopstickAnswerAdaptor(Busy(`chopstickToWaitFor`)) =>
+          takenChopstick ! Put(adapter)
+          startThinking(ctx, 10.milliseconds)
+      }
     }
 
   //When a hakker is eating, he can decide to start to think,
   //then he puts down his chopsticks and starts to think
   lazy val eating: Behavior[HakkerMessage] =
-    Behaviors.receivePartial[HakkerMessage] {
-      case (ctx, Think()) =>
-        println("%s puts down his chopsticks and starts to think".format(name))
-        val adapter = ctx.messageAdapter(HakkerChopstickAnswer)
-        left ! Put(adapter)
-        right ! Put(adapter)
-        startThinking(ctx, 5.seconds)
+    Behaviors.setup { ctx =>
+      val adapter = ctx.messageAdapter(ChopstickAnswerAdaptor)
+      Behaviors.receiveMessagePartial {
+        case Think =>
+          println("%s puts down his chopsticks and starts to think".format(name))
+          left ! Put(adapter)
+          right ! Put(adapter)
+          startThinking(ctx, 5.seconds)
+      }
     }
 
   //When the results of the other grab comes back,
   //he needs to put it back if he got the other one.
   //Then go back and think and try to grab the chopsticks again
-  def firstChopstickDenied(denied: ActorRef[ChopstickMessage]): Behaviors.Receive[HakkerMessage] =
-    Behaviors.receivePartial[HakkerMessage] {
-      case (ctx, HakkerChopstickAnswer(Taken(chopstick))) =>
-        val adapter = ctx.messageAdapter(HakkerChopstickAnswer)
-        chopstick ! Put(adapter)
-        startThinking(ctx, 10.milliseconds)
-
-      case (ctx, HakkerChopstickAnswer(Busy(_))) =>
-        startThinking(ctx, 10.milliseconds)
+  def firstChopstickDenied(denied: ActorRef[ChopstickMessage]): Behavior[HakkerMessage] =
+    Behaviors.setup { ctx =>
+      val adapter = ctx.messageAdapter(ChopstickAnswerAdaptor)
+      Behaviors.receiveMessagePartial {
+        case ChopstickAnswerAdaptor(Taken(chopstick)) =>
+          chopstick ! Put(adapter)
+          startThinking(ctx, 10.milliseconds)
+        case ChopstickAnswerAdaptor(Busy(_)) =>
+          startThinking(ctx, 10.milliseconds)
+      }
     }
 
   private def startThinking(ctx: ActorContext[HakkerMessage], duration: FiniteDuration) = {
-    ctx.schedule(duration, ctx.self, Eat())
+    ctx.schedule(duration, ctx.self, Eat)
     thinking
   }
 
   private def startEating(ctx: ActorContext[HakkerMessage], duration: FiniteDuration) = {
-    ctx.schedule(duration, ctx.self, Think())
+    ctx.schedule(duration, ctx.self, Think)
     eating
   }
 }
@@ -166,7 +174,7 @@ object DiningHakkersTyped {
     } yield context.spawn(new Hakker(name, chopsticks(i), chopsticks((i + 1) % 5)).waiting, name)
 
     //Signal all hakkers that they should start thinking, and watch the show
-    hakkers.foreach(_ ! Think())
+    hakkers.foreach(_ ! Think)
 
     Behaviors.empty
   }
