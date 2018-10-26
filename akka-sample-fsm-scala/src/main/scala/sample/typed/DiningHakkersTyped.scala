@@ -94,8 +94,8 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
       case ChopstickAnswerAdaptor(Taken(`right`)) =>
         waitForOtherChopstick(chopstickToWaitFor = left, takenChopstick = right)
 
-      case ChopstickAnswerAdaptor(Busy(denied)) =>
-        firstChopstickDenied(denied = denied)
+      case ChopstickAnswerAdaptor(Busy(chopstick)) =>
+        firstChopstickDenied
     }
 
   //When a hakker is waiting for the last chopstick it can either obtain it
@@ -134,7 +134,7 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
   //When the results of the other grab comes back,
   //he needs to put it back if he got the other one.
   //Then go back and think and try to grab the chopsticks again
-  def firstChopstickDenied(denied: ActorRef[ChopstickMessage]): Behavior[HakkerMessage] =
+  lazy val firstChopstickDenied: Behavior[HakkerMessage] =
     Behaviors.setup { ctx =>
       val adapter = ctx.messageAdapter(ChopstickAnswerAdaptor)
       Behaviors.receiveMessagePartial {
