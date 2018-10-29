@@ -65,7 +65,7 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
   lazy val waiting: Behavior[HakkerMessage] =
     Behaviors.receivePartial {
       case (ctx, Think) =>
-        println("%s starts to think".format(name))
+        println(s"$name starts to think")
         startThinking(ctx, 5.seconds)
     }
 
@@ -108,7 +108,7 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
       val adapter = ctx.messageAdapter(ChopstickAnswerAdaptor)
       Behaviors.receiveMessagePartial {
         case ChopstickAnswerAdaptor(Taken(`chopstickToWaitFor`)) =>
-          println("%s has picked up %s and %s and starts to eat".format(name, left.path.name, right.path.name))
+          println(s"$name has picked up ${left.path.name} and ${right.path.name} and starts to eat")
           startEating(ctx, 5.seconds)
 
         case ChopstickAnswerAdaptor(Busy(`chopstickToWaitFor`)) =>
@@ -124,7 +124,7 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
       val adapter = ctx.messageAdapter(ChopstickAnswerAdaptor)
       Behaviors.receiveMessagePartial {
         case Think =>
-          println("%s puts down his chopsticks and starts to think".format(name))
+          println(s"$name puts down his chopsticks and starts to think")
           left ! Put(adapter)
           right ! Put(adapter)
           startThinking(ctx, 5.seconds)
