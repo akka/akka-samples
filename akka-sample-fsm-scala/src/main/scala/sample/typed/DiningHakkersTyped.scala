@@ -147,13 +147,17 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
     }
 
   private def startThinking(ctx: ActorContext[HakkerMessage], duration: FiniteDuration) = {
-    ctx.schedule(duration, ctx.self, Eat)
-    thinking
+    Behaviors.withTimers[HakkerMessage] { timers =>
+      timers.startSingleTimer(Eat, Eat, duration)
+      thinking
+    }
   }
 
   private def startEating(ctx: ActorContext[HakkerMessage], duration: FiniteDuration) = {
-    ctx.schedule(duration, ctx.self, Think)
-    eating
+    Behaviors.withTimers[HakkerMessage] { timers =>
+      timers.startSingleTimer(Think, Think, duration)
+      eating
+    }
   }
 }
 
