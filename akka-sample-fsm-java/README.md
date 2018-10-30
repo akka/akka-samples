@@ -22,3 +22,13 @@ Start the application by typing `sbt "runMain sample.fsm.DiningHakkersOnFsm"` or
 
 Read more about `akka.actor.FSM` in [the documentation](http://doc.akka.io/docs/akka/2.5/java/fsm.html).
 
+## Dining Hakkers with Akka Typed
+
+Open [DiningHakkersTyped.java](src/main/java/sample/typed/DinningHakkersTyped.java).
+
+It illustrates how the behaviors and transitions can be defined with Akka Typed.
+
+Start the application by typing `sbt "runMain sample.typed.DiningHakkersTyped"`. In the log output you can see the actions of the `Hakker` actors.
+
+Read more about Akka Typed in [the documentation](http://doc.akka.io/docs/akka/current/typed).
+
