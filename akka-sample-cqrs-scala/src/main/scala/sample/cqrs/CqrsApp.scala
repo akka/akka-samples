@@ -42,24 +42,34 @@ object CqrsApp {
   }
 
   def startNode(port: Int): Unit = {
+
     val system = ActorSystem("ClusterSystem", config(port))
 
     // TODO start ClusterSharding
 
-    if (port == 2551) {
+    if (port <= 2551) {
       createTables(system)
 
       testIt(system)
     }
 
+    if (port > 2551)
+      EventProcessorWrapper(system).start()
   }
 
   def config(port: Int): Config =
-    ConfigFactory.parseString(s"""
-      akka.remote.artery.canonical.port = $port
-      akka.remote.netty.tcp.port = $port
-    """).withFallback(ConfigFactory.load("application.conf"))
-
+    if (Set(2552, 2553).contains(port))
+    ConfigFactory.parseString(
+        s"""akka.remote.artery.canonical.port = $port
+            akka.remote.netty.tcp.port = $port
+            akka.cluster.roles = [event-processor]
+           """).withFallback(ConfigFactory.load("application.conf"))
+    else
+      ConfigFactory.parseString(
+        s"""akka.remote.artery.canonical.port = $port
+            akka.remote.netty.tcp.port = $port
+              akka.cluster.roles = [entity-write-model]
+         """).withFallback(ConfigFactory.load("application.conf"))
   /**
    * To make the sample easier to run we kickstart a Cassandra instance to
    * act as the journal. Cassandra is a great choice of backend for Akka Persistence but
@@ -70,7 +80,7 @@ object CqrsApp {
     CassandraLauncher.start(
       databaseDirectory,
       CassandraLauncher.DefaultTestConfigResource,
-      clean = false,
+      clean = true,
       port = 9042)
   }
 
@@ -100,44 +110,31 @@ object CqrsApp {
 
   // FIXME very temporary test
   def testIt(system: ActorSystem): Unit = {
-    val entity1 = system.actorOf(TestEntity.props(), "entity1")
-    entity1 ! "a1"
-    entity1 ! "a2"
-    entity1 ! "a3"
 
-    val entity2 = system.actorOf(TestEntity.props(), "entity2")
-    entity2 ! "b1"
-    entity2 ! "b2"
+    ShardedSwitchEntity(system).start()
 
-    val processor1 = system.actorOf(EventProcessor.props("tag1"), "processorTag1")
+    val shardedSwitch = ShardedSwitchEntity(system)
 
-    entity2 ! "b3"
-    Thread.sleep(10000)
+    shardedSwitch.tell("switch", SwitchEntity.CreateSwitch(4))
+    shardedSwitch.tell("switch1", SwitchEntity.SetPortStatus(2, portEnabled = true))
+    shardedSwitch.tell("switch1", SwitchEntity.SendPortStatus)
 
-    entity1 ! "a4"
-    entity1 ! "a5"
-    entity2 ! "b4"
-    entity2 ! "b5"
+    shardedSwitch.tell("switch2", SwitchEntity.CreateSwitch(6))
+    shardedSwitch.tell("switch2", SwitchEntity.SetPortStatus(0, portEnabled = true))
+    shardedSwitch.tell("switch2", SwitchEntity.SetPortStatus(2, portEnabled = true))
+    shardedSwitch.tell("switch2", SwitchEntity.SetPortStatus(5, portEnabled = true))
+    shardedSwitch.tell("switch2", SwitchEntity.SendPortStatus)
 
-    Thread.sleep(1000)
-    processor1 ! PoisonPill
-
-    entity2 ! "b6"
-    entity2 ! "b7"
-    entity1 ! "a6"
-    entity1 ! "a7"
-    Thread.sleep(1000)
-
-    // start it again, should continue from stored offset
-    system.actorOf(EventProcessor.props("tag1"), "processorTag1")
 
     val counter = new AtomicInteger(8)
     import system.dispatcher
     system.scheduler.schedule(3.seconds, 1.second) {
-      entity1 ! s"a${counter.getAndIncrement()}"
-      entity2 ! s"b${counter.getAndIncrement()}"
+      import scala.util.Random
+      val switch = s"switch${counter.getAndIncrement()}"
+      shardedSwitch.tell(switch, SwitchEntity.CreateSwitch(6))
+      shardedSwitch.tell(switch, SwitchEntity.SetPortStatus(Random.nextInt(6), portEnabled = true))
+      shardedSwitch.tell(switch, SwitchEntity.SetPortStatus(Random.nextInt(6), portEnabled = true))
+      shardedSwitch.tell(switch, SwitchEntity.SendPortStatus)
     }
-
   }
-
 }

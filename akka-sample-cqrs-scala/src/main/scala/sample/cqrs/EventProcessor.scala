@@ -1,39 +1,31 @@
 package sample.cqrs
 
-import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
-
 import akka.Done
-import akka.actor.Actor
-import akka.actor.ActorLogging
-import akka.actor.Props
+import akka.actor.{Actor, ActorLogging, Props}
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
-import akka.persistence.query.NoOffset
-import akka.persistence.query.Offset
-import akka.persistence.query.PersistenceQuery
-import akka.persistence.query.TimeBasedUUID
+import akka.persistence.query.{NoOffset, Offset, PersistenceQuery, TimeBasedUUID}
 import akka.stream.KillSwitches
-import akka.stream.scaladsl.RestartSource
-import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
-import com.datastax.driver.core.PreparedStatement
-import com.datastax.driver.core.Row
+import akka.stream.scaladsl.{RestartSource, Sink, Source}
+import com.datastax.driver.core.{PreparedStatement, Row}
+
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration._
 
 object EventProcessor {
-  def props(tag: String): Props =
-    Props(new EventProcessor(tag))
+  def props: Props =
+    Props(new EventProcessor)
 }
 
-class EventProcessor(tag: String) extends Actor with ActorLogging {
-  private val eventProcessorId = context.self.path.name
+class EventProcessor extends Actor with ActorLogging with SettingsActor {
+  private val eventProcessorId = settings.eventProcessorSettings.id
+  private val tag = self.path.name
 
   private val session = CassandraSessionExtension(context.system).session
   private implicit val materializer = CassandraSessionExtension(context.system).materializer
   private implicit val ec: ExecutionContext = context.dispatcher
   private val query = PersistenceQuery(context.system).readJournalFor[CassandraReadJournal](CassandraReadJournal.Identifier)
   private val killSwitch = KillSwitches.shared("eventProcessorSwitch")
-  override val log = super.log // eager intialization because used from inside stream
+  override val log = super.log // eager initialization because used from inside stream
 
   override def preStart(): Unit = {
     super.preStart()
@@ -46,18 +38,22 @@ class EventProcessor(tag: String) extends Actor with ActorLogging {
   }
 
   def receive = {
+    case KeepAlive.Ping =>
+      sender() ! KeepAlive.Pong
+      //log.info(s"Event processor(${self.path.name}) @ ${context.system.settings.config.getString("akka.remote.artery.canonical.hostname")}:${context.system.settings.config.getInt("akka.remote.artery.canonical.port")}")
+
     case message =>
-      log.info("Got message: {}", message)
+      log.error("Got unexpected message: {}", message)
   }
 
   private def runQueryStream(): Unit = {
     RestartSource.withBackoff(minBackoff = 500.millis, maxBackoff = 20.seconds, randomFactor = 0.1) { () =>
       Source.fromFutureSource {
         readOffset().map { offset =>
-          log.info("Staring stream for tag [{}] from offset [{}]", tag, offset)
+          log.info("Starting stream for tag [{}] from offset [{}]", tag, offset)
           query.eventsByTag(tag, offset)
             .map { eventEnvelope =>
-              println(s"# got $eventEnvelope") // FIXME
+              println(s"#Eventprocessor($tag) got ${eventEnvelope}") // FIXME
               eventEnvelope.offset
             }
             .mapAsync(1)(writeOffset)
