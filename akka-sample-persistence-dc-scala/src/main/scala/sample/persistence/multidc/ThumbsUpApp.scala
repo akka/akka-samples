@@ -72,7 +72,6 @@ object ThumbsUpApp {
   def config(port: Int, dc: String): Config =
     ConfigFactory.parseString(s"""
       akka.remote.artery.canonical.port = $port
-      akka.remote.netty.tcp.port = $port
 
       akka.management.http.port = 1$port
 

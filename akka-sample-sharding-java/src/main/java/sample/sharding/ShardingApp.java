@@ -19,7 +19,7 @@ public class ShardingApp {
     for (String port : ports) {
       // Override the configuration of the port
       Config config = ConfigFactory.parseString(
-          "akka.remote.netty.tcp.port=" + port).withFallback(
+          "akka.remote.artery.canonical.port=" + port).withFallback(
           ConfigFactory.load());
 
       // Create an Akka system

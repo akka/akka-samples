@@ -78,7 +78,6 @@ public class ThumbsUpApp {
   private static Config config(int port, String dc) {
     return ConfigFactory.parseString(
       "akka.remote.artery.canonical.port = " + port + "\n" +
-          "akka.remote.netty.tcp.port = " + port + "\n" +
           "akka.management.http.port = 1" + port + "\n" +
           "akka.cluster.multi-data-center.self-data-center = " + dc + "\n")
       .withFallback(ConfigFactory.load("application.conf"));
