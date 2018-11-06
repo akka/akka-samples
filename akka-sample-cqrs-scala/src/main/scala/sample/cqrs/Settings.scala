@@ -1,17 +1,17 @@
 package sample.cqrs
 
-import akka.actor.{Actor, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
+import akka.actor.{ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
 import com.typesafe.sslconfig.util.EnrichedConfig
 
 import scala.concurrent.duration.FiniteDuration
 
-object Settings extends ExtensionId[SettingsImpl] with ExtensionIdProvider {
+object Settings extends ExtensionId[Settings] with ExtensionIdProvider {
   override def lookup = Settings
 
-  override def createExtension(system: ExtendedActorSystem) = new SettingsImpl(system)
+  override def createExtension(system: ExtendedActorSystem) = new Settings(system)
 }
 
-class SettingsImpl(system: ExtendedActorSystem) extends Extension {
+class Settings(system: ExtendedActorSystem) extends Extension {
 
   object eventProcessorSettings {
     private val eventProcessorConfig: EnrichedConfig =
@@ -34,10 +34,4 @@ class SettingsImpl(system: ExtendedActorSystem) extends Extension {
     val shardCount: Int = switchConfig.get[Int]("shard-count")
   }
 
-}
-
-trait SettingsActor {
-  this: Actor =>
-
-  val settings: SettingsImpl = Settings(context.system)
 }

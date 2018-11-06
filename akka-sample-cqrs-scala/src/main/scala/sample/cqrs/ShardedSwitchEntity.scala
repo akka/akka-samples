@@ -33,7 +33,7 @@ class ShardedSwitchEntity(system: ExtendedActorSystem) extends Extension {
     ClusterSharding(system).start(
       typeName = typeName,
       entityProps = SwitchEntity.props,
-      settings = ClusterShardingSettings(system).withRole("entity-write-model"),
+      settings = ClusterShardingSettings(system).withRole("write-model"),
       extractEntityId = extractEntityId,
       extractShardId = extractShardId(shardCount)
     )

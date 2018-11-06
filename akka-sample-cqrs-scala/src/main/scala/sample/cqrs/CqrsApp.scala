@@ -4,22 +4,32 @@ import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger
 
+import akka.actor.ActorSystem
+import akka.cluster.Cluster
+import akka.persistence.cassandra.testkit.CassandraLauncher
+import com.typesafe.config.{Config, ConfigFactory}
+
+import scala.collection.breakOut
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-import akka.actor.ActorSystem
-import akka.actor.PoisonPill
-import akka.persistence.cassandra.testkit.CassandraLauncher
-import com.typesafe.config.Config
-import com.typesafe.config.ConfigFactory
-
 object CqrsApp {
 
-  def main(args: Array[String]): Unit = {
-    args.headOption match {
+  private val Opt = """(\S+)=(\S+)""".r
 
-      case None =>
-        startClusterInSameJvm()
+  private def argsToOpts(args: Seq[String]): Map[String, String] =
+    args.collect { case Opt(key, value) => key -> value }(breakOut)
+
+  private def applySystemProperties(options: Map[String, String]): Unit =
+    for ((key, value) <- options if key startsWith "-D")
+      System.setProperty(key.substring(2), value)
+
+  def main(args: Array[String]): Unit = {
+
+    val opts = argsToOpts(args.toList)
+    applySystemProperties(opts)
+
+    args.headOption match {
 
       case Some(portString) if portString.matches("""\d+""") =>
         val port = portString.toInt
@@ -34,42 +44,29 @@ object CqrsApp {
     }
   }
 
-  def startClusterInSameJvm(): Unit = {
-    startCassandraDatabase()
-
-    startNode(2551)
-    startNode(2552)
-  }
-
   def startNode(port: Int): Unit = {
 
     val system = ActorSystem("ClusterSystem", config(port))
 
-    // TODO start ClusterSharding
+    val selfRoles = Cluster(system).selfRoles
 
-    if (port <= 2551) {
+    if (selfRoles.contains("write-model")) {
+
       createTables(system)
 
       testIt(system)
     }
 
-    if (port > 2551)
+    if (selfRoles.contains("read-model"))
       EventProcessorWrapper(system).start()
   }
 
   def config(port: Int): Config =
-    if (Set(2552, 2553).contains(port))
     ConfigFactory.parseString(
-        s"""akka.remote.artery.canonical.port = $port
+      s"""akka.remote.artery.canonical.port = $port
             akka.remote.netty.tcp.port = $port
-            akka.cluster.roles = [event-processor]
            """).withFallback(ConfigFactory.load("application.conf"))
-    else
-      ConfigFactory.parseString(
-        s"""akka.remote.artery.canonical.port = $port
-            akka.remote.netty.tcp.port = $port
-              akka.cluster.roles = [entity-write-model]
-         """).withFallback(ConfigFactory.load("application.conf"))
+
   /**
    * To make the sample easier to run we kickstart a Cassandra instance to
    * act as the journal. Cassandra is a great choice of backend for Akka Persistence but

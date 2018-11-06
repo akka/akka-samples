@@ -32,7 +32,7 @@ class EventProcessorWrapper(system: ExtendedActorSystem) extends Extension {
     ClusterSharding(system).start(
       typeName = typeName,
       entityProps = EventProcessor.props,
-      settings = ClusterShardingSettings(system).withRole("event-processor"),
+      settings = ClusterShardingSettings(system).withRole("read-model"),
       extractEntityId = extractEntityId,
       extractShardId = extractShardId(eventProcessorSettings.parallelism)
     )
@@ -41,7 +41,7 @@ class EventProcessorWrapper(system: ExtendedActorSystem) extends Extension {
       ClusterSingletonManager.props(
         KeepAlive.props(typeName),
         PoisonPill,
-        ClusterSingletonManagerSettings(system).withRole("event-processor")
+        ClusterSingletonManagerSettings(system).withRole("read-model")
       ),
       s"${eventProcessorSettings.id}-keep-alive"
     )
@@ -57,10 +57,11 @@ object KeepAlive {
 
 }
 
-class KeepAlive(typeName: String) extends Actor with ActorLogging with Timers with SettingsActor {
+class KeepAlive(typeName: String) extends Actor with ActorLogging with Timers {
   import KeepAlive._
 
   private val shardRegion = ClusterSharding(context.system).shardRegion(typeName)
+  private val settings = Settings(context.system)
 
   override def receive: Receive = {
     case ProbeEventProcessors =>

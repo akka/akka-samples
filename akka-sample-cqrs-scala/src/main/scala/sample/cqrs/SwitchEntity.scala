@@ -22,9 +22,11 @@ object SwitchEntity {
     Props(new SwitchEntity)
 }
 
-class SwitchEntity extends PersistentActor with ActorLogging with SettingsActor {
+class SwitchEntity extends PersistentActor with ActorLogging {
 
   import SwitchEntity._
+
+  private val settings = Settings(context.system)
 
   override def persistenceId: String = "SwitchEntity|" + context.self.path.name
 

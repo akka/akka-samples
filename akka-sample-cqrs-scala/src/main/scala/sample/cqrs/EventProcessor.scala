@@ -16,7 +16,9 @@ object EventProcessor {
     Props(new EventProcessor)
 }
 
-class EventProcessor extends Actor with ActorLogging with SettingsActor {
+class EventProcessor extends Actor with ActorLogging {
+
+  private val settings = Settings(context.system)
   private val eventProcessorId = settings.eventProcessorSettings.id
   private val tag = self.path.name
 
@@ -53,7 +55,7 @@ class EventProcessor extends Actor with ActorLogging with SettingsActor {
           log.info("Starting stream for tag [{}] from offset [{}]", tag, offset)
           query.eventsByTag(tag, offset)
             .map { eventEnvelope =>
-              println(s"#Eventprocessor($tag) got ${eventEnvelope}") // FIXME
+              println(s"#Eventprocessor($tag) got ${eventEnvelope}") // You would write to Kafka here
               eventEnvelope.offset
             }
             .mapAsync(1)(writeOffset)
