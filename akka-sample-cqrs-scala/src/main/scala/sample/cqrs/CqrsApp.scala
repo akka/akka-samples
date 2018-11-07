@@ -51,14 +51,13 @@ object CqrsApp {
     val selfRoles = Cluster(system).selfRoles
 
     if (selfRoles.contains("write-model")) {
-
-      createTables(system)
-
       testIt(system)
     }
 
-    if (selfRoles.contains("read-model"))
+    if (selfRoles.contains("read-model")) {
+      createTables(system)
       EventProcessorWrapper(system).start()
+    }
   }
 
   def config(port: Int): Config =
