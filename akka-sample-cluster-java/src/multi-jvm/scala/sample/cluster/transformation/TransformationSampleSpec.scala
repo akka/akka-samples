@@ -42,8 +42,8 @@ object TransformationSampleSpecConfig extends MultiNodeConfig {
   // note that no fixed host names and ports are used
   commonConfig(ConfigFactory.parseString("""
     akka.actor.provider = cluster
-    # not using Artery in test due small /dev/shm in Travis
-    akka.remote.artery.enabled = off
+    akka.remote.artery.enabled = on
+    akka.remote.artery.transport = tcp
     """))
 
   nodeConfig(frontend1, frontend2)(
