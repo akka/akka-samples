@@ -4,6 +4,8 @@ import akka.actor.{ActorLogging, Props}
 import akka.persistence.PersistentActor
 import akka.persistence.journal.Tagged
 
+import scala.math.abs
+
 object SwitchEntity {
 
   sealed trait Command
@@ -31,7 +33,7 @@ class SwitchEntity extends PersistentActor with ActorLogging {
   override def persistenceId: String = "SwitchEntity|" + context.self.path.name
 
   private def eventTag =
-    s"${settings.eventProcessorSettings.tagPrefix}${scala.math.abs(persistenceId.hashCode % settings.eventProcessorSettings.parallelism)}"
+    s"${settings.eventProcessorSettings.tagPrefix}${abs(persistenceId.hashCode % settings.eventProcessorSettings.parallelism)}"
 
   private var portStatus: Option[Map[Int, Boolean]] = None
 

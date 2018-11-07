@@ -3,6 +3,8 @@ package sample.cqrs
 import akka.actor.{ActorRef, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
 import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings, ShardRegion}
 
+import scala.math.abs
+
 object ShardedSwitchEntity extends ExtensionId[ShardedSwitchEntity] with ExtensionIdProvider {
   override def lookup: EventProcessorWrapper.type = EventProcessorWrapper
 
@@ -15,7 +17,7 @@ object ShardedSwitchEntity extends ExtensionId[ShardedSwitchEntity] with Extensi
   }
 
   def extractShardId(numberOfShards: Int): ShardRegion.ExtractShardId = {
-    case EntityEnvelope(eventProcessorId, msg) => (eventProcessorId.hashCode % numberOfShards).toString
+    case EntityEnvelope(eventProcessorId, msg) => abs(eventProcessorId.hashCode % numberOfShards).toString
   }
 }
 
