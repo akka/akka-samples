@@ -162,12 +162,12 @@ public class DiningHakkersTyped {
         }
 
         private Behavior<HakkerMessage> startThinking(ActorContext<HakkerMessage> ctx, Duration duration) {
-            ctx.schedule(duration, ctx.getSelf(), HakkerMessage.Eat.INSTANCE);
+            ctx.scheduleOnce(duration, ctx.getSelf(), HakkerMessage.Eat.INSTANCE);
             return thinking();
         }
 
         private Behavior<HakkerMessage> startEating(ActorContext<HakkerMessage> ctx, Duration duration) {
-            ctx.schedule(duration, ctx.getSelf(), HakkerMessage.Think.INSTANCE);
+            ctx.scheduleOnce(duration, ctx.getSelf(), HakkerMessage.Think.INSTANCE);
             return eating();
         }
     }
