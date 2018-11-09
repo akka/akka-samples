@@ -3,6 +3,7 @@ package sample.cqrs
 import akka.actor.{Actor, ActorLogging, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider, PoisonPill, Props, Timers}
 import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings, ShardRegion}
 import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings}
+import com.typesafe.config.ConfigFactory
 
 object EventProcessorWrapper extends ExtensionId[EventProcessorWrapper] with ExtensionIdProvider {
   override def lookup: EventProcessorWrapper.type = EventProcessorWrapper
@@ -28,11 +29,19 @@ class EventProcessorWrapper(system: ExtendedActorSystem) extends Extension {
     case EntityEnvelope(eventProcessorId, msg) => eventProcessorId
   }
 
+
   def start(): Unit = {
+    val clusterShardingreferenceConfig =
+      ConfigFactory.load("reference.conf").getConfig("akka.cluster.sharding")
+    // Use reference configuration for akka.cluster.sharding with 'rebalance-threshold set to 1
+    val tunedClusterShardingConfig =
+      ConfigFactory.parseString(s"least-shard-allocation-strategy.rebalance-threshold = 1")
+        .withFallback(clusterShardingreferenceConfig)
+
     ClusterSharding(system).start(
       typeName = typeName,
       entityProps = EventProcessor.props,
-      settings = ClusterShardingSettings(system).withRole("read-model"),
+      settings = ClusterShardingSettings(tunedClusterShardingConfig).withRole("read-model"),
       extractEntityId = extractEntityId,
       extractShardId = extractShardId(eventProcessorSettings.parallelism)
     )

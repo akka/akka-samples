@@ -38,6 +38,7 @@ lazy val `akka-sample-cqrs-scala` = project
     addCommandAlias("rmodel1", "runMain sample.cqrs.CqrsApp 2552 -Dakka.cluster.roles.0=read-model"),
     addCommandAlias("rmodel2", "runMain sample.cqrs.CqrsApp 2553 -Dakka.cluster.roles.0=read-model"),
     addCommandAlias("rmodel3", "runMain sample.cqrs.CqrsApp 2554 -Dakka.cluster.roles.0=read-model"),
+    addCommandAlias("rmodel4", "runMain sample.cqrs.CqrsApp 2555 -Dakka.cluster.roles.0=read-model"),
     licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
   )
   .configs (MultiJvm)
