@@ -51,6 +51,7 @@ object CqrsApp {
     val selfRoles = Cluster(system).selfRoles
 
     if (selfRoles.contains("write-model")) {
+      ShardedSwitchEntity(system).start()
       testIt(system)
     }
 
@@ -63,8 +64,8 @@ object CqrsApp {
   def config(port: Int): Config =
     ConfigFactory.parseString(
       s"""akka.remote.artery.canonical.port = $port
-            akka.remote.netty.tcp.port = $port
-           """).withFallback(ConfigFactory.load("application.conf"))
+          akka.remote.netty.tcp.port = $port
+       """).withFallback(ConfigFactory.load("application.conf"))
 
   /**
    * To make the sample easier to run we kickstart a Cassandra instance to
@@ -106,8 +107,6 @@ object CqrsApp {
 
   // FIXME very temporary test
   def testIt(system: ActorSystem): Unit = {
-
-    ShardedSwitchEntity(system).start()
 
     val shardedSwitch = ShardedSwitchEntity(system)
 
