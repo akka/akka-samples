@@ -4,22 +4,32 @@ import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger
 
+import akka.actor.ActorSystem
+import akka.cluster.Cluster
+import akka.persistence.cassandra.testkit.CassandraLauncher
+import com.typesafe.config.{Config, ConfigFactory}
+
+import scala.collection.breakOut
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-import akka.actor.ActorSystem
-import akka.actor.PoisonPill
-import akka.persistence.cassandra.testkit.CassandraLauncher
-import com.typesafe.config.Config
-import com.typesafe.config.ConfigFactory
-
 object CqrsApp {
 
-  def main(args: Array[String]): Unit = {
-    args.headOption match {
+  private val Opt = """(\S+)=(\S+)""".r
 
-      case None =>
-        startClusterInSameJvm()
+  private def argsToOpts(args: Seq[String]): Map[String, String] =
+    args.collect { case Opt(key, value) => key -> value }(breakOut)
+
+  private def applySystemProperties(options: Map[String, String]): Unit =
+    for ((key, value) <- options if key startsWith "-D")
+      System.setProperty(key.substring(2), value)
+
+  def main(args: Array[String]): Unit = {
+
+    val opts = argsToOpts(args.toList)
+    applySystemProperties(opts)
+
+    args.headOption match {
 
       case Some(portString) if portString.matches("""\d+""") =>
         val port = portString.toInt
@@ -34,31 +44,28 @@ object CqrsApp {
     }
   }
 
-  def startClusterInSameJvm(): Unit = {
-    startCassandraDatabase()
-
-    startNode(2551)
-    startNode(2552)
-  }
-
   def startNode(port: Int): Unit = {
+
     val system = ActorSystem("ClusterSystem", config(port))
 
-    // TODO start ClusterSharding
+    val selfRoles = Cluster(system).selfRoles
 
-    if (port == 2551) {
-      createTables(system)
-
+    if (selfRoles.contains("write-model")) {
+      ShardedSwitchEntity(system).start()
       testIt(system)
     }
 
+    if (selfRoles.contains("read-model")) {
+      createTables(system)
+      EventProcessorWrapper(system).start()
+    }
   }
 
   def config(port: Int): Config =
-    ConfigFactory.parseString(s"""
-      akka.remote.artery.canonical.port = $port
-      akka.remote.netty.tcp.port = $port
-    """).withFallback(ConfigFactory.load("application.conf"))
+    ConfigFactory.parseString(
+      s"""akka.remote.artery.canonical.port = $port
+          akka.remote.netty.tcp.port = $port
+       """).withFallback(ConfigFactory.load("application.conf"))
 
   /**
    * To make the sample easier to run we kickstart a Cassandra instance to
@@ -70,7 +77,7 @@ object CqrsApp {
     CassandraLauncher.start(
       databaseDirectory,
       CassandraLauncher.DefaultTestConfigResource,
-      clean = false,
+      clean = true,
       port = 9042)
   }
 
@@ -100,44 +107,29 @@ object CqrsApp {
 
   // FIXME very temporary test
   def testIt(system: ActorSystem): Unit = {
-    val entity1 = system.actorOf(TestEntity.props(), "entity1")
-    entity1 ! "a1"
-    entity1 ! "a2"
-    entity1 ! "a3"
 
-    val entity2 = system.actorOf(TestEntity.props(), "entity2")
-    entity2 ! "b1"
-    entity2 ! "b2"
+    val shardedSwitch = ShardedSwitchEntity(system)
 
-    val processor1 = system.actorOf(EventProcessor.props("tag1"), "processorTag1")
+    shardedSwitch.tell("switch", SwitchEntity.CreateSwitch(4))
+    shardedSwitch.tell("switch1", SwitchEntity.SetPortStatus(2, portEnabled = true))
+    shardedSwitch.tell("switch1", SwitchEntity.SendPortStatus)
 
-    entity2 ! "b3"
-    Thread.sleep(10000)
+    shardedSwitch.tell("switch2", SwitchEntity.CreateSwitch(6))
+    shardedSwitch.tell("switch2", SwitchEntity.SetPortStatus(0, portEnabled = true))
+    shardedSwitch.tell("switch2", SwitchEntity.SetPortStatus(2, portEnabled = true))
+    shardedSwitch.tell("switch2", SwitchEntity.SetPortStatus(5, portEnabled = true))
+    shardedSwitch.tell("switch2", SwitchEntity.SendPortStatus)
 
-    entity1 ! "a4"
-    entity1 ! "a5"
-    entity2 ! "b4"
-    entity2 ! "b5"
-
-    Thread.sleep(1000)
-    processor1 ! PoisonPill
-
-    entity2 ! "b6"
-    entity2 ! "b7"
-    entity1 ! "a6"
-    entity1 ! "a7"
-    Thread.sleep(1000)
-
-    // start it again, should continue from stored offset
-    system.actorOf(EventProcessor.props("tag1"), "processorTag1")
 
     val counter = new AtomicInteger(8)
     import system.dispatcher
     system.scheduler.schedule(3.seconds, 1.second) {
-      entity1 ! s"a${counter.getAndIncrement()}"
-      entity2 ! s"b${counter.getAndIncrement()}"
+      import scala.util.Random
+      val switch = s"switch${counter.getAndIncrement()}"
+      shardedSwitch.tell(switch, SwitchEntity.CreateSwitch(6))
+      shardedSwitch.tell(switch, SwitchEntity.SetPortStatus(Random.nextInt(6), portEnabled = true))
+      shardedSwitch.tell(switch, SwitchEntity.SetPortStatus(Random.nextInt(6), portEnabled = true))
+      shardedSwitch.tell(switch, SwitchEntity.SendPortStatus)
     }
-
   }
-
 }
