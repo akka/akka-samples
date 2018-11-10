@@ -29,21 +29,27 @@ object Chopstick {
   //It will refuse to be taken by other hakkers
   //But the owning hakker can put it back
   def takenBy(hakker: ActorRef[ChopstickAnswer]): Behavior[ChopstickMessage] = {
-    Behaviors.receivePartial {
+    Behaviors.receive {
       case (ctx, Take(otherHakker)) =>
         otherHakker ! Busy(ctx.self)
         Behaviors.same
       case (ctx, Put(`hakker`)) =>
         available
+      case _ =>
+        // here and below it's left to be explicit about partial definition,
+        // but can be omitted when Behaviors.receivePartial is in use
+        Behaviors.unhandled
     }
   }
 
   //When a Chopstick is available, it can be taken by a hakker
   lazy val available: Behavior[ChopstickMessage] = {
-    Behaviors.receivePartial {
+    Behaviors.receive {
       case (ctx, Take(hakker)) =>
         hakker ! Taken(ctx.self)
         takenBy(hakker)
+      case _ =>
+        Behaviors.unhandled
     }
   }
 }
@@ -63,10 +69,12 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
   final case class ChopstickAnswerAdaptor(msg: ChopstickAnswer) extends HakkerMessage
 
   lazy val waiting: Behavior[HakkerMessage] =
-    Behaviors.receivePartial {
+    Behaviors.receive {
       case (ctx, Think) =>
         println(s"$name starts to think")
         startThinking(ctx, 5.seconds)
+      case _ =>
+        Behaviors.unhandled
     }
 
   //When a hakker is thinking it can become hungry
@@ -74,11 +82,13 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
   lazy val thinking: Behavior[HakkerMessage] =
     Behaviors.setup { ctx =>
       val adapter = ctx.messageAdapter(ChopstickAnswerAdaptor)
-      Behaviors.receiveMessagePartial {
+      Behaviors.receiveMessage {
         case Eat =>
           left ! Take(adapter)
           right ! Take(adapter)
           hungry
+        case _ =>
+          Behaviors.unhandled
       }
     }
 
@@ -87,7 +97,7 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
   //If the hakkers first attempt at grabbing a chopstick fails,
   //it starts to wait for the response of the other grab
   lazy val hungry: Behavior[HakkerMessage] =
-    Behaviors.receiveMessagePartial {
+    Behaviors.receiveMessage {
       case ChopstickAnswerAdaptor(Taken(`left`)) =>
         waitForOtherChopstick(chopstickToWaitFor = right, takenChopstick = left)
 
@@ -96,6 +106,8 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
 
       case ChopstickAnswerAdaptor(Busy(chopstick)) =>
         firstChopstickDenied
+      case _ =>
+        Behaviors.unhandled
     }
 
   //When a hakker is waiting for the last chopstick it can either obtain it
@@ -106,7 +118,7 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
 
     Behaviors.setup { ctx =>
       val adapter = ctx.messageAdapter(ChopstickAnswerAdaptor)
-      Behaviors.receiveMessagePartial {
+      Behaviors.receiveMessage {
         case ChopstickAnswerAdaptor(Taken(`chopstickToWaitFor`)) =>
           println(s"$name has picked up ${left.path.name} and ${right.path.name} and starts to eat")
           startEating(ctx, 5.seconds)
@@ -114,6 +126,8 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
         case ChopstickAnswerAdaptor(Busy(`chopstickToWaitFor`)) =>
           takenChopstick ! Put(adapter)
           startThinking(ctx, 10.milliseconds)
+        case _ =>
+          Behaviors.unhandled
       }
     }
 
@@ -122,12 +136,14 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
   lazy val eating: Behavior[HakkerMessage] =
     Behaviors.setup { ctx =>
       val adapter = ctx.messageAdapter(ChopstickAnswerAdaptor)
-      Behaviors.receiveMessagePartial {
+      Behaviors.receiveMessage {
         case Think =>
           println(s"$name puts down his chopsticks and starts to think")
           left ! Put(adapter)
           right ! Put(adapter)
           startThinking(ctx, 5.seconds)
+        case _ =>
+          Behaviors.unhandled
       }
     }
 
@@ -137,12 +153,14 @@ class Hakker(name: String, left: ActorRef[ChopstickMessage], right: ActorRef[Cho
   lazy val firstChopstickDenied: Behavior[HakkerMessage] =
     Behaviors.setup { ctx =>
       val adapter = ctx.messageAdapter(ChopstickAnswerAdaptor)
-      Behaviors.receiveMessagePartial {
+      Behaviors.receiveMessage {
         case ChopstickAnswerAdaptor(Taken(chopstick)) =>
           chopstick ! Put(adapter)
           startThinking(ctx, 10.milliseconds)
         case ChopstickAnswerAdaptor(Busy(_)) =>
           startThinking(ctx, 10.milliseconds)
+        case _ =>
+          Behaviors.unhandled
       }
     }
 
