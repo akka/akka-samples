@@ -28,4 +28,15 @@ Open [FsmSimpleRedelivery.scala](src/main/scala/sample/redelivery/FsmSimpleRedel
 
 It illustrates how you can take care of message redelivery between two or more sides. This implementation is able to process only one message at a time.
 
-Start the application by typing ` sbt "runMain sample.redelivery.FsmSimpleRedelivery"`. In the log output you can see the actions of the `Requester` and the `Receiver` actors.
+Start the application by typing `sbt "runMain sample.redelivery.FsmSimpleRedelivery"`. In the log output you can see the actions of the `Requester` and the `Receiver` actors.
+
+## Dining Hakkers with Akka Typed
+
+Open [DiningHakkersTyped.scala](src/main/scala/sample/typed/DiningHakkersTyped.scala).
+
+It illustrates how the behaviors and transitions can be defined with Akka Typed.
+
+Start the application by typing `sbt "runMain sample.typed.DiningHakkersTyped"`. In the log output you can see the actions of the `Hakker` actors.
+
+Read more about Akka Typed in [the documentation](http://doc.akka.io/docs/akka/current/typed).
+
