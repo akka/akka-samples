@@ -6,7 +6,7 @@ enablePlugins(ProtobufPlugin)
 scalaVersion := "2.12.6"
 
 val AkkaVersion = "2.5.18"
-val AkkaAddOnsVersion = "1.1.4"
+val AkkaAddOnsVersion = "1.1.5"
 val AkkaPersistenceCassandraVersion = "0.91"
 val AkkaHttpVersion = "10.1.4"
 val AkkaClusterManagementVersion = "0.19.0"
