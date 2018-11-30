@@ -16,7 +16,7 @@ object SimpleClusterApp {
     ports foreach { port =>
       // Override the configuration of the port
       val config = ConfigFactory.parseString(s"""
-        akka.remote.artery.canonical.port=$port
+        akka.remote.netty.tcp.port=$port
         """).withFallback(ConfigFactory.load())
 
       // Create an Akka system

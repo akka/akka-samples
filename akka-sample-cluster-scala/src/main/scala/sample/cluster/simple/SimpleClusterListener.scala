@@ -19,6 +19,7 @@ class SimpleClusterListener extends Actor with ActorLogging {
   def receive = {
     case MemberUp(member) =>
       log.info("Member is Up: {}", member.address)
+      log.info("Complete cluster state is now: {}", cluster.state)
     case UnreachableMember(member) =>
       log.info("Member detected as unreachable: {}", member)
     case MemberRemoved(member, previousStatus) =>
