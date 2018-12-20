@@ -16,6 +16,9 @@ resolvers += "com-mvn" at "https://repo.lightbend.com/commercial-releases/"
 resolvers += Resolver.url("com-ivy",
   url("https://repo.lightbend.com/commercial-releases/"))(Resolver.ivyStylePatterns)
 
+cinnamon in run := true
+cinnamon in test := true
+
 libraryDependencies ++= Seq(
   "com.lightbend.akka" %% "akka-persistence-multi-dc" % AkkaAddOnsVersion,
   "com.lightbend.akka" %% "akka-persistence-multi-dc-testkit" % AkkaAddOnsVersion,
@@ -30,7 +33,10 @@ libraryDependencies ++= Seq(
   "com.lightbend.akka.management" %% "akka-management" % AkkaClusterManagementVersion,
   "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaClusterManagementVersion,
   "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % AkkaPersistenceCassandraVersion % "test",
-  "org.scalatest" %% "scalatest" % "3.0.5" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.5" % "test",
+  // Cinnamon, use Coda Hale Metrics and Akka instrumentation
+  Cinnamon.library.cinnamonCHMetrics,
+  Cinnamon.library.cinnamonAkka
 )
 
 licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
