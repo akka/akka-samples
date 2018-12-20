@@ -6,10 +6,10 @@ enablePlugins(ProtobufPlugin)
 scalaVersion := "2.12.6"
 
 val AkkaVersion = "2.5.18"
-val AkkaAddOnsVersion = "1.1.5"
+val AkkaAddOnsVersion = "1.1.6"
 val AkkaPersistenceCassandraVersion = "0.91"
 val AkkaHttpVersion = "10.1.4"
-val AkkaClusterManagementVersion = "0.19.0"
+val AkkaClusterManagementVersion = "0.20.0"
 
 credentials += Credentials(Path.userHome / ".lightbend" / "commercial.credentials")
 resolvers += "com-mvn" at "https://repo.lightbend.com/commercial-releases/"
