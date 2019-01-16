@@ -9,10 +9,12 @@ public class FactorialBackendMain {
 
   public static void main(String[] args) {
     // Override the configuration of the port when specified as program argument
+    // To use artery instead of netty, change to "akka.remote.artery.canonical.port"
+    // See https://doc.akka.io/docs/akka/current/remoting-artery.html for details
     final String port = args.length > 0 ? args[0] : "0";
     final Config config = 
       ConfigFactory.parseString(
-          "akka.remote.artery.canonical.port=" + port).
+          "akka.remote.netty.tcp.port=" + port).
       withFallback(ConfigFactory.parseString("akka.cluster.roles = [backend]")).
       withFallback(ConfigFactory.load("factorial"));
 
