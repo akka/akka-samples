@@ -15,8 +15,10 @@ object SimpleClusterApp {
   def startup(ports: Seq[String]): Unit = {
     ports foreach { port =>
       // Override the configuration of the port
+      // To use artery instead of netty, change to "akka.remote.artery.canonical.port"
+      // See https://doc.akka.io/docs/akka/current/remoting-artery.html for details
       val config = ConfigFactory.parseString(s"""
-        akka.remote.artery.canonical.port=$port
+        akka.remote.netty.tcp.port=$port
         """).withFallback(ConfigFactory.load())
 
       // Create an Akka system

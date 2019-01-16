@@ -38,8 +38,10 @@ object StatsSampleSpecConfig extends MultiNodeConfig {
   // note that no fixed host names and ports are used
   commonConfig(ConfigFactory.parseString("""
     akka.actor.provider = cluster
-    akka.remote.artery.enabled = on
-    akka.remote.artery.transport = tcp
+    akka.remote.enabled-transports = [akka.remote.netty.tcp]
+    # To use artery, disable netty line above, and uncomment lines below
+    ##akka.remote.artery.enabled = on
+    ##akka.remote.artery.transport = tcp
     akka.cluster.roles = [compute]
     #//#router-lookup-config
     akka.actor.deployment {
