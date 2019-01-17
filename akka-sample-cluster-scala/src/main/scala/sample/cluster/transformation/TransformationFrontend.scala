@@ -39,9 +39,11 @@ class TransformationFrontend extends Actor {
 object TransformationFrontend {
   def main(args: Array[String]): Unit = {
     // Override the configuration of the port when specified as program argument
+    // To use artery instead of netty, change to "akka.remote.artery.canonical.port"
+    // See https://doc.akka.io/docs/akka/current/remoting-artery.html for details
     val port = if (args.isEmpty) "0" else args(0)
     val config = ConfigFactory.parseString(s"""
-        akka.remote.artery.canonical.port=$port
+        akka.remote.netty.tcp.port=$port
         """)
       .withFallback(ConfigFactory.parseString("akka.cluster.roles = [frontend]"))
       .withFallback(ConfigFactory.load())

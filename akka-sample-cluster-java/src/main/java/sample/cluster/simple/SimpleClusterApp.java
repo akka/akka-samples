@@ -18,8 +18,10 @@ public class SimpleClusterApp {
   public static void startup(String[] ports) {
     for (String port : ports) {
       // Override the configuration of the port
+      // To use artery instead of netty, change to "akka.remote.artery.canonical.port"
+      // See https://doc.akka.io/docs/akka/current/remoting-artery.html for details
       Config config = ConfigFactory.parseString(
-          "akka.remote.artery.canonical.port=" + port)
+          "akka.remote.netty.tcp.port=" + port)
           .withFallback(ConfigFactory.load());
 
       // Create an Akka system
