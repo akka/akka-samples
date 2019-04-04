@@ -9,7 +9,7 @@ val AkkaVersion = "2.5.22"
 val AkkaAddOnsVersion = "1.1.9"
 val AkkaPersistenceCassandraVersion = "0.93"
 val AkkaHttpVersion = "10.1.8"
-val AkkaClusterManagementVersion = "0.20.0"
+val AkkaClusterManagementVersion = "1.0.0"
 
 credentials += Credentials(Path.userHome / ".lightbend" / "commercial.credentials")
 resolvers += "com-mvn" at "https://repo.lightbend.com/commercial-releases/"
