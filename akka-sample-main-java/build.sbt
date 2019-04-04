@@ -1,7 +1,7 @@
 organization := "com.typesafe.akka.samples"
 name := "akka-sample-main-java"
 
-scalaVersion := "2.12.6"
+scalaVersion := "2.12.8"
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.5.22"
 )

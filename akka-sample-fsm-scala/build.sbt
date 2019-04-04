@@ -3,7 +3,7 @@ name := "akka-sample-fsm-scala"
 
 val akkaVersion = "2.5.22"
 
-scalaVersion := "2.12.6"
+scalaVersion := "2.12.8"
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaVersion,
   "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion

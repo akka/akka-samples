@@ -3,12 +3,12 @@ name := "akka-sample-persistence-dc-java"
 
 enablePlugins(ProtobufPlugin)
 
-scalaVersion := "2.12.6"
+scalaVersion := "2.12.8"
 
 val AkkaVersion = "2.5.22"
-val AkkaAddOnsVersion = "1.1.8"
-val AkkaPersistenceCassandraVersion = "0.91"
-val AkkaHttpVersion = "10.1.4"
+val AkkaAddOnsVersion = "1.1.9"
+val AkkaPersistenceCassandraVersion = "0.93"
+val AkkaHttpVersion = "10.1.8"
 val AkkaClusterManagementVersion = "0.20.0"
 
 credentials += Credentials(Path.userHome / ".lightbend" / "commercial.credentials")
