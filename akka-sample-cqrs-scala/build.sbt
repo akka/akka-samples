@@ -3,8 +3,8 @@ import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
 val AkkaVersion = "2.5.22"
 val AkkaAddOnsVersion = "1.1.0"
-val AkkaPersistenceCassandraVersion = "0.91"
-val AkkaHttpVersion = "10.1.4"
+val AkkaPersistenceCassandraVersion = "0.93"
+val AkkaHttpVersion = "10.1.8"
 val AkkaClusterManagementVersion = "0.17.0"
 
 lazy val `akka-sample-cqrs-scala` = project
@@ -12,7 +12,7 @@ lazy val `akka-sample-cqrs-scala` = project
   .settings(multiJvmSettings: _*)
   .settings(
     organization := "com.typesafe.akka.samples",
-    scalaVersion := "2.12.7",
+    scalaVersion := "2.12.8",
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
     javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m"),

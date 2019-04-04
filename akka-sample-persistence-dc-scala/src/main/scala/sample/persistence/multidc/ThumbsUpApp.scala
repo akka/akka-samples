@@ -7,7 +7,7 @@ import akka.actor.ActorSystem
 import akka.cluster.Cluster
 import akka.cluster.sharding.ClusterSharding
 import akka.cluster.sharding.ClusterShardingSettings
-import akka.management.AkkaManagement
+import akka.management.scaladsl.AkkaManagement
 import akka.persistence.cassandra.testkit.CassandraLauncher
 import akka.persistence.multidc.PersistenceMultiDcSettings
 import com.typesafe.config.{Config, ConfigFactory}
