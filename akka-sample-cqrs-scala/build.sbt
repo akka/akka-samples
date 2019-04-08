@@ -28,7 +28,7 @@ lazy val `akka-sample-cqrs-scala` = project
       "com.typesafe.akka" %% "akka-slf4j" % AkkaVersion,
       "ch.qos.logback" % "logback-classic" % "1.2.3",
       "com.typesafe.akka" %% "akka-multi-node-testkit" % AkkaVersion % "test",
-      "org.scalatest" %% "scalatest" % "3.0.5" % Test),
+      "org.scalatest" %% "scalatest" % "3.0.7" % Test),
     fork in run := false,
     mainClass in (Compile, run) := Some("sample.cqrs.CqrsApp"),
     // disable parallel tests

@@ -19,7 +19,7 @@ lazy val `akka-sample-cluster-scala` = project
       "com.typesafe.akka" %% "akka-cluster-metrics" % akkaVersion,
       "com.typesafe.akka" %% "akka-cluster-tools" % akkaVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion,
-      "org.scalatest" %% "scalatest" % "3.0.5" % Test,
+      "org.scalatest" %% "scalatest" % "3.0.7" % Test,
       "io.kamon" % "sigar-loader" % "1.6.6-rev002"),
     fork in run := true,
     mainClass in (Compile, run) := Some("sample.cluster.simple.SimpleClusterApp"),
