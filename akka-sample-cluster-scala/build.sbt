@@ -5,13 +5,24 @@ val akkaVersion = "2.5.22"
 
 lazy val `akka-sample-cluster-scala` = project
   .in(file("."))
+  .enablePlugins(Cinnamon)
   .settings(multiJvmSettings: _*)
   .settings(
     organization := "com.typesafe.akka.samples",
     scalaVersion := "2.12.8",
-    scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
+    scalacOptions in Compile ++= Seq(
+      "-deprecation",
+      "-feature",
+      "-unchecked",
+      "-Xlog-reflective-calls",
+      "-Xlint"
+    ),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
-    javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m", "-Djava.library.path=./target/native"),
+    javaOptions in run ++= Seq(
+      "-Xms128m",
+      "-Xmx1024m",
+      "-Djava.library.path=./target/native"
+    ),
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-actor" % akkaVersion,
       "com.typesafe.akka" %% "akka-remote" % akkaVersion,
@@ -20,11 +31,20 @@ lazy val `akka-sample-cluster-scala` = project
       "com.typesafe.akka" %% "akka-cluster-tools" % akkaVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion,
       "org.scalatest" %% "scalatest" % "3.0.7" % Test,
-      "io.kamon" % "sigar-loader" % "1.6.6-rev002"),
+      "io.kamon" % "sigar-loader" % "1.6.6-rev002",
+      Cinnamon.library.cinnamonCHMetrics,
+      Cinnamon.library.cinnamonAkka,
+    ),
     fork in run := true,
-    mainClass in (Compile, run) := Some("sample.cluster.simple.SimpleClusterApp"),
+    mainClass in (Compile, run) := Some(
+      "sample.cluster.simple.SimpleClusterApp"
+    ),
     // disable parallel tests
     parallelExecution in Test := false,
-    licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
+    licenses := Seq(
+      ("CC0", url("http://creativecommons.org/publicdomain/zero/1.0"))
+    ),
+    cinnamon in run := true,
+    cinnamon in test := true
   )
-  .configs (MultiJvm)
+  .configs(MultiJvm)
