@@ -14,7 +14,7 @@ before_cache:
 cache:
   directories:
     - $HOME/.ivy2/cache
-    - $HOME/.sbt/boot
+    - $HOME/.sbt
     - $HOME/.m2/repository
 
 before_install:
@@ -25,26 +25,26 @@ before_install:
 
 env:
   matrix:
-    - CMD="cd akka-sample-camel-java && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-camel-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-cluster-java && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
-    - CMD="cd akka-sample-cluster-scala && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
-    - CMD="cd akka-sample-distributed-data-java && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
-    - CMD="cd akka-sample-distributed-data-scala && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
-    - CMD="cd akka-sample-fsm-java && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-fsm-java && mvn test
-    - CMD="cd akka-sample-fsm-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-main-java && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-main-java && mvn test
-    - CMD="cd akka-sample-main-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-multi-node-scala && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
-    - CMD="cd akka-sample-osgi-dining-hakkers && mvn compile
-    - CMD="cd akka-sample-persistence-java && sbt ++\$TRAVIS_SCALA_VERSION test"
+    - CMD="cd akka-sample-camel-java && sbt test"
+    - CMD="cd akka-sample-camel-scala && sbt test"
+    - CMD="cd akka-sample-cluster-java && sbt multi-jvm:test"
+    - CMD="cd akka-sample-cluster-scala && sbt multi-jvm:test"
+    - CMD="cd akka-sample-distributed-data-java && sbt multi-jvm:test"
+    - CMD="cd akka-sample-distributed-data-scala && sbt multi-jvm:test"
+    - CMD="cd akka-sample-fsm-java && sbt test"
+    - CMD="cd akka-sample-fsm-java && mvn test"
+    - CMD="cd akka-sample-fsm-scala && sbt test"
+    - CMD="cd akka-sample-main-java && sbt test"
+    - CMD="cd akka-sample-main-java && mvn test"
+    - CMD="cd akka-sample-main-scala && sbt test"
+    - CMD="cd akka-sample-multi-node-scala && sbt multi-jvm:test"
+    - CMD="cd akka-sample-osgi-dining-hakkers && mvn compile"
+    - CMD="cd akka-sample-persistence-java && sbt test"
     - CMD="cd akka-sample-persistence-java && mvn test
-    - CMD="cd akka-sample-persistence-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-supervision-java && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-supervision-java && mvn test
-    - CMD="cd akka-sample-vavr && mvn test
+    - CMD="cd akka-sample-persistence-scala && sbt test"
+    - CMD="cd akka-sample-supervision-java && sbt test"
+    - CMD="cd akka-sample-supervision-java && mvn test"
+    - CMD="cd akka-sample-vavr && mvn test"
 
 script:
   - eval "$CMD"
