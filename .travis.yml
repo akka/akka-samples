@@ -40,7 +40,7 @@ env:
     - CMD="cd akka-sample-multi-node-scala && sbt multi-jvm:test"
     - CMD="cd akka-sample-osgi-dining-hakkers && mvn compile"
     - CMD="cd akka-sample-persistence-java && sbt test"
-    - CMD="cd akka-sample-persistence-java && mvn test
+    - CMD="cd akka-sample-persistence-java && mvn test"
     - CMD="cd akka-sample-persistence-scala && sbt test"
     - CMD="cd akka-sample-supervision-java && sbt test"
     - CMD="cd akka-sample-supervision-java && mvn test"
