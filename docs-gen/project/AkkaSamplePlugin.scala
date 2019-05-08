@@ -15,7 +15,7 @@ object AkkaSamplePlugin extends sbt.AutoPlugin {
   import autoImport._
   import ParadoxPlugin.autoImport._
   override def projectSettings: Seq[Setting[_]] = Seq(
-    baseUrl := "https://github.com/akka/akka-samples/blob/2.5",
+    baseUrl := "https://github.com/akka/akka-samples/blob/2.6",
     crossPaths := false,
     // Copy README.md file
     sourceDirectory in (Compile, paradox) := {
