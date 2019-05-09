@@ -10,4 +10,9 @@ libraryDependencies ++= Seq(
   "org.scalatest"              %% "scalatest"                % "3.0.7"     % Test
 )
 
+// To enable https://developer.lightbend.com/docs/telemetry/current
+//cinnamon in run := true
+//libraryDependencies += Cinnamon.library.cinnamonAkka
+//enablePlugins(Cinnamon)
+
 licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
