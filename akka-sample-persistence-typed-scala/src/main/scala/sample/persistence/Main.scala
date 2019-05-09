@@ -13,7 +13,9 @@ implicit val timeout: Timeout = 5.seconds
     case class Ack(description: String)
 
     // First test: start a single persistent actor.
-    // TODO: start them dynamically, actually do something with responses
+    // TODO: start them dynamically, actually do something with responses beyond printing
+    // You can 'manually' test things are actually persisted by changing the commands and looking
+    // at this
     val rootBehavior = Behaviors.setup[Ack](context => {
         val persistentActor = context.spawn(ShoppingCart.behavior("test"), "test")
         context.ask(persistentActor)((self: ActorRef[ShoppingCart.Result]) => ShoppingCart.UpdateItem("foo", 32, self)) {
