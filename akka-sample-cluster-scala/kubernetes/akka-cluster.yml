@@ -1,0 +1,22 @@
+apiVersion: app.lightbend.com/v1alpha1
+kind: AkkaCluster
+metadata:
+  name: simple-cluster-app
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: main
+        image: lightbend-docker-registry.bintray.io/simple-cluster-app/akka-sample-cluster-scala:0.1.0-SNAPSHOT
+        imagePullPolicy: Always
+        livenessProbe:
+          tcpSocket:
+            port: 8558
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: remoting
+          containerPort: 2552
+        - name: management
+          containerPort: 8558
