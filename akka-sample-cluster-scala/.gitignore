@@ -13,5 +13,6 @@ target/
 /logs
 .cache
 .classpath
+.metals
 .project
 .settings
