@@ -77,12 +77,12 @@ public class SnapshotExample {
     final ActorSystem system = ActorSystem.create("example");
     final ActorRef persistentActor = system.actorOf(Props.create(ExamplePersistentActor.class), "persistentActor-3-java");
 
-    persistentActor.tell("a", null);
-    persistentActor.tell("b", null);
-    persistentActor.tell("snap", null);
-    persistentActor.tell("c", null);
-    persistentActor.tell("d", null);
-    persistentActor.tell("print", null);
+    persistentActor.tell("a", ActorRef.noSender());
+    persistentActor.tell("b", ActorRef.noSender());
+    persistentActor.tell("snap", ActorRef.noSender());
+    persistentActor.tell("c", ActorRef.noSender());
+    persistentActor.tell("d", ActorRef.noSender());
+    persistentActor.tell("print", ActorRef.noSender());
 
     Thread.sleep(10000);
     system.terminate();
