@@ -5,6 +5,9 @@ import scala.util.Random
 
 import akka.actor._
 import akka.cluster.sharding._
+import akka.pattern.ask
+import akka.pattern.pipe
+import akka.util.Timeout
 
 object Devices {
   // Update a random device
@@ -64,7 +67,12 @@ class Devices extends Actor with ActorLogging with Timers {
 
     case ReadTemperatures =>
       (0 to numberOfDevices).foreach { deviceId =>
-        deviceRegion ! Device.GetTemperature(deviceId)
+        if (deviceId >= 40) {
+          import context.dispatcher
+          implicit val timeout = Timeout(3.seconds)
+          deviceRegion.ask(Device.GetTemperature(deviceId)).pipeTo(self)
+        } else
+          deviceRegion ! Device.GetTemperature(deviceId)
       }
 
     case temp: Device.Temperature =>
