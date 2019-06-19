@@ -13,7 +13,7 @@ object Device {
   case class RecordTemperature(deviceId: Int, temperature: Double)
       extends Command
 
-  case class GetTemperature(deviceId: Int) extends Command
+  case class GetTemperature(deviceId: Int, replyTo: ActorRef) extends Command
 
   case class Temperature(deviceId: Int,
                          average: Double,
@@ -38,13 +38,17 @@ class Device extends Actor with ActorLogging {
       )
       context.become(counting(temperatures))
 
-    case GetTemperature(id) =>
+    case GetTemperature(id, replyTo) =>
       val reply =
         if (values.isEmpty)
           Temperature(id, Double.NaN, Double.NaN, 0)
         else
           Temperature(id, average(values), values.last, values.size)
-      sender() ! reply
+
+      if (replyTo == null)
+        sender() ! reply
+      else
+        replyTo ! reply
 
   }
 

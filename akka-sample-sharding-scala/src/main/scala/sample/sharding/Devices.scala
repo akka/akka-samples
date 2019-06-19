@@ -5,7 +5,8 @@ import scala.util.Random
 
 import akka.actor._
 import akka.cluster.sharding._
-import akka.pattern.ask
+import akka.cluster.sharding.typed.ShardingEnvelope
+import akka.pattern.extended.ask // note extended.ask
 import akka.pattern.pipe
 import akka.util.Timeout
 
@@ -24,7 +25,9 @@ class Devices extends Actor with ActorLogging with Timers {
 
   private val extractEntityId: ShardRegion.ExtractEntityId = {
     case msg @ Device.RecordTemperature(id, _) => (id.toString, msg)
-    case msg @ Device.GetTemperature(id)       => (id.toString, msg)
+    case msg @ Device.GetTemperature(id, _)    => (id.toString, msg)
+    case ShardingEnvelope(_, msg @ Device.RecordTemperature(id, _)) =>
+      (id.toString, msg)
   }
 
   private val numberOfShards = 100
@@ -32,10 +35,14 @@ class Devices extends Actor with ActorLogging with Timers {
   private val extractShardId: ShardRegion.ExtractShardId = {
     case Device.RecordTemperature(id, _) =>
       (math.abs(id.hashCode) % numberOfShards).toString
-    case Device.GetTemperature(id) =>
+    case Device.GetTemperature(id, _) =>
       (math.abs(id.hashCode) % numberOfShards).toString
     // Needed if you want to use 'remember entities':
     case ShardRegion.StartEntity(id) =>
+      (math.abs(id.hashCode) % numberOfShards).toString
+    case ShardingEnvelope(_, Device.RecordTemperature(id, _)) =>
+      (math.abs(id.hashCode) % numberOfShards).toString
+    case ShardingEnvelope(_, Device.GetTemperature(id, _)) =>
       (math.abs(id.hashCode) % numberOfShards).toString
   }
 
@@ -70,9 +77,11 @@ class Devices extends Actor with ActorLogging with Timers {
         if (deviceId >= 40) {
           import context.dispatcher
           implicit val timeout = Timeout(3.seconds)
-          deviceRegion.ask(Device.GetTemperature(deviceId)).pipeTo(self)
+          deviceRegion
+            .ask(replyTo => Device.GetTemperature(deviceId, replyTo))
+            .pipeTo(self)
         } else
-          deviceRegion ! Device.GetTemperature(deviceId)
+          deviceRegion ! Device.GetTemperature(deviceId, self)
       }
 
     case temp: Device.Temperature =>

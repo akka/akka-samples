@@ -20,6 +20,7 @@ lazy val `akka-sample-sharding-scala` = project
     javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m"),
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
+      "com.typesafe.akka" %% "akka-cluster-sharding-typed" % akkaVersion,
       "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
       "org.scalatest" %% "scalatest" % "3.0.8" % Test
     ),
