@@ -9,6 +9,10 @@ import akka.event.*;
 
 public class Device extends AbstractActor {
 
+  public static Props props() {
+    return Props.create(Device.class, Device::new);
+  }
+
   private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
   private List<Double> temperatures = new ArrayList<Double>();

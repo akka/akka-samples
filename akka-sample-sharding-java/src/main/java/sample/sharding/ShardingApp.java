@@ -1,7 +1,6 @@
 package sample.sharding;
 
 import akka.actor.ActorSystem;
-import akka.actor.Props;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -26,7 +25,7 @@ public class ShardingApp {
       ActorSystem system = ActorSystem.create("ShardingSystem", config);
 
       // Create an actor that starts the sharding and sends random messages
-      system.actorOf(Props.create(Devices.class));
+      system.actorOf(Devices.props());
     }
   }
 }

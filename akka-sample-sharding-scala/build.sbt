@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.6.0-M1"
+val akkaVersion = "2.6.0-M3"
 
 lazy val `akka-sample-sharding-scala` = project
   .in(file("."))
@@ -9,23 +9,25 @@ lazy val `akka-sample-sharding-scala` = project
   .settings(
     organization := "com.typesafe.akka.samples",
     scalaVersion := "2.12.8",
-    scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
+    scalacOptions in Compile ++= Seq(
+      "-deprecation",
+      "-feature",
+      "-unchecked",
+      "-Xlog-reflective-calls",
+      "-Xlint"
+    ),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
-    javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m", "-Djava.library.path=./target/native"),
+    javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m"),
     libraryDependencies ++= Seq(
-      "com.typesafe.akka" %% "akka-actor" % akkaVersion,
-      "com.typesafe.akka" %% "akka-remote" % akkaVersion,
-      "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
-      "com.typesafe.akka" %% "akka-cluster-metrics" % akkaVersion,
-      "com.typesafe.akka" %% "akka-cluster-tools" % akkaVersion,
       "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
-      "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion,
-      "org.scalatest" %% "scalatest" % "3.0.7" % Test,
-      "io.kamon" % "sigar-loader" % "1.6.6-rev002"),
-    fork in run := true,
+      "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
+      "org.scalatest" %% "scalatest" % "3.0.7" % Test
+    ),
     mainClass in (Compile, run) := Some("sample.sharding.ShardingApp"),
     // disable parallel tests
     parallelExecution in Test := false,
-    licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
+    licenses := Seq(
+      ("CC0", url("http://creativecommons.org/publicdomain/zero/1.0"))
+    )
   )
-  .configs (MultiJvm)
+  .configs(MultiJvm)
