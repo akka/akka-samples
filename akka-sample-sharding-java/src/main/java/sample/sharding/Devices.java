@@ -51,7 +51,7 @@ public class Devices extends AbstractActorWithTimers {
     ClusterShardingSettings settings = ClusterShardingSettings.create(system);
     deviceRegion = ClusterSharding.get(system)
       .start(
-        "Counter",
+        "Device",
         Device.props(),
         settings,
         messageExtractor);
