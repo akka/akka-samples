@@ -28,13 +28,19 @@ public class Devices extends AbstractActorWithTimers {
     @Override
     public String entityId(Object message) {
       if (message instanceof Device.RecordTemperature)
-        return ((Device.RecordTemperature) message).deviceId.toString();
+        return String.valueOf(((Device.RecordTemperature) message).deviceId);
+      else if (message instanceof Device.GetTemperature)
+        return String.valueOf(((Device.GetTemperature) message).deviceId);
       else
         return null;
     }
   };
 
   public enum UpdateDevice {
+    INSTANCE
+  }
+
+  public enum ReadTemperatures {
     INSTANCE
   }
 
@@ -57,18 +63,41 @@ public class Devices extends AbstractActorWithTimers {
         messageExtractor);
 
     getTimers().startTimerWithFixedDelay(UpdateDevice.INSTANCE, UpdateDevice.INSTANCE, Duration.ofSeconds(1));
+    getTimers().startTimerWithFixedDelay(ReadTemperatures.INSTANCE, ReadTemperatures.INSTANCE, Duration.ofSeconds(15));
   }
 
   @Override
   public Receive createReceive() {
     return receiveBuilder()
-      .match(UpdateDevice.class, u -> {
-        Integer deviceId = random.nextInt(numberOfDevices);
-        Double temperature = 5 + 30 * random.nextDouble();
-        Device.RecordTemperature msg = new Device.RecordTemperature(deviceId, temperature);
-        log.info("Sending {}", msg);
-        deviceRegion.tell(msg, getSelf());
-      })
+      .match(UpdateDevice.class, m -> receiveUpdateDevice())
+      .match(ReadTemperatures.class, m -> receiveReadTemperatures())
+      .match(Device.Temperature.class, this::receiveTemperature)
       .build();
   }
+
+  private void receiveUpdateDevice() {
+    Integer deviceId = random.nextInt(numberOfDevices);
+    Double temperature = 5 + 30 * random.nextDouble();
+    Device.RecordTemperature msg = new Device.RecordTemperature(deviceId, temperature);
+    log.info("Sending {}", msg);
+    deviceRegion.tell(msg, getSelf());
+  }
+
+  private void receiveReadTemperatures() {
+    for (int id = 0; id < numberOfDevices; id++) {
+      deviceRegion.tell(new Device.GetTemperature(id), getSelf());
+    }
+  }
+
+  private void receiveTemperature(Device.Temperature temp) {
+    if (temp.readings > 0)
+      log.info(
+        "Temperature of device {} is {} with average {} after {} readings",
+        temp.deviceId,
+        temp.latest,
+        temp.average,
+        temp.readings
+      );
+  }
+
 }

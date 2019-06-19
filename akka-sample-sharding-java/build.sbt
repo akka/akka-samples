@@ -12,8 +12,12 @@ val `akka-sample-sharding-java` = project
       "-Xlog-reflective-calls",
       "-Xlint"
     ),
-    javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
-    javacOptions in doc in Compile := Seq("-Xdoclint:none"),
+    javacOptions in Compile ++= Seq(
+      "-parameters",
+      "-Xlint:unchecked",
+      "-Xlint:deprecation"
+    ),
+    javacOptions in doc in Compile := Seq("-parameters", "-Xdoclint:none"),
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
       "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
