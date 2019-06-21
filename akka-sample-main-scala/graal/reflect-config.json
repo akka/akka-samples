@@ -1,0 +1,10 @@
+[
+  {
+    "name": "sample.hello.HelloWorld",
+    "allDeclaredConstructors":true,
+    "fields" : [
+      { "name" : "context", "allowWrite" : true },
+      { "name" : "self", "allowWrite" : true }
+    ]
+  }
+]
