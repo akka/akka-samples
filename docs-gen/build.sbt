@@ -82,20 +82,6 @@ lazy val `akka-sample-persistence-scala` = project
     baseProject := "akka-sample-persistence-scala"
   )
 
-lazy val `akka-sample-remote-java` = project
-  .enablePlugins(AkkaSamplePlugin)
-  .settings(
-    name        := "Akka Remote with Java",
-    baseProject := "akka-sample-remote-java"
-  )
-
-lazy val `akka-sample-remote-scala` = project
-  .enablePlugins(AkkaSamplePlugin)
-  .settings(
-    name        := "Akka Remote with Scala",
-    baseProject := "akka-sample-remote-scala"
-  )
-
 lazy val `akka-sample-supervision-java` = project
   .enablePlugins(AkkaSamplePlugin)
   .settings(
