@@ -1,5 +1,9 @@
 [
   {
+    "name": "akka.Main$Terminator",
+    "allDeclaredConstructors": true
+  },
+  {
     "name": "sample.hello.HelloWorld",
     "allDeclaredConstructors":true,
     "fields" : [

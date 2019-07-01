@@ -17,7 +17,7 @@ unmanagedJars in Compile += file(sys.env("GRAAL_HOME") + "/jre/lib/svm/builder/s
 scalaVersion := "2.12.8"
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.5.23",
-  "com.github.vmencik" %% "graal-akka-actor" % "0.1.2-SNAPSHOT" % "provided",
+  "com.github.vmencik" %% "graal-akka-actor" % "0.3.2" % "provided",
 )
 
 licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
