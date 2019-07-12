@@ -32,10 +32,12 @@ public class Device extends AbstractActor {
 
   public static class GetTemperature implements Command {
     public final int deviceId;
+    public final ActorRef replyTo;
 
     @JsonCreator
-    public GetTemperature(int deviceId) {
+    public GetTemperature(int deviceId, ActorRef replyTo) {
       this.deviceId = deviceId;
+      this.replyTo = replyTo;
     }
   }
 
@@ -77,13 +79,18 @@ public class Device extends AbstractActor {
   }
 
   private void receiveGetTemperature(GetTemperature cmd) {
+    Temperature reply;
     if (temperatures.isEmpty()) {
-      getSender().tell(new Temperature(cmd.deviceId, Double.NaN,
-        Double.NaN, 0), getSelf());
+      reply = new Temperature(cmd.deviceId, Double.NaN, Double.NaN, 0);
     } else {
-      getSender().tell(new Temperature(cmd.deviceId, average(temperatures),
-        temperatures.get(temperatures.size() - 1), temperatures.size()), getSelf());
+      reply = new Temperature(cmd.deviceId, average(temperatures),
+        temperatures.get(temperatures.size() - 1), temperatures.size());
     }
+
+    if (cmd.replyTo == null)
+      getSender().tell(reply, getSelf());
+    else
+      cmd.replyTo.tell(reply, getSelf());
   }
 
   private double sum(List<Double> values) {
