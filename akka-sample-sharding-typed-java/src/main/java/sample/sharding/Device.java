@@ -10,9 +10,6 @@ import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
-import akka.cluster.sharding.typed.HashCodeMessageExtractor;
-import akka.cluster.sharding.typed.ShardingEnvelope;
-import akka.cluster.sharding.typed.ShardingMessageExtractor;
 import akka.cluster.sharding.typed.javadsl.ClusterSharding;
 import akka.cluster.sharding.typed.javadsl.Entity;
 import akka.cluster.sharding.typed.javadsl.EntityTypeKey;
@@ -23,42 +20,11 @@ public class Device extends AbstractBehavior<Device.Command> {
   public static final EntityTypeKey<Command> TYPE_KEY = EntityTypeKey.create(Command.class, "Device");
 
   public static void init(ActorSystem<?> system) {
-    ShardingMessageExtractor<Object, Command> messageExtractor = new ShardingMessageExtractor<Object, Command>() {
-      final HashCodeMessageExtractor<Command> delegate = new HashCodeMessageExtractor<>(
-        system.settings().config().getInt("akka.cluster.sharding.number-of-shards"));
-
-      @SuppressWarnings("unchecked")
-      @Override
-      public String entityId(Object message) {
-        if (message instanceof RecordTemperature)
-          return String.valueOf(((RecordTemperature) message).deviceId);
-        else if (message instanceof GetTemperature)
-          return String.valueOf(((GetTemperature) message).deviceId);
-        else if (message instanceof ShardingEnvelope)
-          return delegate.entityId((ShardingEnvelope<Command>) message);
-        else
-          return null;
-      }
-
-      @Override
-      public String shardId(String entityId) {
-        return delegate.shardId(entityId);
-      }
-
-      @SuppressWarnings("unchecked")
-      @Override
-      public Command unwrapMessage(Object message) {
-        if (message instanceof Command)
-          return (Command) message;
-        else if (message instanceof ShardingEnvelope)
-          return delegate.unwrapMessage((ShardingEnvelope<Command>) message);
-        else
-          return null;
-      }
-    };
-
-    ClusterSharding.get(system).init(Entity.of(TYPE_KEY, context -> Device.create())
-      .withMessageExtractor(messageExtractor));
+    // If the original hashing function was using
+    // `(math.abs(id.hashCode) % numberOfShards).toString`
+    // the default HashCodeMessageExtractor in Typed can be used.
+    // That is also compatible with `akka.cluster.sharding.ShardRegion.HashCodeMessageExtractor`.
+    ClusterSharding.get(system).init(Entity.of(TYPE_KEY, context -> Device.create()));
   }
 
   public interface Command extends Message {}
