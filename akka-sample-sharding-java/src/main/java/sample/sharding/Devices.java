@@ -1,23 +1,48 @@
 package sample.sharding;
 
+import java.time.Duration;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
-import scala.concurrent.duration.Duration;
-import akka.japi.Option;
+import akka.actor.AbstractActorWithTimers;
 
-import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import akka.cluster.Cluster;
 import akka.cluster.sharding.ClusterSharding;
 import akka.cluster.sharding.ClusterShardingSettings;
 import akka.cluster.sharding.ShardRegion;
 
-public class Devices extends AbstractActor {
+public class Devices extends AbstractActorWithTimers {
+
+  public static Props props() {
+    return Props.create(Devices.class, Devices::new);
+  }
+
+  private static final int NUMBER_OF_SHARDS = 100;
+
+  static ShardRegion.MessageExtractor messageExtractor =
+    new ShardRegion.HashCodeMessageExtractor(NUMBER_OF_SHARDS) {
+
+    @Override
+    public String entityId(Object message) {
+      if (message instanceof Device.RecordTemperature)
+        return String.valueOf(((Device.RecordTemperature) message).deviceId);
+      else if (message instanceof Device.GetTemperature)
+        return String.valueOf(((Device.GetTemperature) message).deviceId);
+      else
+        return null;
+    }
+  };
+
+  public enum UpdateDevice {
+    INSTANCE
+  }
+
+  public enum ReadTemperatures {
+    INSTANCE
+  }
 
   private final LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
@@ -25,76 +50,54 @@ public class Devices extends AbstractActor {
 
   private final Random random = new Random();
 
-  private final Integer numberOfDevices = 50;
-
-  static ShardRegion.MessageExtractor messageExtractor = new ShardRegion.MessageExtractor() {
-    @Override
-      public String entityId(Object message) {
-        if (message instanceof Device.RecordTemperature)
-          return String.valueOf(((Device.RecordTemperature) message).deviceId);
-        else
-          return null;
-      }
-
-      @Override
-      public Object entityMessage(Object message) {
-        if (message instanceof Device.RecordTemperature)
-          return message;
-        else
-          return message;
-      }
-
-      @Override
-      public String shardId(Object message) {
-        int numberOfShards = 100;
-        if (message instanceof Device.RecordTemperature) {
-          long id = ((Device.RecordTemperature) message).deviceId;
-          return String.valueOf(id % numberOfShards);
-        // Needed if you want to use 'remember entities':
-        // } else if (message instanceof ShardRegion.StartEntity) {
-        //   long id = ((ShardRegion.StartEntity) message).id;
-        //   return String.valueOf(id % numberOfShards)
-        } else {
-          return null;
-        }
-      }
-  };
-
-  public enum UpdateDevice {
-    INSTANCE
-  }
+  private final int numberOfDevices = 50;
 
   public Devices() {
     ActorSystem system = getContext().getSystem();
-    Option<String> roleOption = Option.none();
     ClusterShardingSettings settings = ClusterShardingSettings.create(system);
     deviceRegion = ClusterSharding.get(system)
       .start(
-        "Counter",
-        Props.create(Device.class),
+        "Device",
+        Device.props(),
         settings,
         messageExtractor);
 
-    getContext().getSystem().scheduler().schedule(
-      Duration.create(10, TimeUnit.SECONDS),
-      Duration.create(1, TimeUnit.SECONDS),
-      getSelf(),
-      UpdateDevice.INSTANCE,
-      system.dispatcher(),
-      null
-    );
+    getTimers().startTimerWithFixedDelay(UpdateDevice.INSTANCE, UpdateDevice.INSTANCE, Duration.ofSeconds(1));
+    getTimers().startTimerWithFixedDelay(ReadTemperatures.INSTANCE, ReadTemperatures.INSTANCE, Duration.ofSeconds(15));
   }
 
   @Override
   public Receive createReceive() {
     return receiveBuilder()
-      .match(UpdateDevice.class, u -> {
-        Integer deviceId = random.nextInt(numberOfDevices);
-        Double temperature = 5 + 30 * random.nextDouble();
-        Device.RecordTemperature msg = new Device.RecordTemperature(deviceId, temperature);
-        log.info("Sending {}", msg);
-        deviceRegion.tell(msg, getSelf());
-      })
+      .match(UpdateDevice.class, m -> receiveUpdateDevice())
+      .match(ReadTemperatures.class, m -> receiveReadTemperatures())
+      .match(Device.Temperature.class, this::receiveTemperature)
       .build();
   }
+
+  private void receiveUpdateDevice() {
+    Integer deviceId = random.nextInt(numberOfDevices);
+    Double temperature = 5 + 30 * random.nextDouble();
+    Device.RecordTemperature msg = new Device.RecordTemperature(deviceId, temperature);
+    log.info("Sending {}", msg);
+    deviceRegion.tell(msg, getSelf());
+  }
+
+  private void receiveReadTemperatures() {
+    for (int id = 0; id < numberOfDevices; id++) {
+      deviceRegion.tell(new Device.GetTemperature(id), getSelf());
+    }
+  }
+
+  private void receiveTemperature(Device.Temperature temp) {
+    if (temp.readings > 0)
+      log.info(
+        "Temperature of device {} is {} with average {} after {} readings",
+        temp.deviceId,
+        temp.latest,
+        temp.average,
+        temp.readings
+      );
+  }
+
 }
