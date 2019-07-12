@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.6.0-M3"
+val akkaVersion = "2.6.0-M4"
 
 lazy val `akka-sample-sharding-scala` = project
   .in(file("."))
