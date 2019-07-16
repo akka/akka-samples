@@ -37,7 +37,7 @@ object ShoppingCart {
 
   sealed trait Result
   case object OK extends Result
-  case class Failed(msg: String) extends Result
+  case class Rejected(msg: String) extends Result
 
   /**
    * A command to update an item.
@@ -93,14 +93,14 @@ object ShoppingCart {
 
   def openShoppingCart(state: State, command: Command[_]): ReplyEffect[Event, State] = command match {
     case cmd @ UpdateItem(_, quantity, _) if quantity < 0 =>
-      Effect.reply(cmd)(Failed("Quantity must be greater than zero"))
+      Effect.reply(cmd)(Rejected("Quantity must be greater than zero"))
     case cmd @ UpdateItem(productId, 0, _) if !state.items.contains(productId) =>
-      Effect.reply(cmd)(Failed("Cannot delete item that is not already in cart"))
+      Effect.reply(cmd)(Rejected("Cannot delete item that is not already in cart"))
     case cmd @ UpdateItem(productId, quantity, _) =>
       Effect.persist(ItemUpdated(productId, quantity)).thenReply(cmd)(_ => OK)
 
     case cmd: Checkout if state.items.isEmpty =>
-      Effect.reply(cmd)(Failed("Cannot checkout empty cart"))
+      Effect.reply(cmd)(Rejected("Cannot checkout empty cart"))
     case cmd: Checkout =>
       Effect.persist(CheckedOut).thenReply(cmd)(_ => OK)
 
@@ -112,8 +112,8 @@ object ShoppingCart {
     case cmd: Get =>
       Effect.reply(cmd)(state)
     case cmd: UpdateItem =>
-      Effect.reply(cmd)(Failed("Can't update item on already checked out shopping cart"))
+      Effect.reply(cmd)(Rejected("Can't update item on already checked out shopping cart"))
     case cmd: Checkout =>
-      Effect.reply(cmd)(Failed("Can't checkout already checked out shopping cart"))
+      Effect.reply(cmd)(Rejected("Can't checkout already checked out shopping cart"))
   }
 }
