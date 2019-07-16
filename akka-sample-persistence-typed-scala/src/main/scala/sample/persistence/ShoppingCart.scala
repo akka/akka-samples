@@ -1,29 +1,30 @@
 package sample.persistence
 
-import akka.actor.typed.ActorRef
 import akka.Done
+import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
+import akka.actor.typed.scaladsl.Behaviors
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
-import akka.actor.typed.scaladsl.Behaviors
 import akka.persistence.typed.scaladsl.Effect
-import akka.actor.testkit.typed.scaladsl.Effects
 import akka.persistence.typed.ExpectingReply
+import akka.persistence.typed.scaladsl.ReplyEffect
+
+import akka.actor.testkit.typed.scaladsl.Effects
 
 object ShoppingCart {
-
   /**
    * The current state held by the persistent entity.
    */
   case class State(items: Map[String, Int], checkedOut: Boolean) {
-    def updateItem(productId: String, quantity: Int) = {
+    def updateItem(productId: String, quantity: Int): State = {
       quantity match {
         case 0 => copy(items = items - productId)
         case _ => copy(items = items + (productId -> quantity))
       }
     }
 
-    def checkout = copy(checkedOut = true)
+    def checkout: State = copy(checkedOut = true)
   }
   object State {
     val empty = State(Map.empty, false)
@@ -32,7 +33,7 @@ object ShoppingCart {
   /**
    * This interface defines all the commands that the ShoppingCart persistent actor supports.
    */
-  sealed trait Command
+  sealed trait Command[R] extends ExpectingReply[R]
 
   sealed trait Result
   case object OK extends Result
@@ -45,15 +46,14 @@ object ShoppingCart {
    * all the events emitted by this command are successfully persisted.
    */
   case class UpdateItem(productId: String, quantity: Int, replyTo: ActorRef[Result])
-      extends Command
-      with ExpectingReply[Result]
+      extends Command[Result]
 
   /**
    * A command to get the current state of the shopping cart.
    *
    * It can reply with the state of the ShoppingCart
    */
-  case class Get(replyTo: ActorRef[State]) extends Command with ExpectingReply[State]
+  case class Get(replyTo: ActorRef[State]) extends Command[State]
 
   /**
    * A command to checkout the shopping cart.
@@ -61,7 +61,7 @@ object ShoppingCart {
    * It can reply with Done, which will be returned when the fact that checkout
    * has started has successfully been persisted.
    */
-  case class Checkout(replyTo: ActorRef[Result]) extends Command with ExpectingReply[Result]
+  case class Checkout(replyTo: ActorRef[Result]) extends Command[Result]
 
   /**
    * This interface defines all the events that the ShoppingCart supports.
@@ -78,9 +78,9 @@ object ShoppingCart {
    */
   case object CheckedOut extends Event
 
-  def behavior(id: String): Behavior[Command] =
-    EventSourcedBehavior[Command, Event, State](
-      PersistenceId(id),
+  def behavior(id: String): Behavior[Command[_]] =
+    EventSourcedBehavior.withEnforcedReplies[Command[_], Event, State](
+      PersistenceId(s"ShoppingCart|$id"),
       State.empty,
       (state, command) =>
         if (state.checkedOut) checkedOutShoppingCart(state, command)
@@ -91,7 +91,7 @@ object ShoppingCart {
           case CheckedOut                       => state.checkout
         })
 
-  def openShoppingCart(state: State, command: Command): Effect[Event, State] = command match {
+  def openShoppingCart(state: State, command: Command[_]): ReplyEffect[Event, State] = command match {
     case cmd @ UpdateItem(_, quantity, _) if quantity < 0 =>
       Effect.reply(cmd)(Failed("Quantity must be greater than zero"))
     case cmd @ UpdateItem(productId, 0, _) if !state.items.contains(productId) =>
@@ -108,7 +108,7 @@ object ShoppingCart {
       Effect.reply(cmd)(state)
   }
 
-  def checkedOutShoppingCart(state: State, command: Command): Effect[Event, State] = command match {
+  def checkedOutShoppingCart(state: State, command: Command[_]): ReplyEffect[Event, State] = command match {
     case cmd: Get =>
       Effect.reply(cmd)(state)
     case cmd: UpdateItem =>
