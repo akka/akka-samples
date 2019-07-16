@@ -92,17 +92,19 @@ object ShoppingCart {
         })
 
   def openShoppingCart(state: State, command: Command[_]): ReplyEffect[Event, State] = command match {
-    case cmd @ UpdateItem(_, quantity, _) if quantity < 0 =>
-      Effect.reply(cmd)(Rejected("Quantity must be greater than zero"))
-    case cmd @ UpdateItem(productId, 0, _) if !state.items.contains(productId) =>
-      Effect.reply(cmd)(Rejected("Cannot delete item that is not already in cart"))
     case cmd @ UpdateItem(productId, quantity, _) =>
-      Effect.persist(ItemUpdated(productId, quantity)).thenReply(cmd)(_ => OK)
+      if (quantity < 0)
+        Effect.reply(cmd)(Rejected("Quantity must be greater than zero"))
+      else if (quantity == 0 && !state.items.contains(productId))
+        Effect.reply(cmd)(Rejected("Cannot delete item that is not already in cart"))
+      else
+        Effect.persist(ItemUpdated(productId, quantity)).thenReply(cmd)(_ => OK)
 
-    case cmd: Checkout if state.items.isEmpty =>
-      Effect.reply(cmd)(Rejected("Cannot checkout empty cart"))
     case cmd: Checkout =>
-      Effect.persist(CheckedOut).thenReply(cmd)(_ => OK)
+      if (state.items.isEmpty)
+        Effect.reply(cmd)(Rejected("Cannot checkout empty cart"))
+      else
+        Effect.persist(CheckedOut).thenReply(cmd)(_ => OK)
 
     case cmd: Get =>
       Effect.reply(cmd)(state)
