@@ -44,6 +44,7 @@ env:
     - CMD="cd akka-sample-supervision-java && sbt ++\$TRAVIS_SCALA_VERSION test"
     - CMD="cd akka-sample-supervision-java && mvn test
     - CMD="cd akka-sample-vavr && mvn test
+    - CMD="cd akka-cluster-client-grpc-scala && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
 
 script:
   - eval "$CMD"
