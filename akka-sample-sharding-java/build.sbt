@@ -1,4 +1,4 @@
-val akkaVersion = "2.5.22"
+val akkaVersion = "2.5.24"
 
 val `akka-sample-sharding-java` = project
   .in(file("."))
