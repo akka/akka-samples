@@ -20,9 +20,9 @@ cache:
 
 before_install:
   - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.10.1/install.sh | bash && . ~/.jabba/jabba.sh
-  - wget https://archive.apache.org/dist/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.zip
-  - unzip -qq apache-maven-3.5.4-bin.zip
-  - export M2_HOME=$PWD/apache-maven-3.5.4
+  - wget https://archive.apache.org/dist/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.zip
+  - unzip -qq apache-maven-3.6.1-bin.zip
+  - export M2_HOME=$PWD/apache-maven-3.6.1
   - export PATH=$M2_HOME/bin:$PATH
 
 env:
@@ -43,7 +43,7 @@ env:
     - CMD="cd akka-sample-main-java && mvn test"
     - CMD="cd akka-sample-main-scala && sbt test"
     - CMD="cd akka-sample-multi-node-scala && sbt multi-jvm:test"
-    - CMD="cd akka-sample-osgi-dining-hakkers && mvn compile"
+    - CMD="cd akka-sample-osgi-dining-hakkers && mvn --no-transfer-progress compile"
     - CMD="cd akka-sample-persistence-java && sbt test"
     - CMD="cd akka-sample-persistence-java && mvn test"
     - CMD="cd akka-sample-persistence-scala && sbt test"
