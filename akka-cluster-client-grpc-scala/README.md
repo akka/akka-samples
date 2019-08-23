@@ -35,8 +35,9 @@ based API.
 
 ## Initial contact points
 
-Initial contact points and and re-establishing connection is covered by
-Service Discovery in Akka gRPC.
+Initial contact points and re-establishing connections is covered by
+[Service Discovery in Akka gRPC](https://doc.akka.io/docs/akka-grpc/current/client/configuration.html)
+which shows both configuration and programmatic methods.
 
 ## Failure detection
 
