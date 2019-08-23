@@ -8,7 +8,7 @@ The example is intended to be copied and adjusted to your needs. It will not be
 provided as a published artifact.
 
 The example is still using an actor on the client side to have an API that is very close
-to the original Cluster Client. The messages this actor can handle corresponds to the
+to the original Cluster Client. The messages this actor can handle correspond to the
 [Distributed Pub Sub](https://doc.akka.io/docs/akka/current/distributed-pub-sub.html)
 messages on the server side, such as `ClusterClient.Send`.
 
