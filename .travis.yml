@@ -2,10 +2,10 @@ sudo: false
 language: scala
 
 scala:
-  - "2.12.6"
+  - "2.12.8"
 
-jdk:
-  - oraclejdk8
+install:
+  - $JABBA_HOME/bin/jabba install $TRAVIS_JDK && export JAVA_HOME="$JABBA_HOME/jdk/$TRAVIS_JDK" && export PATH="$JAVA_HOME/bin:$PATH" && java -Xmx32m -version
 
 before_cache:
   - find $HOME/.ivy2 -name "ivydata-*.properties" -print -delete
@@ -14,36 +14,42 @@ before_cache:
 cache:
   directories:
     - $HOME/.ivy2/cache
-    - $HOME/.sbt/boot
+    - $HOME/.sbt
     - $HOME/.m2/repository
+    - $HOME/.jabba/jdk
 
 before_install:
+  - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.10.1/install.sh | bash && . ~/.jabba/jabba.sh
   - wget https://archive.apache.org/dist/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.zip
   - unzip -qq apache-maven-3.5.4-bin.zip
   - export M2_HOME=$PWD/apache-maven-3.5.4
   - export PATH=$M2_HOME/bin:$PATH
 
 env:
+  global:
+    - TRAVIS_JDK=adopt@1.8.212-03
+    - JABBA_HOME=/home/travis/.jabba
   matrix:
-    - CMD="cd akka-sample-cluster-java && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
-    - CMD="cd akka-sample-cluster-scala && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
-    - CMD="cd akka-sample-distributed-data-java && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
-    - CMD="cd akka-sample-distributed-data-scala && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
-    - CMD="cd akka-sample-fsm-java && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-fsm-java && mvn test
-    - CMD="cd akka-sample-fsm-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-main-java && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-main-java && mvn test
-    - CMD="cd akka-sample-main-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-multi-node-scala && sbt ++\$TRAVIS_SCALA_VERSION multi-jvm:test"
-    - CMD="cd akka-sample-osgi-dining-hakkers && mvn compile
-    - CMD="cd akka-sample-persistence-java && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-persistence-java && mvn test
-    - CMD="cd akka-sample-persistence-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-persistence-typed-scala && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-supervision-java && sbt ++\$TRAVIS_SCALA_VERSION test"
-    - CMD="cd akka-sample-supervision-java && mvn test
-    - CMD="cd akka-sample-vavr && mvn test
+- CMD="cd akka-sample-camel-java && sbt test"
+      - CMD="cd akka-sample-camel-scala && sbt test"
+      - CMD="cd akka-sample-cluster-java && sbt multi-jvm:test"
+      - CMD="cd akka-sample-cluster-scala && sbt multi-jvm:test"
+      - CMD="cd akka-sample-distributed-data-java && sbt multi-jvm:test"
+      - CMD="cd akka-sample-distributed-data-scala && sbt multi-jvm:test"
+      - CMD="cd akka-sample-fsm-java && sbt test"
+      - CMD="cd akka-sample-fsm-java && mvn test"
+      - CMD="cd akka-sample-fsm-scala && sbt test"
+      - CMD="cd akka-sample-main-java && sbt test"
+      - CMD="cd akka-sample-main-java && mvn test"
+      - CMD="cd akka-sample-main-scala && sbt test"
+      - CMD="cd akka-sample-multi-node-scala && sbt multi-jvm:test"
+      - CMD="cd akka-sample-osgi-dining-hakkers && mvn compile"
+      - CMD="cd akka-sample-persistence-java && sbt test"
+      - CMD="cd akka-sample-persistence-java && mvn test"
+      - CMD="cd akka-sample-persistence-scala && sbt test"
+      - CMD="cd akka-sample-supervision-java && sbt test"
+      - CMD="cd akka-sample-supervision-java && mvn test"
+      - CMD="cd akka-sample-vavr && mvn test"
 
 script:
   - eval "$CMD"
