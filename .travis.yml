@@ -32,6 +32,7 @@ env:
   matrix:
     - CMD="cd akka-sample-cluster-java && sbt multi-jvm:test"
     - CMD="cd akka-sample-cluster-scala && sbt multi-jvm:test"
+    - CMD="cd akka-sample-cluster-client-grpc-scala && sbt multi-jvm:test"
     - CMD="cd akka-sample-distributed-data-java && sbt multi-jvm:test"
     - CMD="cd akka-sample-distributed-data-scala && sbt multi-jvm:test"
     - CMD="cd akka-sample-fsm-java && sbt test"
