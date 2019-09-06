@@ -9,7 +9,7 @@ object SimpleClusterApp {
     if (args.isEmpty)
       startup(Seq("2551", "2552", "0"))
     else
-      startup(args)
+      startup(args // FIXME testing travis, should not compile
   }
 
   def startup(ports: Seq[String]): Unit = {
