@@ -14,7 +14,7 @@ import akka.actor.Props
 import akka.actor.Terminated
 import akka.event.LoggingAdapter
 import akka.grpc.GrpcClientSettings
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import akka.stream.KillSwitches
 import akka.stream.OverflowStrategy
 import akka.stream.SharedKillSwitch
@@ -26,7 +26,7 @@ object ClusterClient {
   /**
    * Factory method for `ClusterClient` [[akka.actor.Props]].
    */
-  def props(settings: ClusterClientSettings)(implicit materializer: ActorMaterializer): Props =
+  def props(settings: ClusterClientSettings)(implicit materializer: Materializer): Props =
     Props(new ClusterClient(settings))
 
   sealed trait Command
@@ -55,7 +55,7 @@ object ClusterClient {
   final case class Publish(topic: String, msg: Any) extends Command
 
   private def createClientStub(settings: ClusterClientSettings)(
-      implicit mat: ActorMaterializer): ClusterClientReceptionistServiceClient = {
+      implicit mat: Materializer): ClusterClientReceptionistServiceClient = {
     implicit val ec: ExecutionContext = mat.executionContext
     ClusterClientReceptionistServiceClient(settings.grpcClientSettings)
   }
@@ -66,7 +66,7 @@ object ClusterClient {
       sender: ActorRef,
       killSwitch: SharedKillSwitch,
       log: LoggingAdapter,
-      serialization: ClusterClientSerialization)(implicit mat: ActorMaterializer): Future[ActorRef] = {
+      serialization: ClusterClientSerialization)(implicit mat: Materializer): Future[ActorRef] = {
     val sessionReqRefPromise = Promise[ActorRef]()
     log.info("New session for {}", sender)
     receptionistServiceClient
@@ -152,7 +152,7 @@ object ClusterClient {
  * Note that this is a best effort implementation: messages can always be lost due to the distributed
  * nature of the actors involved.
  */
-final class ClusterClient(settings: ClusterClientSettings)(implicit materializer: ActorMaterializer)
+final class ClusterClient(settings: ClusterClientSettings)(implicit materializer: Materializer)
     extends Actor
     with ActorLogging {
 

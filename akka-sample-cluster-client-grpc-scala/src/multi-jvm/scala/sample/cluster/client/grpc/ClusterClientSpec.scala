@@ -11,7 +11,7 @@ import akka.cluster.pubsub._
 import akka.remote.testconductor.RoleName
 import akka.remote.testkit.MultiNodeConfig
 import akka.remote.testkit.MultiNodeSpec
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import akka.testkit._
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
@@ -56,13 +56,13 @@ object ClusterClientSpec extends MultiNodeConfig {
 
   testTransport(on = true)
 
-  case class Reply(msg: Any, node: HostPort) extends CborSerializable
+  case class Reply(msg: String, node: HostPort) extends CborSerializable
 
   class TestService(testActor: ActorRef) extends Actor {
     def receive = {
       case "shutdown" =>
         context.system.terminate()
-      case msg =>
+      case msg: String =>
         testActor.forward(msg)
         sender() ! Reply(msg + "-ack", ClusterClientReceptionist(context.system).settings.hostPort)
     }
@@ -90,7 +90,7 @@ class ClusterClientSpec
     with ImplicitSender {
   import ClusterClientSpec._
 
-  private implicit val materializer: ActorMaterializer = ActorMaterializer.create(system)
+  private implicit val materializer: Materializer = Materializer(system)
 
   override def initialParticipants = roles.size
 

@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.6.0-M5"
+val akkaVersion = "2.6.0-M7"
 val grpcVersion = "1.10.0"
 
 lazy val `akka-sample-cluster-client-grpc-scala` = project
@@ -14,10 +14,7 @@ lazy val `akka-sample-cluster-client-grpc-scala` = project
     scalaVersion := "2.12.8",
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
-//    javaAgents += "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime",
-//    jvmOptions in MultiJvm :=
-//      "-javaagent:/Users/patrik/.ivy2/cache/org.mortbay.jetty.alpn/jetty-alpn-agent/jars/jetty-alpn-agent-2.0.7.jar"
-//      :: Nil,
+    // javaAgents += "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime",
     libraryDependencies ++= Seq(
         "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
         "com.typesafe.akka" %% "akka-cluster-tools" % akkaVersion,

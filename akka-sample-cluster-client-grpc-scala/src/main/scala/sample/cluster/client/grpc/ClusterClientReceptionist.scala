@@ -2,9 +2,9 @@ package sample.cluster.client.grpc
 
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration._
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
@@ -18,10 +18,9 @@ import akka.cluster.pubsub.DistributedPubSubMediator
 import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.HttpConnectionContext
-import akka.http.scaladsl.UseHttp2.Always
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.HttpResponse
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 
 object ClusterClientReceptionist extends ExtensionId[ClusterClientReceptionist] with ExtensionIdProvider {
   override def get(system: ActorSystem): ClusterClientReceptionist =
@@ -93,7 +92,7 @@ final class ClusterClientReceptionist(system: ExtendedActorSystem) extends Exten
     log.info("Starting ClusterClientReceptionist gRPC server at {}", settings.hostPort)
 
     implicit val sys = system
-    implicit val materializer = ActorMaterializer()
+    implicit val materializer = Materializer(sys)
 
     val serialization = new ClusterClientSerialization(system)
 
@@ -105,7 +104,7 @@ final class ClusterClientReceptionist(system: ExtendedActorSystem) extends Exten
       service,
       interface = settings.hostPort.hostname,
       settings.hostPort.port,
-      connectionContext = HttpConnectionContext(http2 = Always))
+      connectionContext = HttpConnectionContext())
   }
 
   server.onComplete { result =>

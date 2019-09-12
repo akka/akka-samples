@@ -73,7 +73,7 @@ class ClusterClientReceptionistGrpcImpl(
       }
     } catch {
       case NonFatal(e) =>
-        // ask timeout or deserialization error
+        // deserialization error
         Future.failed(e)
 
     }
