@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package sample.cluster.transformation;
+
+message TransformationJob {
+    string text = 1;
+}
+
+message TransformationResult {
+    string text = 1;
+}
+
+message JobFailed {
+    string reason = 1;
+    TransformationJob job = 2;
+}
+
+message BackendRegistration {}
