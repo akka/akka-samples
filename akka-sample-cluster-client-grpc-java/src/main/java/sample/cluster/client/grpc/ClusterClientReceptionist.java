@@ -66,7 +66,7 @@ final class ClusterClientReceptionist implements Extension {
       ClusterClientReceptionistServiceHandlerFactory.create(
         new ClusterClientReceptionistGrpcImpl(settings, pubSubMediator(), serialization, materializer, log),
         materializer, system),
-      ConnectHttp.toHost(settings.hostPort.hostname, settings.hostPort.port, UseHttp2.always()),
+      ConnectHttp.toHost(settings.hostPort.hostname, settings.hostPort.port),
       materializer)
       .whenComplete((result, exc) -> {
         if (exc == null)
