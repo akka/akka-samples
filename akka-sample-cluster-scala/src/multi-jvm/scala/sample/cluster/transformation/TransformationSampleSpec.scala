@@ -2,18 +2,16 @@ package sample.cluster.transformation
 
 import language.postfixOps
 import scala.concurrent.duration._
-
 import com.typesafe.config.ConfigFactory
-
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.WordSpecLike
 import org.scalatest.Matchers
-
 import akka.actor.Props
 import akka.cluster.Cluster
 import akka.remote.testkit.MultiNodeConfig
 import akka.remote.testkit.MultiNodeSpec
 import akka.testkit.ImplicitSender
+import sample.cluster.transformation.TransformationMessages._
 
 object TransformationSampleSpecConfig extends MultiNodeConfig {
   // register the named roles (nodes) of the test
@@ -39,8 +37,24 @@ object TransformationSampleSpecConfig extends MultiNodeConfig {
 
   // this configuration will be used for all nodes
   // note that no fixed host names and ports are used
-  commonConfig(ConfigFactory.parseString("""
-    akka.actor.provider = cluster
+  commonConfig(
+    ConfigFactory.parseString(
+      """
+      akka {
+          actor {
+          provider = cluster
+          allow-java-serialization = off
+          serializers {
+            scalapb = "sample.cluster.transformation.ScalaPbSerializer"
+          }
+          serialization-bindings {
+             "scalapb.GeneratedMessage" = scalapb
+          }
+          serialization-identifiers {
+            "sample.cluster.transformation.ScalaPbSerializer" = 10000
+            }
+      }
+    }
     # not using Artery in test due small /dev/shm in Travis
     akka.remote.artery.enabled = off
     """))
@@ -59,8 +73,12 @@ class TransformationSampleSpecMultiJvmNode3 extends TransformationSampleSpec
 class TransformationSampleSpecMultiJvmNode4 extends TransformationSampleSpec
 class TransformationSampleSpecMultiJvmNode5 extends TransformationSampleSpec
 
-abstract class TransformationSampleSpec extends MultiNodeSpec(TransformationSampleSpecConfig)
-  with WordSpecLike with Matchers with BeforeAndAfterAll with ImplicitSender {
+abstract class TransformationSampleSpec
+  extends MultiNodeSpec(TransformationSampleSpecConfig)
+    with WordSpecLike
+    with Matchers
+    with BeforeAndAfterAll
+    with ImplicitSender {
 
   import TransformationSampleSpecConfig._
 
@@ -75,11 +93,12 @@ abstract class TransformationSampleSpec extends MultiNodeSpec(TransformationSamp
       runOn(frontend1) {
         // this will only run on the 'first' node
         Cluster(system) join node(frontend1).address
-        val transformationFrontend = system.actorOf(Props[TransformationFrontend], name = "frontend")
+        val transformationFrontend =
+          system.actorOf(Props[TransformationFrontend], name = "frontend")
         transformationFrontend ! TransformationJob("hello")
         expectMsgPF() {
           // no backends yet, service unavailable
-          case JobFailed(_, TransformationJob("hello")) =>
+          case JobFailed(_, Some(TransformationJob("hello"))) =>
         }
       }
 
@@ -127,7 +146,8 @@ abstract class TransformationSampleSpec extends MultiNodeSpec(TransformationSamp
   }
 
   def assertServiceOk(): Unit = {
-    val transformationFrontend = system.actorSelection("akka://" + system.name + "/user/frontend")
+    val transformationFrontend =
+      system.actorSelection("akka://" + system.name + "/user/frontend")
     // eventually the service should be ok,
     // backends might not have registered initially
     awaitAssert {

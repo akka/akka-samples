@@ -12,6 +12,8 @@ import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import java.util.concurrent.atomic.AtomicInteger
 
+import sample.cluster.transformation.TransformationMessages._
+
 //#frontend
 class TransformationFrontend extends Actor {
 
@@ -20,13 +22,13 @@ class TransformationFrontend extends Actor {
 
   def receive = {
     case job: TransformationJob if backends.isEmpty =>
-      sender() ! JobFailed("Service unavailable, try again later", job)
+      sender() ! JobFailed("Service unavailable, try again later", Some(job))
 
     case job: TransformationJob =>
       jobCounter += 1
       backends(jobCounter % backends.size) forward job
 
-    case BackendRegistration if !backends.contains(sender()) =>
+    case _: BackendRegistration if !backends.contains(sender()) =>
       context watch sender()
       backends = backends :+ sender()
 
@@ -43,11 +45,10 @@ object TransformationFrontend {
     // See https://doc.akka.io/docs/akka/current/remoting-artery.html for details
     val port = if (args.isEmpty) "0" else args(0)
     val config = ConfigFactory.parseString(s"""
-        akka.remote.netty.tcp.port=$port
+        akka.remote.classic.netty.tcp.port=$port
         """)
       .withFallback(ConfigFactory.parseString("akka.cluster.roles = [frontend]"))
       .withFallback(ConfigFactory.load())
-
     val system = ActorSystem("ClusterSystem", config)
     val frontend = system.actorOf(Props[TransformationFrontend], name = "frontend")
 
@@ -55,7 +56,7 @@ object TransformationFrontend {
     import system.dispatcher
     system.scheduler.schedule(2.seconds, 2.seconds) {
       implicit val timeout = Timeout(5 seconds)
-      (frontend ? TransformationJob("hello-" + counter.incrementAndGet())) onSuccess {
+      (frontend ? TransformationJob("hello-" + counter.incrementAndGet())) foreach  {
         case result => println(result)
       }
     }

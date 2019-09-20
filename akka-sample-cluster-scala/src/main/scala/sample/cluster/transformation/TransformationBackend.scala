@@ -1,9 +1,6 @@
 package sample.cluster.transformation
 
-import language.postfixOps
-import scala.concurrent.duration._
 import akka.actor.Actor
-import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.actor.RootActorPath
@@ -13,6 +10,7 @@ import akka.cluster.ClusterEvent.MemberUp
 import akka.cluster.Member
 import akka.cluster.MemberStatus
 import com.typesafe.config.ConfigFactory
+import sample.cluster.transformation.TransformationMessages._
 
 //#backend
 class TransformationBackend extends Actor {
@@ -24,7 +22,7 @@ class TransformationBackend extends Actor {
   override def preStart(): Unit = cluster.subscribe(self, classOf[MemberUp])
   override def postStop(): Unit = cluster.unsubscribe(self)
 
-  def receive = {
+  def receive: PartialFunction[Any, Unit] = {
     case TransformationJob(text) => sender() ! TransformationResult(text.toUpperCase)
     case state: CurrentClusterState =>
       state.members.filter(_.status == MemberStatus.Up) foreach register
@@ -34,7 +32,7 @@ class TransformationBackend extends Actor {
   def register(member: Member): Unit =
     if (member.hasRole("frontend"))
       context.actorSelection(RootActorPath(member.address) / "user" / "frontend") !
-        BackendRegistration
+        BackendRegistration()
 }
 //#backend
 
@@ -45,7 +43,7 @@ object TransformationBackend {
     // See https://doc.akka.io/docs/akka/current/remoting-artery.html for details
     val port = if (args.isEmpty) "0" else args(0)
     val config = ConfigFactory.parseString(s"""
-        akka.remote.netty.tcp.port=$port
+        akka.classic.remote.netty.tcp.port=$port
         """)
       .withFallback(ConfigFactory.parseString("akka.cluster.roles = [backend]"))
       .withFallback(ConfigFactory.load())
