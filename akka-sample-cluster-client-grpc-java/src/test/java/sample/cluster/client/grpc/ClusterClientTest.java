@@ -142,7 +142,7 @@ public class ClusterClientTest {
   private void awaitCount(ActorSystem system, int expected, Duration timeout) {
     TestKit testKit = new TestKit(system);
     testKit.awaitAssert(() -> {
-      // FIXME Java API missing for accessing Count instance
+      // FIXME Java API missing for accessing Count instance https://github.com/akka/akka/issues/27728
       DistributedPubSub.get(system).mediator().tell(DistributedPubSubMediator.Count$.MODULE$, testKit.getRef());
       testKit.expectMsg(expected);
       return null;
