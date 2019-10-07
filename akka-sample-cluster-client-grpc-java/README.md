@@ -7,8 +7,8 @@ Project structure:
 
 * [clusterclient.proto](src/main/protobuf/clusterclient.proto) defines the gRPC service and messages
   that are exchanged between client and cluster (server)
-* [ClusterClient](src/main/scala/sample/cluster/client/grpc/ClusterClient.scala) is the actor on the client
+* [ClusterClient](src/main/java/sample/cluster/client/grpc/ClusterClient.java) is the actor on the client
   side that messages are sent via
-* [ClusterClientReceptionist](src/main/scala/sample/cluster/client/grpc/ClusterClientReceptionist.scala)
+* [ClusterClientReceptionist](src/main/java/sample/cluster/client/grpc/ClusterClientReceptionist.java)
   is an Akka extension on the cluster (server) side that implements the gPRC service and delegates
-  messages to actors in the cluster that have been registered in Distributed PubSub.
+  messages to actors in the cluster that have been registered in Distributed PubSub. 

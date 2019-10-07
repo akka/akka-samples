@@ -1,6 +1,6 @@
-package sample.cluster.client.grpc
+package sample.cluster.client.grpc;
 
 /**
  * Marker interface for messages that are serialized with Jackson.
  */
-trait CborSerializable
+public interface CborSerializable {}
