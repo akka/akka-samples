@@ -3,7 +3,7 @@ name := "akka-sample-persistence-java"
 
 scalaVersion := "2.12.8"
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-persistence" % "2.5.24",
+  "com.typesafe.akka" %% "akka-persistence" % "2.5.26",
   "org.iq80.leveldb" % "leveldb" % "0.7",
   "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8"
 )
