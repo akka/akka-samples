@@ -4,8 +4,6 @@ language: scala
 scala:
   - "2.12.8"
 
-install:
-  - $JABBA_HOME/bin/jabba install $TRAVIS_JDK && export JAVA_HOME="$JABBA_HOME/jdk/$TRAVIS_JDK" && export PATH="$JAVA_HOME/bin:$PATH" && java -Xmx32m -version
 
 before_cache:
   - find $HOME/.ivy2 -name "ivydata-*.properties" -print -delete
@@ -19,15 +17,17 @@ cache:
     - $HOME/.jabba/jdk
 
 before_install:
-  - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.10.1/install.sh | bash && . ~/.jabba/jabba.sh
+  - curl -Ls https://git.io/jabba | bash && . ~/.jabba/jabba.sh
   - wget https://archive.apache.org/dist/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.zip
   - unzip -qq apache-maven-3.6.1-bin.zip
   - export M2_HOME=$PWD/apache-maven-3.6.1
   - export PATH=$M2_HOME/bin:$PATH
 
+install: jabba install "adopt@~1.$TRAVIS_JDK.0-0" && jabba use "$_" && java -Xmx32m -version
+
 env:
   global:
-    - TRAVIS_JDK=adopt@1.8.212-03
+    - TRAVIS_JDK=8
     - JABBA_HOME=/home/travis/.jabba
   matrix:
     - CMD="cd akka-sample-camel-java && sbt test"
