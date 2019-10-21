@@ -10,8 +10,11 @@ import akka.actor._
 object Device {
   sealed trait Command extends Message
 
-  case class RecordTemperature(deviceId: Int, temperature: Double)
+  case class RecordTemperature(deviceId: Int, temperature: Double, startTime: Long, seqNr: Long)
       extends Command
+
+  case class RecordTemperatureAck(deviceId: Int, startTime: Long, seqNr: Long)
+    extends Command
 
   case class GetTemperature(deviceId: Int) extends Command
 
@@ -27,15 +30,18 @@ object Device {
 class Device extends Actor with ActorLogging {
   import Device._
 
+  log.info("Starting Device {}", self.path.name)
+
   override def receive = counting(Vector.empty)
 
   def counting(values: Vector[Double]): Receive = {
-    case RecordTemperature(id, temp) =>
+    case RecordTemperature(id, temp, startTime, seqNr) =>
       val temperatures = values :+ temp
       log.info(
         s"Recording temperature $temp for device $id, average is ${average(temperatures)} after " +
-          s"${temperatures.size} readings"
+          s"${temperatures.size} readings. SeqNr [$seqNr]"
       )
+      sender() ! RecordTemperatureAck(id, startTime, seqNr)
       context.become(counting(temperatures))
 
     case GetTemperature(id) =>
@@ -51,4 +57,8 @@ class Device extends Actor with ActorLogging {
   private def average(values: Vector[Double]): Double =
     if (values.isEmpty) Double.NaN
     else values.sum / values.size
+
+  override def postStop(): Unit = {
+    log.info("Stopped Device {}", self.path.name)
+  }
 }

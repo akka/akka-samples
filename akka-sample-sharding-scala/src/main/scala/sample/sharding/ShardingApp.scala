@@ -18,7 +18,10 @@ object ShardingApp {
     ports foreach { port =>
       // Override the configuration of the port
       val config = ConfigFactory
-        .parseString("akka.remote.artery.canonical.port=" + port)
+        .parseString(s"""
+        akka.remote.artery.canonical.port=$port
+        sample.sending-temperatures = ${port == "2555"}
+        """)
         .withFallback(ConfigFactory.load())
 
       // Create an Akka system
