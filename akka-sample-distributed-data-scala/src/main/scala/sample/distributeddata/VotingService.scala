@@ -1,88 +1,113 @@
 package sample.distributeddata
 
 import scala.concurrent.duration._
-import akka.cluster.ddata.DistributedData
-import akka.cluster.ddata.FlagKey
-import akka.actor.Actor
-import akka.cluster.ddata.PNCounterMapKey
-import akka.actor.ActorRef
-import akka.cluster.Cluster
-import akka.cluster.ddata.PNCounterMap
+import akka.actor.typed.ActorRef
+import akka.actor.typed.Behavior
+import akka.actor.typed.scaladsl.Behaviors
 import akka.cluster.ddata.Flag
+import akka.cluster.ddata.FlagKey
+import akka.cluster.ddata.PNCounterMap
+import akka.cluster.ddata.PNCounterMapKey
+import akka.cluster.ddata.ReplicatedData
+import akka.cluster.ddata.Replicator._
+import akka.cluster.ddata.SelfUniqueAddress
+import akka.cluster.ddata.typed.scaladsl.DistributedData
+import akka.cluster.ddata.typed.scaladsl.Replicator.{ Update, Get }
 
 object VotingService {
-  case object Open
-  case object OpenAck
-  case object Close
-  case object CloseAck
-  final case class Vote(participant: String)
-  case object GetVotes
+  sealed trait Command
+  case object Open extends Command
+  case object Close extends Command
+  final case class Vote(participant: String) extends Command
+  final case class GetVotes(replyTo: ActorRef[Votes]) extends Command
+
   final case class Votes(result: Map[String, BigInt], open: Boolean)
 
-  private final case class GetVotesReq(replyTo: ActorRef)
-}
+  private sealed trait InternalCommand extends Command
+  private case class InternalSubscribeResponse(chg: SubscribeResponse[Flag]) extends InternalCommand
+  private case class InternalUpdateResponse[A <: ReplicatedData](rsp: UpdateResponse[A]) extends InternalCommand
+  private case class InternalGetResponse(replyTo: ActorRef[Votes], rsp: GetResponse[PNCounterMap[String]]) extends InternalCommand
 
-class VotingService extends Actor {
-  import akka.cluster.ddata.Replicator._
-  import VotingService._
+  def apply(): Behavior[Command] = Behaviors.setup { context =>
+    DistributedData.withReplicatorMessageAdapter[Command, Flag] { replicatorFlag =>
+      DistributedData.withReplicatorMessageAdapter[Command, PNCounterMap[String]] { replicatorCounters =>
 
-  val replicator = DistributedData(context.system).replicator
-  implicit val cluster = Cluster(context.system)
-  val OpenedKey = FlagKey("contestOpened")
-  val ClosedKey = FlagKey("contestClosed")
-  val CountersKey = PNCounterMapKey[String]("contestCounters")
+        implicit val node: SelfUniqueAddress = DistributedData(context.system).selfUniqueAddress
 
-  replicator ! Subscribe(OpenedKey, self)
+        val OpenedKey = FlagKey("contestOpened")
+        val ClosedKey = FlagKey("contestClosed")
+        val CountersKey = PNCounterMapKey[String]("contestCounters")
 
-  def receive = {
-    case Open =>
-      replicator ! Update(OpenedKey, Flag(), WriteAll(5.seconds))(_.switchOn)
-      becomeOpen()
+        replicatorFlag.subscribe(OpenedKey, InternalSubscribeResponse.apply)
 
-    case c @ Changed(OpenedKey) if c.get(OpenedKey).enabled =>
-      becomeOpen()
+        def start = Behaviors.receiveMessagePartial[Command] {
+          case Open =>
+            replicatorFlag.askUpdate(
+              askReplyTo => Update(OpenedKey, Flag(), WriteAll(5.seconds), askReplyTo)(_.switchOn),
+              InternalUpdateResponse.apply)
 
-    case GetVotes =>
-      sender() ! Votes(Map.empty, open = false)
-  }
+            becomeOpen()
 
-  def becomeOpen(): Unit = {
-    replicator ! Unsubscribe(OpenedKey, self)
-    replicator ! Subscribe(ClosedKey, self)
-    context.become(open orElse getVotes(open = true))
-  }
+          case InternalSubscribeResponse(c @ Changed(OpenedKey)) if c.get(OpenedKey).enabled =>
+            becomeOpen()
 
-  def open: Receive = {
-    case v @ Vote(participant) =>
-      val update = Update(CountersKey, PNCounterMap[String](), WriteLocal, request = Some(v)) {
-        _.increment(participant, 1)
+          case GetVotes(replyTo) =>
+            replyTo ! Votes(Map.empty, open = false)
+            Behaviors.same
+        }
+
+        def becomeOpen() = {
+          replicatorFlag.unsubscribe(OpenedKey)
+          replicatorFlag.subscribe(ClosedKey, InternalSubscribeResponse.apply)
+          Behaviors.receiveMessagePartial(open orElse getVotes(open = true))
+        }
+
+        def open: PartialFunction[Command, Behavior[Command]] = {
+          case Vote(participant) =>
+            replicatorCounters.askUpdate(
+              askReplyTo => Update(CountersKey, PNCounterMap[String](), WriteLocal, askReplyTo)(_.incrementBy(participant, 1)),
+              InternalUpdateResponse.apply)
+
+            Behaviors.same
+
+          case InternalUpdateResponse(_: UpdateSuccess[_]) => Behaviors.same
+
+          case Close =>
+            replicatorFlag.askUpdate(
+              askReplyTo => Update(ClosedKey, Flag(), WriteAll(5.seconds), askReplyTo)(_.switchOn),
+              InternalUpdateResponse.apply)
+
+            Behaviors.receiveMessagePartial(getVotes(open = false))
+
+          case InternalSubscribeResponse(c @ Changed(ClosedKey)) if c.get(ClosedKey).enabled =>
+            Behaviors.receiveMessagePartial(getVotes(open = false))
+
+          case InternalSubscribeResponse(Changed(OpenedKey)) => Behaviors.same
+        }
+
+        def getVotes(open: Boolean): PartialFunction[Command, Behavior[Command]] = {
+          case GetVotes(replyTo) =>
+            replicatorCounters.askGet(
+              askReplyTo => Get(CountersKey, ReadAll(3.seconds), askReplyTo),
+              rsp => InternalGetResponse(replyTo, rsp))
+
+            Behaviors.same
+
+          case InternalGetResponse(replyTo, g @ GetSuccess(CountersKey, _)) =>
+            val data = g.get(CountersKey)
+            replyTo ! Votes(data.entries, open)
+            Behaviors.same
+
+          case InternalGetResponse(replyTo, NotFound(CountersKey, _)) =>
+            replyTo ! Votes(Map.empty, open)
+            Behaviors.same
+
+          case InternalGetResponse(_, _: GetFailure[_])    => Behaviors.same
+          case InternalUpdateResponse(_: UpdateSuccess[_]) => Behaviors.same
+        }
+
+        start
       }
-      replicator ! update
-
-    case _: UpdateSuccess[_] =>
-
-    case Close =>
-      replicator ! Update(ClosedKey, Flag(), WriteAll(5.seconds))(_.switchOn)
-      context.become(getVotes(open = false))
-
-    case c @ Changed(ClosedKey) if c.get(ClosedKey).enabled =>
-      context.become(getVotes(open = false))
+    }
   }
-
-  def getVotes(open: Boolean): Receive = {
-    case GetVotes =>
-      replicator ! Get(CountersKey, ReadAll(3.seconds), Some(GetVotesReq(sender())))
-
-    case g @ GetSuccess(CountersKey, Some(GetVotesReq(replyTo))) =>
-      val data = g.get(CountersKey)
-      replyTo ! Votes(data.entries, open)
-
-    case NotFound(CountersKey, Some(GetVotesReq(replyTo))) =>
-      replyTo ! Votes(Map.empty, open)
-
-    case _: GetFailure[_]    =>
-
-    case _: UpdateSuccess[_] =>
-  }
-
 }

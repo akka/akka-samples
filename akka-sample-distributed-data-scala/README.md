@@ -1,4 +1,4 @@
-This tutorial contains 5 samples illustrating how to use [Akka Distributed Data](http://doc.akka.io/docs/akka/2.6/scala/distributed-data.html).
+This tutorial contains 5 samples illustrating how to use [Akka Distributed Data](https://doc.akka.io/docs/akka/2.6/typed/distributed-data.html).
 
 - Low Latency Voting Service
 - Highly Available Shopping Cart
@@ -14,7 +14,7 @@ The nature CRDTs makes it possible to perform updates from any node without coor
 
 It is eventually consistent and geared toward providing high read and write availability (partition tolerance), with low latency. Note that in an eventually consistent system a read may return an out-of-date value.
 
-Note that there are some [Limitations](http://doc.akka.io/docs/akka/2.6/scala/distributed-data.html#Limitations)that you should be aware of. For example, Akka Distributed Data is not intended for _Big Data_.
+Note that there are some [Limitations](https://doc.akka.io/docs/akka/2.6/typed/distributed-data.html#limitations) that you should be aware of. For example, Akka Distributed Data is not intended for _Big Data_.
 
 ## Low Latency Voting Service
 
@@ -22,7 +22,7 @@ Distributed Data is great for low latency services, since you can update or get 
 
 Open [VotingService.scala](src/main/scala/sample/distributeddata/VotingService.scala).
 
-`VotingService` is an actor for low latency counting of votes on several cluster nodes and aggregation of the grand total number of votes. The actor is started on each cluster node. First it expects an `Open` message on one or several nodes. After that the counting can begin. The open signal is immediately replicated to all nodes with a boolean [Flag](http://doc.akka.io/docs/akka/2.6/scala/distributed-data.html#Flags_and_Registers). Note `WriteAll`.
+`VotingService` is an actor for low latency counting of votes on several cluster nodes and aggregation of the grand total number of votes. The actor is started on each cluster node. First it expects an `Open` message on one or several nodes. After that the counting can begin. The open signal is immediately replicated to all nodes with a boolean [Flag](https://doc.akka.io/docs/akka/2.6/typed/distributed-data.html#flags-and-registers). Note `WriteAll`.
 
     replicator ! Update(OpenedKey, Flag(), WriteAll(5.seconds))(_.switchOn)
 
@@ -32,7 +32,7 @@ The actor is subscribing to changes of the `OpenedKey` and other instances of th
 
     case c @ Changed(OpenedKey) if c.get(OpenedKey).enabled
 
-The counters are kept in a [PNCounterMap](http://doc.akka.io/docs/akka/2.6/scala/distributed-data.html#Counters)and updated with:
+The counters are kept in a [PNCounterMap](https://doc.akka.io/docs/akka/2.6/typed/distributed-data.html#counters) and updated with:
 
     val update = Update(CountersKey, PNCounterMap(), WriteLocal, request = Some(v)) {
       _.increment(participant, 1)
@@ -52,7 +52,7 @@ The total number of votes is retrieved with:
 
 The multi-node test for the `VotingService` can be found in [VotingServiceSpec.scala](src/multi-jvm/scala/sample/distributeddata/VotingServiceSpec.scala).
 
-Read the [Using the Replicator](http://doc.akka.io/docs/akka/2.6/scala/distributed-data.html#Using_the_Replicator)documentation for more details of how to use `Get`, `Update`, and `Subscribe`.
+Read the [Using the Replicator](https://doc.akka.io/docs/akka/2.6/typed/distributed-data.html#using-the-replicator) documentation for more details of how to use `Get`, `Update`, and `Subscribe`.
 
 ## Highly Available Shopping Cart
 
@@ -62,13 +62,13 @@ Open [ShoppingCart.scala](src/main/scala/sample/distributeddata/ShoppingCart.sca
 
 `ShoppingCart` is an actor that holds the selected items to buy for a user. The actor instance for a specific user may be started where ever needed in the cluster, i.e. several instances may be started on different nodes and used at the same time.
 
-Each product in the cart is represented by a `LineItem` and all items in the cart is collected in a [LWWMap](http://doc.akka.io/docs/akka/2.6/scala/distributed-data.html#Maps).
+Each product in the cart is represented by a `LineItem` and all items in the cart is collected in a [LWWMap](https://doc.akka.io/docs/akka/2.6/typed/distributed-data.html#maps).
 
 The actor handles the commands `GetCart`, `AddItem` and `RemoveItem`. To get the latest updates in case the same shopping cart is used from several nodes it is using consistency level of `ReadMajority` and `WriteMajority`, but that is only done to reduce the risk of seeing old data. If such reads and writes cannot be completed due to a network partition it falls back to reading/writing from the local replica (see `GetFailure`). Local reads and writes will always be successful and when the network partition heals the updated shopping carts will be be disseminated by the [gossip protocol](https://en.wikipedia.org/wiki/Gossip_protocol) and the `LWWMap` CRDTs are merged, i.e. it is a highly available shopping cart.
 
 The multi-node test for the `ShoppingCart` can be found in [ShoppingCartSpec.scala](src/multi-jvm/scala/sample/distributeddata/ShoppingCartSpec.scala).
 
-Read the [Consistency](http://doc.akka.io/docs/akka/2.6/scala/distributed-data.html#Consistency) section in the documentation to understand the consistency considerations.
+Read the [Consistency](https://doc.akka.io/docs/akka/2.6/typed/distributed-data.html#consistency) section in the documentation to understand the consistency considerations.
 
 ## Replicated Cache
 
@@ -92,3 +92,4 @@ Open [ReplicatedMetrics.scala](src/main/scala/sample/distributeddata/ReplicatedM
 
 The multi-node test for the `ReplicatedCache` can be found in [ReplicatedMetricsSpec.scala](src/multi-jvm/scala/sample/distributeddata/ReplicatedMetricsSpec.scala).
 
+Note that there are some [Limitations](https://doc.akka.io/docs/akka/2.6/typed/distributed-data.html#limitations) that you should be aware of. For example, Akka Distributed Data is not intended for _Big Data_.

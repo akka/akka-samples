@@ -156,7 +156,7 @@ public class ReplicatedCache extends AbstractActor {
   }
 
   private Key<LWWMap<String, Object>> dataKey(String entryKey) {
-    return LWWMapKey.create("cache-" + Math.abs(entryKey.hashCode()) % 100);
+    return LWWMapKey.create("cache-" + Math.abs(entryKey.hashCode() % 100));
   }
 
 
