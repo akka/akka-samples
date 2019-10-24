@@ -1,7 +1,7 @@
 organization := "com.typesafe.akka.samples"
 name := "akka-sample-supervision-java"
 
-val akkaVersion = "2.5.24"
+val akkaVersion = "2.5.26"
 
 scalaVersion := "2.12.8"
 libraryDependencies ++= Seq(

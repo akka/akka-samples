@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val AkkaVersion = "2.5.24"
+val AkkaVersion = "2.5.26"
 val AkkaAddOnsVersion = "1.1.0"
 val AkkaPersistenceCassandraVersion = "0.93"
 val AkkaHttpVersion = "10.1.8"
