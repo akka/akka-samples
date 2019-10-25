@@ -7,7 +7,7 @@ lazy val `akka-sample-cqrs-scala` = project
   .in(file("."))
   .settings(
     organization := "com.typesafe.akka.samples",
-    scalaVersion := "2.12.8",
+    scalaVersion := "2.13.1",
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
     javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m"),
@@ -21,7 +21,7 @@ lazy val `akka-sample-cqrs-scala` = project
         "com.typesafe.akka" %% "akka-slf4j" % AkkaVersion,
         "ch.qos.logback" % "logback-classic" % "1.2.3",
         "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
-        "org.scalatest" %% "scalatest" % "3.0.7" % Test,
+        "org.scalatest" %% "scalatest" % "3.0.8" % Test,
         "commons-io" % "commons-io" % "2.4" % Test),
     fork in run := false,
     mainClass in (Compile, run) := Some("sample.cqrs.Main"),

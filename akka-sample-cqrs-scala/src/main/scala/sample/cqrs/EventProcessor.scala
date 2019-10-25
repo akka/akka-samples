@@ -10,7 +10,6 @@ import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.PostStop
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.scaladsl.LoggerOps
 import akka.actor.typed.scaladsl.adapter._
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.sharding.typed.scaladsl.Entity
@@ -94,7 +93,7 @@ abstract class EventProcessorStream[Event: ClassTag](
       .withBackoff(minBackoff = 500.millis, maxBackoff = 20.seconds, randomFactor = 0.1) { () =>
         Source.futureSource {
           readOffset().map { offset =>
-            log.info2("Starting stream for tag [{}] from offset [{}]", tag, offset)
+            log.info("Starting stream for tag [{}] from offset [{}]", tag, offset)
             query
               .eventsByTag(tag, offset)
               .mapAsync(1) { eventEnvelope =>

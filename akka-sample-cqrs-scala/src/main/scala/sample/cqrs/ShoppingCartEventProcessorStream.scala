@@ -7,7 +7,6 @@ import akka.Done
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.eventstream.EventStream
 import akka.persistence.typed.PersistenceId
-import akka.actor.typed.scaladsl.LoggerOps
 
 class ShoppingCartEventProcessorStream(
     system: ActorSystem[_],
@@ -17,7 +16,7 @@ class ShoppingCartEventProcessorStream(
     extends EventProcessorStream[ShoppingCart.Event](system, executionContext, eventProcessorId, tag) {
 
   def processEvent(event: ShoppingCart.Event, persistenceId: PersistenceId, sequenceNr: Long): Future[Done] = {
-    log.infoN("EventProcessor({}) consumed {} from {} with seqNr {}", tag, event, persistenceId, sequenceNr)
+    log.info("EventProcessor({}) consumed {} from {} with seqNr {}", tag, event, persistenceId, sequenceNr)
     system.eventStream ! EventStream.Publish(event)
     Future.successful(Done)
   }
