@@ -14,7 +14,7 @@ To run this sample, type `sbt "runMain sample.sharding.ShardingApp"` if it is no
 
 In the first terminal window, start the first seed node with the following command:
 
-    sbt "runMain sample.sharding.ShardingApp 2551"
+    sbt sharding1
 
 2551 corresponds to the port of the first seed-nodes element in the configuration. In the log output you see that the cluster node has been started and changed status to 'Up'.
 
@@ -22,7 +22,7 @@ You'll see a log message when `Devices` sends a message to record the current te
 
 In the second terminal window, start the second seed node with the following command:
 
-    sbt "runMain sample.sharding.ShardingApp 2552"
+    sbt sharding2
 
 2552 corresponds to the port of the second seed-nodes element in the configuration. In the log output you see that the cluster node has been started and joins the other seed node and becomes a member of the cluster. Its status changed to 'Up'. Switch over to the first terminal window and see in the log output that the member joined.
 
@@ -30,7 +30,7 @@ Some of the devices that were originally on the `ActorSystem` on port 2551 will 
 
 Start another node in the third terminal window with the following command:
 
-    sbt "runMain sample.sharding.ShardingApp 0"
+    sbt sharding3
 
 Now you don't need to specify the port number, 0 means that it will use a random available port. It joins one of the configured seed nodes. Look at the log output in the different terminal windows.
 
