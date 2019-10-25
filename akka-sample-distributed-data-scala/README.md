@@ -70,23 +70,6 @@ The multi-node test for the `ShoppingCart` can be found in [ShoppingCartSpec.sca
 
 Read the [Consistency](http://doc.akka.io/docs/akka/2.6/scala/distributed-data.html#Consistency) section in the documentation to understand the consistency considerations.
 
-## Distributed Service Registry
-
-Have you ever had the need to lookup actors by name in an Akka Cluster? This example illustrates how you could implement such a registry. It is probably not feature complete, but should be a good starting point.
-
-Open [ServiceRegistry.scala](src/main/scala/sample/distributeddata/ServiceRegistry.scala).
-
-`ServiceRegistry` is an actor that is started on each node in the cluster. It supports two basic commands:
-
-- `Register` to bind an `ActorRef` to a name, several actors can be bound to the same name
-- `Lookup` get currently bound services of a given name
-
-For each named service it is using an [ORSet](http://doc.akka.io/docs/akka/2.6/scala/distributed-data.html#Sets). Here we are using top level `ORSet` entries. An alternative would have been to use a `ORMultiMap` holding all services. That would have a disadvantage if we have many services. When a data entry is changed the full state of that entry is replicated to other nodes, i.e. when you update a map the whole map is replicated.
-
-The `ServiceRegistry` is subscribing to changes of a `GSet` where we add the names of all services. It is also subscribing to all such service keys to get notifications when actors are added or removed to a named service.
-
-The multi-node test for the `ServiceRegistry` can be found inServiceRegistrySpec.scala.
-
 ## Replicated Cache
 
 This example illustrates a simple key-value cache.
