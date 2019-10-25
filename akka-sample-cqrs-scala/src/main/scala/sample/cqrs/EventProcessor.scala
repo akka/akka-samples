@@ -106,6 +106,8 @@ abstract class EventProcessorStream[Event: ClassTag](
                     Future.failed(new IllegalArgumentException(s"Unexpected event [${other.getClass.getName}]"))
                 }
               }
+              // groupedWithin can be used here to improve performance by reducing number of offset writes,
+              // with the trade-off of possibility of more duplicate events when stream is restarted
               .mapAsync(1)(writeOffset)
           }
         }
