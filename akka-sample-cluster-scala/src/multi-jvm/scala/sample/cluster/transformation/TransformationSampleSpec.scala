@@ -1,19 +1,27 @@
 package sample.cluster.transformation
 
-import language.postfixOps
 import scala.concurrent.duration._
-
 import com.typesafe.config.ConfigFactory
-
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.WordSpecLike
 import org.scalatest.Matchers
-
-import akka.actor.Props
+import akka.actor.typed.ActorRef
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.Behavior
+import akka.actor.typed.Props
+import akka.actor.typed.SpawnProtocol
+import akka.actor.typed.receptionist.Receptionist
+import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.scaladsl.adapter._
 import akka.cluster.Cluster
 import akka.remote.testkit.MultiNodeConfig
 import akka.remote.testkit.MultiNodeSpec
 import akka.testkit.ImplicitSender
+import akka.testkit.TestProbe
+import akka.util.Timeout
+
+import scala.concurrent.Await
+import scala.concurrent.Future
 
 object TransformationSampleSpecConfig extends MultiNodeConfig {
   // register the named roles (nodes) of the test
@@ -62,6 +70,16 @@ class TransformationSampleSpecMultiJvmNode5 extends TransformationSampleSpec
 abstract class TransformationSampleSpec extends MultiNodeSpec(TransformationSampleSpecConfig)
   with WordSpecLike with Matchers with BeforeAndAfterAll with ImplicitSender {
 
+  implicit def typedSystem: ActorSystem[Nothing] = system.toTyped
+
+  val spawnActor = system.actorOf(PropsAdapter(SpawnProtocol())).toTyped[SpawnProtocol.Command]
+  def spawn[T](behavior: Behavior[T], name: String): ActorRef[T] = {
+    implicit val timeout: Timeout = 3.seconds
+    val f: Future[ActorRef[T]] = spawnActor.ask(SpawnProtocol.Spawn(behavior, name, Props.empty, _))
+
+    Await.result(f, 3.seconds)
+  }
+
   import TransformationSampleSpecConfig._
 
   override def initialParticipants = roles.size
@@ -75,8 +93,8 @@ abstract class TransformationSampleSpec extends MultiNodeSpec(TransformationSamp
       runOn(frontend1) {
         // this will only run on the 'first' node
         Cluster(system) join node(frontend1).address
-        val transformationFrontend = system.actorOf(Props[TransformationFrontend], name = "frontend")
-        transformationFrontend ! TransformationJob("hello")
+        val transformationFrontend = spawn(Frontend(), name = "Frontend")
+        transformationFrontend ! Frontend("hello")
         expectMsgPF() {
           // no backends yet, service unavailable
           case JobFailed(_, TransformationJob("hello")) =>
@@ -91,7 +109,7 @@ abstract class TransformationSampleSpec extends MultiNodeSpec(TransformationSamp
     "illustrate how a backend automatically registers" in within(15 seconds) {
       runOn(backend1) {
         Cluster(system) join node(frontend1).address
-        system.actorOf(Props[TransformationBackend], name = "backend")
+        spawn(Worker(), name = "backend")
       }
       testConductor.enter("backend1-started")
 
@@ -127,11 +145,16 @@ abstract class TransformationSampleSpec extends MultiNodeSpec(TransformationSamp
   }
 
   def assertServiceOk(): Unit = {
-    val transformationFrontend = system.actorSelection("akka://" + system.name + "/user/frontend")
+    implicit val timeout: Timeout = 3.seconds
     // eventually the service should be ok,
     // backends might not have registered initially
     awaitAssert {
-      transformationFrontend ! TransformationJob("hello")
+      val probe = TestProbe[Receptionist.Listing]()
+      val found: Future[Receptionist.Listing] = typedSystem.receptionist.ask(Receptionist.Find(Worker.WorkerServiceKey, _))
+      val listing = Await.result(found, 4.seconds)
+      val workers = listing.serviceInstances(Worker.WorkerServiceKey)
+      workers.size shouldBe >= (1)
+      workers.head ! TransformationJob("hello")
       expectMsgType[TransformationResult](1.second).text should be("HELLO")
     }
   }
