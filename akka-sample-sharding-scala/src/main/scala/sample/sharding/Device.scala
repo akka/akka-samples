@@ -14,12 +14,10 @@ object Device {
 
   final case class RecordTemperature(deviceId: Int, temperature: Double) extends Command
 
-  final case class GetTemperature(deviceId: Int, replyTo: ActorRef[Message]) extends Command
+  final case class GetTemperature(deviceId: Int, replyTo: ActorRef[Temperature]) extends Command
 
-  final case class Temperature(deviceId: Int, average: Double, latest: Double, readings: Int) extends Message {
-    override def toString: String =
-      s"Temperature[device=$deviceId, temperature=$latest, average=$average, readings=$readings]"
-  }
+  final case class Temperature(deviceId: Int, average: Double, latest: Double, readings: Int)
+      extends TemperatureService.TemperatureEvent
 
   object Temperature {
 
@@ -35,27 +33,26 @@ object Device {
 
   }
 
-  def apply(entityId: String): Behavior[Message] = {
+  def apply(entityId: String): Behavior[Command] =
+    Behaviors.setup { context =>
 
-    def counting(values: Vector[Double]): Behavior[Message] =
-      Behaviors.setup { context =>
-        Behaviors.receiveMessage[Message] {
+      def counting(values: Vector[Double]): Behavior[Command] =
+        Behaviors.receiveMessage {
           case RecordTemperature(id, temp) =>
             val temperatures = values :+ temp
             context.log.info(
               s"Recording temperature $temp for device $id, average is ${Temperature.average(temperatures)} after " +
-              s"${temperatures.size} readings")
+              s"${temperatures.size} readings.")
 
             counting(temperatures)
 
           case GetTemperature(id, replyTo) =>
+            context.log.info("Sending temperature for entity {}.", entityId)
             replyTo ! Temperature(id, values)
             Behaviors.same
 
         }
-      }
 
-    counting(Vector.empty)
-  }
-
+      counting(Vector.empty)
+    }
 }

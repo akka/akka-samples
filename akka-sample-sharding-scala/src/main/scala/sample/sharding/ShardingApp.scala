@@ -1,8 +1,8 @@
 package sample.sharding
 
 import akka.actor.typed.ActorSystem
-import akka.cluster.typed.{ Cluster, Join }
 import com.typesafe.config.ConfigFactory
+import sample.sharding.TemperatureService.TemperatureEvent
 
 /**
  * See the README.md for starting each node with sbt.
@@ -28,11 +28,7 @@ object ShardingApp {
 
       // Create an Akka system and an actor that starts the sharding
       // and sends random messages
-      val system = ActorSystem[Message](TemperatureService(), "ShardingSystem", config)
-
-      val cluster = Cluster(system)
-      cluster.manager ! Join(cluster.selfMember.address)
-
+      ActorSystem[TemperatureEvent](TemperatureService(), "ShardingSystem", config)
     }
   }
 

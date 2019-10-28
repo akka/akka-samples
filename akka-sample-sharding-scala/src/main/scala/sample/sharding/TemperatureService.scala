@@ -5,29 +5,27 @@ import scala.util.Random
 
 import akka.actor.typed.{ ActorRef, Behavior }
 import akka.actor.typed.scaladsl.Behaviors
-import akka.cluster.sharding.typed.{ ClusterShardingSettings, ShardingEnvelope }
+import akka.cluster.sharding.typed.ShardingEnvelope
 import akka.cluster.sharding.typed.scaladsl.{ ClusterSharding, Entity, EntityTypeKey }
-import akka.cluster.typed.{ Cluster, Join }
 
 object TemperatureService {
 
+  trait TemperatureEvent
   // Update a random device
-  case object UpdateDevice extends Message
-  case object ReadTemperatures extends Message
+  case object UpdateDevice extends TemperatureEvent
+  case object ReadTemperatures extends TemperatureEvent
 
-  val TypeKey: EntityTypeKey[Message] =
-    EntityTypeKey[Message]("Device")
+  val TypeKey: EntityTypeKey[Device.Command] =
+    EntityTypeKey[Device.Command]("Device")
 
-  def apply(): Behavior[Message] =
+  def apply(): Behavior[TemperatureEvent] =
     Behaviors.setup { context =>
-      val cluster = Cluster(context.system)
-      cluster.manager ! Join(cluster.selfMember.address)
 
-      val numberOfDevices = ClusterShardingSettings(context.system).numberOfShards
       val random = new Random()
+      val numberOfDevices = 50
 
       Behaviors.withTimers { timer =>
-        val deviceRegion: ActorRef[ShardingEnvelope[Message]] =
+        val temperatureRegion: ActorRef[ShardingEnvelope[Device.Command]] =
           ClusterSharding(context.system).init(Entity(TypeKey)(createBehavior = entityContext =>
             Device(entityContext.entityId)))
 
@@ -42,7 +40,7 @@ object TemperatureService {
             context.log.info("Sending {}.", event)
 
             // send to the region with the ShardingEnvelope and entityId
-            deviceRegion ! ShardingEnvelope(deviceId.toString, event)
+            temperatureRegion ! ShardingEnvelope(deviceId.toString, event)
 
             Behaviors.same
 
@@ -54,9 +52,10 @@ object TemperatureService {
             }
             Behaviors.same
 
-          case temp: Device.Temperature =>
-            if (temp.readings > 0)
-              context.log.info("{}", temp)
+          case Device.Temperature(deviceId, latest, average, readings) =>
+            if (readings > 0)
+              context.log.info(
+                s"Temperature[device=$deviceId, temperature=$latest, average=$average, readings=$readings]")
 
             Behaviors.same
         }
