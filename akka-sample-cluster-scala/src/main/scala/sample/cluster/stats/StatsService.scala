@@ -27,7 +27,7 @@ object StatsService {
       Behaviors.receiveMessage {
         case ProcessText(text, replyTo) =>
           ctx.log.info("Delegating request")
-          val words = text.split(" ").toIndexedSeq
+          val words = text.split(' ').toIndexedSeq
           // create per request actor that collects replies from workers
           ctx.spawnAnonymous(StatsAggregator(words, workers, replyTo))
           Behaviors.same
@@ -61,7 +61,7 @@ object StatsAggregator {
       case CalculationComplete(length) =>
         val newResults = results :+ length
         if (newResults.size == expectedResponses) {
-          val meanWordLength = results.sum.toDouble / results.size
+          val meanWordLength = newResults.sum.toDouble / newResults.size
           replyTo ! StatsService.JobResult(meanWordLength)
           Behaviors.stopped
         } else {

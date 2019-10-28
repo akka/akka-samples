@@ -1,62 +1,33 @@
 package sample.cluster.stats
 
-import language.postfixOps
+import akka.actor.testkit.typed.scaladsl.TestProbe
+import akka.actor.typed.receptionist.Receptionist
 import scala.concurrent.duration._
-
-import akka.actor.Props
-import akka.actor.RootActorPath
+import akka.actor.typed.scaladsl.adapter._
+import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.{ActorRef, Behavior, Props, SpawnProtocol}
 import akka.cluster.Cluster
-import akka.cluster.Member
-import akka.cluster.MemberStatus
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.ClusterEvent.MemberUp
-
 import akka.remote.testkit.MultiNodeConfig
+import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
+
+import scala.concurrent.{Await, Future}
 
 object StatsSampleSpecConfig extends MultiNodeConfig {
   // register the named roles (nodes) of the test
+  // note that this is not the same thing as cluster node roles
   val first = role("first")
   val second = role("second")
   val third = role("thrid")
-
-  def nodeList = Seq(first, second, third)
-
-  // Extract individual sigar library for every node.
-  nodeList foreach { role =>
-    nodeConfig(role) {
-      ConfigFactory.parseString(s"""
-      # Enable metrics extension in akka-cluster-metrics.
-      akka.extensions=["akka.cluster.metrics.ClusterMetricsExtension"]
-      # Sigar native library extract location during tests.
-      akka.cluster.metrics.native-library-extract-folder=target/native/${role.name}
-      """)
-    }
-  }
 
   // this configuration will be used for all nodes
   // note that no fixed host names and ports are used
   commonConfig(ConfigFactory.parseString("""
     akka.actor.provider = cluster
-    akka.remote.enabled-transports = [akka.remote.netty.tcp]
-    # To use artery, disable netty line above, and uncomment lines below
-    ##akka.remote.artery.enabled = on
-    ##akka.remote.artery.transport = tcp
     akka.cluster.roles = [compute]
-    #//#router-lookup-config
-    akka.actor.deployment {
-      /statsService/workerRouter {
-          router = consistent-hashing-group
-          routees.paths = ["/user/statsWorker"]
-          cluster {
-            enabled = on
-            allow-local-routees = on
-            use-role = compute
-          }
-        }
-    }
-    #//#router-lookup-config
-    """))
+    """).withFallback(ConfigFactory.load()))
 
 }
 // need one concrete test class per node
@@ -82,9 +53,20 @@ abstract class StatsSampleSpec extends MultiNodeSpec(StatsSampleSpecConfig)
 
   override def afterAll() = multiNodeSpecAfterAll()
 
+  implicit val typedSystem = system.toTyped
+  // use the SpawnProtocol to run actors even though the multi-jvm testkit only knows of the classic APIs
+  val spawnActor = system.actorOf(PropsAdapter(SpawnProtocol())).toTyped[SpawnProtocol.Command]
+  def spawn[T](behavior: Behavior[T], name: String): ActorRef[T] = {
+    implicit val timeout: Timeout = 3.seconds
+    val f: Future[ActorRef[T]] = spawnActor.ask(SpawnProtocol.Spawn(behavior, name, Props.empty, _))
+
+    Await.result(f, 3.seconds)
+  }
+
+
   "The stats sample" must {
 
-    "illustrate how to startup cluster" in within(15 seconds) {
+    "illustrate how to startup cluster" in within(15.seconds) {
       Cluster(system).subscribe(testActor, classOf[MemberUp])
       expectMsgClass(classOf[CurrentClusterState])
 
@@ -92,10 +74,8 @@ abstract class StatsSampleSpec extends MultiNodeSpec(StatsSampleSpecConfig)
       val secondAddress = node(second).address
       val thirdAddress = node(third).address
 
-      Cluster(system) join firstAddress
+      Cluster(system).join(firstAddress)
 
-      system.actorOf(Props[StatsWorker], "statsWorker")
-      system.actorOf(Props[StatsService], "statsService")
 
       receiveN(3).collect { case MemberUp(m) => m.address }.toSet should be(
         Set(firstAddress, secondAddress, thirdAddress))
@@ -105,8 +85,13 @@ abstract class StatsSampleSpec extends MultiNodeSpec(StatsSampleSpecConfig)
       testConductor.enter("all-up")
     }
 
-    "show usage of the statsService from one node" in within(15 seconds) {
-      runOn(second) {
+    "show usage of the statsService from one node" in within(15.seconds) {
+      runOn(first, second) {
+        val worker = spawn(StatsWorker(), "StatsWorker")
+        val service = spawn(StatsService(worker), "StatsService")
+        typedSystem.receptionist ! Receptionist.Register(App.StatsServiceKey, service)
+      }
+      runOn(third) {
         assertServiceOk()
       }
 
@@ -114,18 +99,21 @@ abstract class StatsSampleSpec extends MultiNodeSpec(StatsSampleSpecConfig)
     }
 
     def assertServiceOk(): Unit = {
-      val service = system.actorSelection(node(third) / "user" / "statsService")
       // eventually the service should be ok,
       // first attempts might fail because worker actors not started yet
       awaitAssert {
-        service ! StatsJob("this is the text that will be analyzed")
-        expectMsgType[StatsResult](1.second).meanWordLength should be(
+        val probe = TestProbe[AnyRef]()
+        typedSystem.receptionist ! Receptionist.Find(App.StatsServiceKey, probe.ref)
+        val App.StatsServiceKey.Listing(actors) = probe.expectMessageType[Receptionist.Listing]
+        actors should not be empty
+
+        actors.head ! StatsService.ProcessText("this is the text that will be analyzed", probe.ref)
+        probe.expectMessageType[StatsService.JobResult].meanWordLength should be(
           3.875 +- 0.001)
       }
-
     }
 
-    "show usage of the statsService from all nodes" in within(15 seconds) {
+    "show usage of the statsService from all nodes" in within(15.seconds) {
       assertServiceOk()
       testConductor.enter("done-3")
     }

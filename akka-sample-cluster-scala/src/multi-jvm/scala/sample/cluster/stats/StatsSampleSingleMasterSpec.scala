@@ -1,71 +1,40 @@
 package sample.cluster.stats
 
-import language.postfixOps
 import scala.concurrent.duration._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.WordSpecLike
 import org.scalatest.Matchers
-import akka.actor.PoisonPill
-import akka.actor.Props
-import akka.actor.RootActorPath
-import akka.cluster.singleton.ClusterSingletonManager
-import akka.cluster.singleton.ClusterSingletonManagerSettings
-import akka.cluster.singleton.ClusterSingletonProxy
+import akka.actor.typed.scaladsl.adapter._
+import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.scaladsl.{Behaviors, Routers}
+import akka.actor.typed.{ActorRef, Behavior, Props, SpawnProtocol}
+import akka.cluster.typed.{ClusterSingleton, ClusterSingletonSettings, SingletonActor}
+import akka.actor.testkit.typed.scaladsl.TestProbe
 import akka.cluster.Cluster
-import akka.cluster.Member
-import akka.cluster.MemberStatus
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.ClusterEvent.MemberUp
 import akka.remote.testkit.MultiNodeConfig
 import akka.remote.testkit.MultiNodeSpec
 import akka.testkit.ImplicitSender
-import akka.cluster.singleton.ClusterSingletonProxySettings
+import akka.util.Timeout
+
+import scala.concurrent.{Await, Future}
 
 object StatsSampleSingleMasterSpecConfig extends MultiNodeConfig {
   // register the named roles (nodes) of the test
+  // note that this is not the same thing as cluster node roles
   val first = role("first")
   val second = role("second")
   val third = role("third")
-
-  def nodeList = Seq(first, second, third)
-
-  // Extract individual sigar library for every node.
-  nodeList foreach { role =>
-    nodeConfig(role) {
-      ConfigFactory.parseString(s"""
-      # Enable metrics extension in akka-cluster-metrics.
-      akka.extensions=["akka.cluster.metrics.ClusterMetricsExtension"]
-      # Sigar native library extract location during tests.
-      akka.cluster.metrics.native-library-extract-folder=target/native/${role.name}
-      """)
-    }
-  }
 
   // this configuration will be used for all nodes
   // note that no fixed host names and ports are used
   commonConfig(ConfigFactory.parseString("""
     akka.loglevel = INFO
     akka.actor.provider = cluster
-    akka.remote.enabled-transports = [akka.remote.netty.tcp]
-    # To use artery, disable netty line above, and uncomment lines below
-    ##akka.remote.artery.enabled = on
-    ##akka.remote.artery.transport = tcp
     akka.cluster.roles = [compute]
-    #//#router-deploy-config
-    akka.actor.deployment {
-      /statsService/singleton/workerRouter {
-          router = consistent-hashing-pool
-          cluster {
-            enabled = on
-            max-nr-of-instances-per-node = 3
-            allow-local-routees = on
-            use-role = compute
-          }
-        }
-    }
-    #//#router-deploy-config
-    """))
+    """).withFallback(ConfigFactory.load()))
 
 }
 
@@ -85,8 +54,20 @@ abstract class StatsSampleSingleMasterSpec extends MultiNodeSpec(StatsSampleSing
 
   override def afterAll() = multiNodeSpecAfterAll()
 
+  implicit val typedSystem = system.toTyped
+  // use the SpawnProtocol to run actors even though the multi-jvm testkit only knows of the classic APIs
+  val spawnActor = system.actorOf(PropsAdapter(SpawnProtocol())).toTyped[SpawnProtocol.Command]
+  def spawn[T](behavior: Behavior[T], name: String): ActorRef[T] = {
+    implicit val timeout: Timeout = 3.seconds
+    val f: Future[ActorRef[T]] = spawnActor.ask(SpawnProtocol.Spawn(behavior, name, Props.empty, _))
+
+    Await.result(f, 3.seconds)
+  }
+
+  var singletonProxy: ActorRef[StatsService.Command] = _
+
   "The stats sample with single master" must {
-    "illustrate how to startup cluster" in within(15 seconds) {
+    "illustrate how to startup cluster" in within(15.seconds) {
       Cluster(system).subscribe(testActor, classOf[MemberUp])
       expectMsgClass(classOf[CurrentClusterState])
 
@@ -101,27 +82,30 @@ abstract class StatsSampleSingleMasterSpec extends MultiNodeSpec(StatsSampleSing
 
       Cluster(system).unsubscribe(testActor)
 
-      system.actorOf(ClusterSingletonManager.props(
-        singletonProps = Props[StatsService], terminationMessage = PoisonPill,
-        settings = ClusterSingletonManagerSettings(system).withRole("compute")),
-        name = "statsService")
-
-      system.actorOf(ClusterSingletonProxy.props(singletonManagerPath = "/user/statsService",
-        ClusterSingletonProxySettings(system).withRole("compute")),
-        name = "statsServiceProxy")
+      val singletonSettings = ClusterSingletonSettings(typedSystem).withRole("compute")
+      singletonProxy = ClusterSingleton(typedSystem).init(
+        SingletonActor(
+          Behaviors.setup[StatsService.Command] { ctx =>
+            // just run some local workers for this test
+            val workersRouter = ctx.spawn(Routers.pool(2)(StatsWorker()), "WorkersRouter")
+            StatsService(workersRouter)
+          },
+          "StatsService",
+        ).withSettings(singletonSettings)
+      )
 
       testConductor.enter("all-up")
     }
 
-    "show usage of the statsServiceProxy" in within(40 seconds) {
-      val proxy = system.actorSelection(RootActorPath(node(third).address) / "user" / "statsServiceProxy")
-
+    "show usage of the statsServiceProxy" in within(20.seconds) {
       // eventually the service should be ok,
       // service and worker nodes might not be up yet
       awaitAssert {
-        proxy ! StatsJob("this is the text that will be analyzed")
-        expectMsgType[StatsResult](1.second).meanWordLength should be(
-          3.875 +- 0.001)
+        system.log.info("Trying a request")
+        val probe = TestProbe[StatsService.Response]()
+        singletonProxy ! StatsService.ProcessText("this is the text that will be analyzed", probe.ref)
+        val response = probe.expectMessageType[StatsService.JobResult](3.seconds)
+        response.meanWordLength should be(3.875 +- 0.001)
       }
 
       testConductor.enter("done")
