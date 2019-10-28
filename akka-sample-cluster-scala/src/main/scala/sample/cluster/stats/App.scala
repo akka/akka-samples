@@ -38,25 +38,34 @@ object App {
       .withFallback(ConfigFactory.load("stats"))
 
     val rootBehavior = Behaviors.setup[Nothing] { ctx =>
-      if (Cluster(ctx.system).selfMember.roles("compute")) {
-        // on every compute node there is one service instance that delegates to N local workers
-        val numberOfWorkers = ctx.system.settings.config.getInt("stats-service.workers-per-node")
-        val workers = ctx.spawn(Routers.pool(numberOfWorkers)(StatsWorker()), "WorkerRouter")
-        val service = ctx.spawn(StatsService(workers),"StatsService")
 
-        // published through the receptionist to the other nodes in the cluster
-        ctx.system.receptionist ! Receptionist.Register(StatsServiceKey, service)
+      role match {
+        case "compute" =>
+          // on every compute node there is one service instance that delegates to N local workers
+          val numberOfWorkers = ctx.system.settings.config.getInt("stats-service.workers-per-node")
+          val workers = ctx.spawn(Routers.pool(numberOfWorkers)(StatsWorker()), "WorkerRouter")
+          val service = ctx.spawn(StatsService(workers),"StatsService")
+
+          // published through the receptionist to the other nodes in the cluster
+          ctx.system.receptionist ! Receptionist.Register(StatsServiceKey, service)
+
+        case "client" =>
+          val serviceRouter = ctx.spawn(Routers.group(App.StatsServiceKey), "ServiceRouter")
+          ctx.spawn(StatsSampleClient(serviceRouter), "Client")
+
+        case unknown => throw new IllegalArgumentException(s"Unknown role $unknown")
+      }
+
+      if (Cluster(ctx.system).selfMember.roles("compute")) {
 
       } else {
-        // "client" node without the compute role
-        val serviceRouter = ctx.spawn(Routers.group(App.StatsServiceKey), "ServiceRouter")
-        ctx.spawn(StatsSampleClient(serviceRouter), "Client")
+
       }
 
       Behaviors.empty[Nothing]
     }
 
-    val system = ActorSystem[Nothing](rootBehavior, "StatsSystem", config)
+    val system = ActorSystem[Nothing](rootBehavior, "ClusterSystem", config)
   }
 }
 
@@ -74,6 +83,7 @@ object StatsSampleClient {
 
         Behaviors.receiveMessage {
           case Tick =>
+            ctx.log.info("Sending process request")
             service ! StatsService.ProcessText("this is the text that will be analyzed", responseAdapter)
             Behaviors.same
           case ServiceResponse(result) =>

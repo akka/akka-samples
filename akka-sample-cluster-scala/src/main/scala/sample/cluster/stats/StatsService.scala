@@ -4,17 +4,18 @@ import scala.concurrent.duration._
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
+import sample.cluster.CborSerializable
 
 //#service
 object StatsService {
 
-  sealed trait Command
+  sealed trait Command extends CborSerializable
   final case class ProcessText(text: String, replyTo: ActorRef[Response]) extends Command {
     require(text.nonEmpty)
   }
   case object Stop extends Command
 
-  sealed trait Response
+  sealed trait Response extends CborSerializable
   final case class JobResult(meanWordLength: Double) extends Response
   final case class JobFailed(reason: String) extends Response
 
@@ -25,7 +26,8 @@ object StatsService {
 
       Behaviors.receiveMessage {
         case ProcessText(text, replyTo) =>
-          val words = text.split(" ")
+          ctx.log.info("Delegating request")
+          val words = text.split(" ").toIndexedSeq
           // create per request actor that collects replies from workers
           ctx.spawnAnonymous(StatsAggregator(words, workers, replyTo))
           Behaviors.same
@@ -43,8 +45,6 @@ object StatsAggregator {
 
   def apply(words: Seq[String], workers: ActorRef[StatsWorker.Process], replyTo: ActorRef[StatsService.Response]): Behavior[Event] =
     Behaviors.setup { ctx =>
-      ctx.log.info("Starting aggregator")
-
       ctx.setReceiveTimeout(3.seconds, Timeout)
       val responseAdapter = ctx.messageAdapter[StatsWorker.Processed](processed =>
         CalculationComplete(processed.length)

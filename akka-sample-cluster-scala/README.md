@@ -20,19 +20,19 @@ The small program together with its configuration starts an ActorSystem with the
 
 You can read more about the cluster concepts in the [documentation](https://doc.akka.io/docs/akka/2.6/typed/cluster.html).
 
-To run this sample, type `sbt "runMain sample.cluster.simple.SimpleClusterApp"` if it is not already started.
+To run this sample, type `sbt "runMain sample.cluster.simple.App"`.
 
-`SimpleClusterApp` starts three actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and then open three terminal windows.
+`sample.cluster.simple.App` starts three actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and then open three terminal windows.
 
 In the first terminal window, start the first seed node with the following command:
 
-    sbt "runMain sample.cluster.simple.SimpleClusterApp 25251"
+    sbt "runMain sample.cluster.simple.App 25251"
 
 25251 corresponds to the port of the first seed-nodes element in the configuration. In the log output you see that the cluster node has been started and changed status to 'Up'.
 
 In the second terminal window, start the second seed node with the following command:
 
-    sbt "runMain sample.cluster.simple.SimpleClusterApp 25252"
+    sbt "runMain sample.cluster.simple.App 25252"
 
 25252 corresponds to the port of the second seed-nodes element in the configuration. In the log output you see that the cluster node has been started and joins the other seed node and becomes a member of the cluster. Its status changed to 'Up'.
 
@@ -40,20 +40,19 @@ Switch over to the first terminal window and see in the log output that the memb
 
 Start another node in the third terminal window with the following command:
 
-    sbt "runMain sample.cluster.simple.SimpleClusterApp 0"
+    sbt "runMain sample.cluster.simple.App 0"
 
 Now you don't need to specify the port number, 0 means that it will use a random available port. It joins one of the configured seed nodes. Look at the log output in the different terminal windows.
 
 Start even more nodes in the same way, if you like.
 
-Shut down one of the nodes by pressing 'ctrl-c' in one of the terminal windows. The other nodes will detect the failure after a while, which you can see in the log output in the other terminals.
+Shut down one of the nodes by pressing 'ctrl-c' in one of the terminal windows. It will cause the node to do a graceful leave from the cluster, telling the other nodes in the cluster that it is leaving. It will then be removed from the cluster, which you can see in the log output in the other terminals.
 
-Look at the source code of the actor again. It registers itself as subscriber of certain cluster events. It gets notified with an snapshot event, `CurrentClusterState` that holds full state information of the cluster. After that it receives events for changes that happen in the cluster.
+Look at the source code of the actor again. It registers itself as subscriber of certain cluster events. It gets notified a stream of events leading up to the current state. After that it receives events for changes that happen in the cluster.
+
+Now we have seen how to subscribe to cluster membership events. You can read more about it in the [documentation](https://doc.akka.io/docs/akka/2.6/typed/cluster.html#cluster-subscriptions). The membership events show us the state of the cluster but it does not help with accessing actors on other nodes the cluster. To do that we need to use the [Receptionist](https://doc.akka.io/docs/akka/2.6/typed/actor-discovery.html#receptionist).
 
 ## Worker registration example
-
-In the previous sample we saw how to subscribe to cluster membership events. You can read more about it in the [documentation](https://doc.akka.io/docs/akka/2.6/typed/cluster.html#cluster-subscriptions). The membership events show us the state of the cluster but it does
-not help with accessing actors on other nodes. To do that we need to use the [Receptionist](https://doc.akka.io/docs/akka/2.6/typed/actor-discovery.html#receptionist).
 
 The `Receptionist` is a service registry that will work both when in single JVM apps not using cluster, and in clustered apps. 
 `ActorRef`s are registered to the receptionist using a `ServiceKey`. The service key is defined with a type of message that actors registered for it will accept and a string identifier.  
@@ -68,7 +67,7 @@ The backend worker that performs the transformation job is defined in [Transform
 
 The frontend that simulates user jobs as well as keeping track of available workers is defined in [Frontend.scala](src/main/scala/sample/cluster/transformation/Frontend.scala). The actor subscribes to the `Receptionist` with the `WorkerServiceKey` to receive updates when the set of available workers in the cluster changes. If a worker dies or its node is removed from the cluster the receptionist will send out an updated listing so the frontend does not need to `watch` the workers.
 
-To run this sample, type ` sbt "runMain sample.cluster.transformation.App"` if it is not already started.
+To run this sample, make sure you have shut down any previously started cluster sample, then type `sbt "runMain sample.cluster.transformation.App"`.
 
 TransformationApp starts 5 actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and run the following commands in separate terminal windows.
 
@@ -82,13 +81,7 @@ TransformationApp starts 5 actor systems (cluster members) in the same JVM proce
 
     sbt "runMain sample.cluster.transformation.App frontend 0"
 
-This sample has a few shortcomings:
-
- * If a backend node is temporarily unreachable due to network issues, the frontend will still try to send messages to workers on that node (which will likely be lost)
- * If a tick happens before the receptionist has got the first listing that request is discarded
- * It's a bit verbose in relation to what it achieves
- 
-Luckily a construct that performs the same task and solves these issues is available in the cluster aware routers in Akka. Let's look into how we can use those in the next section!
+There is a component built into Akka that performs the task of subscribing to the receptionist and keeping track of available actors significantly simplifying such interactions: the group router. Let's look into how we can use those in the next section!
 
 ## Cluster Aware Routers
 
@@ -123,21 +116,17 @@ when started.
 With this design a single `compute` node crashing will only lose the ongoing work in that node and have the other nodes
 keep on with their work, but there is no single place to ask for a list of the current work in progress. 
 
-To run the sample, type `sbt "runMain sample.cluster.stats.StatsSample"` if it is not already started.
+To run the sample, type `sbt "runMain sample.cluster.stats.App"` if it is not already started.
 
 StatsSample starts 4 actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and run the following commands in separate terminal windows.
 
-    sbt "runMain sample.cluster.stats.StatsSample compute 25251"
+    sbt "runMain sample.cluster.stats.App compute 25251"
 
-    sbt "runMain sample.cluster.stats.StatsSample compute 25252"
+    sbt "runMain sample.cluster.stats.App compute 25252"
 
-    sbt "runMain sample.cluster.stats.StatsSample compute  25253"
+    sbt "runMain sample.cluster.stats.App compute  0"
 
-    sbt "runMain sample.cluster.stats.StatsSample client 0"
-
-To run the second sample, replace `sample.cluster.stats.StatsSample` with `sample.cluster.stats.StatsSampleOneMaster`.
-
-    sbt "runMain sample.cluster.stats.StatsSampleOneMaster compute 25251"
+    sbt "runMain sample.cluster.stats.App client 0"
 
 
 ### Router example with Cluster Singleton 
@@ -152,17 +141,17 @@ and could potentially make decisions based on knowing exactly what work is curre
 
 If the singleton node crashes however, all ongoing work is lost though since the state of the singleton is not persistent, when it is started on a new node the `StatsService` will not know of any previous work. It also means that since all work has to go through the singleton it could be come a bottleneck. If one of the other nodes crash only the ongoing work sent to them is lost, however since each ongoing request could be handled by multiple different workers on different nodes a crash could cause problems to many requests.
 
-To run this sample, type `sbt "runMain sample.cluster.stats.StatsSampleOneMaster"` if it is not already started.
+To run this sample, type `sbt "runMain sample.cluster.stats.AppOneMaster"` if it is not already started.
 
 StatsSampleOneMaster starts 4 actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and run the following commands in separate terminal windows.
 
-    sbt "runMain sample.cluster.stats.StatsSampleOneMaster compute 25251"
+    sbt "runMain sample.cluster.stats.AppOneMaster compute 25251"
 
-    sbt "runMain sample.cluster.stats.StatsSampleOneMaster compute 25252"
+    sbt "runMain sample.cluster.stats.AppOneMaster compute 25252"
 
-    sbt "runMain sample.cluster.stats.StatsSampleOneMaster compute 25253"
+    sbt "runMain sample.cluster.stats.AppOneMaster compute 0"
 
-    sbt "runMain sample.cluster.stats.StatsSampleOneMaster client 0"
+    sbt "runMain sample.cluster.stats.AppOneMaster client 0"
 
 ## Adaptive Load Balancing
 

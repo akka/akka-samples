@@ -2,9 +2,7 @@ package sample.cluster.transformation
 
 import scala.concurrent.duration._
 import akka.util.Timeout
-import com.typesafe.config.ConfigFactory
 import akka.actor.typed.ActorRef
-import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.ActorContext
@@ -41,13 +39,14 @@ object Frontend {
   private def running(ctx: ActorContext[Event], workers: IndexedSeq[ActorRef[Worker.TransformText]], jobCounter: Int): Behavior[Event] =
     Behaviors.receiveMessage {
       case WorkersUpdated(newWorkers) =>
-        ctx.log.info("List of services registered with the receptionist changed")
+        ctx.log.info("List of services registered with the receptionist changed: {}", newWorkers)
         running(ctx, newWorkers.toIndexedSeq, jobCounter)
       case Tick =>
         if (workers.isEmpty) {
           ctx.log.warn("Got tick request but no workers available, not sending any work")
           Behaviors.same
         } else {
+          // how much time can pass before we consider a request failed
           implicit val timeout: Timeout = 5.seconds
           val selectedWorker = workers(jobCounter % workers.size)
           ctx.log.info("Sending work for processing to {}", selectedWorker)

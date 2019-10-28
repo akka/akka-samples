@@ -52,22 +52,26 @@ object AppOneMaster {
       val serviceProxy = ClusterSingleton(ctx.system).init(serviceSingleton)
 
 
-      if (cluster.selfMember.roles("compute")) {
-        // on every compute node N local workers, which a cluster singleton stats service delegates work to
-        val numberOfWorkers = ctx.system.settings.config.getInt("stats-service.workers-per-node")
-        ctx.log.info("Starting {} workers", numberOfWorkers)
-        (0 to numberOfWorkers).foreach { n =>
-          val worker = ctx.spawn(StatsWorker(), s"StatsWorker$n")
-          ctx.system.receptionist ! Receptionist.Register(WorkerServiceKey, worker)
-        }
-      } else {
-        ctx.spawn(StatsSampleClient(serviceProxy), "Client")
+      role match {
+        case "compute" =>
+          // on every compute node N local workers, which a cluster singleton stats service delegates work to
+          val numberOfWorkers = ctx.system.settings.config.getInt("stats-service.workers-per-node")
+          ctx.log.info("Starting {} workers", numberOfWorkers)
+          (0 to numberOfWorkers).foreach { n =>
+            val worker = ctx.spawn(StatsWorker(), s"StatsWorker$n")
+            ctx.system.receptionist ! Receptionist.Register(WorkerServiceKey, worker)
+          }
+        case "client" =>
+          ctx.spawn(StatsSampleClient(serviceProxy), "Client")
+        case unknown =>
+          throw new IllegalArgumentException(s"Unknown role $unknown")
       }
+
 
       Behaviors.empty
     }
 
-    val system = ActorSystem[Nothing](rootBehavior, "StatsOneMasterSystem", config)
+    val system = ActorSystem[Nothing](rootBehavior, "ClusterSystem", config)
   }
 
 }

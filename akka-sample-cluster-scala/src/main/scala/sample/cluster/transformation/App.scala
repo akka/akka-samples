@@ -15,7 +15,7 @@ object App {
       startup("frontend", 0)
       startup("frontend", 0)
     } else {
-      require(args.size == 2, "Usage: role port")
+      require(args.length == 2, "Usage: role port")
       startup(args(0), args(1).toInt)
     }
   }
@@ -26,26 +26,28 @@ object App {
         akka.remote.artery.canonical.port=$port
         akka.cluster.roles = [frontend]
         """)
-      .withFallback(ConfigFactory.load())
+      .withFallback(ConfigFactory.load("transformation"))
 
     val rootBehavior = Behaviors.setup[Nothing] { ctx =>
 
       // start a different set of children depending on role
+      ctx.log.info("{} node starting up", role)
       role match {
         case "backend" =>
-          (1 to 4).foreach { n =>
+          val workersPerNode = ctx.system.settings.config.getInt("transformation.workers-per-node")
+          (1 to workersPerNode).foreach { n =>
             ctx.spawn(Worker(), s"Worker$n")
           }
         case "frontend" =>
           ctx.spawn(Frontend(), "Frontend")
 
-        case unknown => throw new IllegalArgumentException(s"Unknown role $role")
+        case unknown => throw new IllegalArgumentException(s"Unknown role $unknown")
       }
 
       Behaviors.empty
     }
 
-    val system = ActorSystem[Nothing](rootBehavior, "TransformationSystem", config)
+    val system = ActorSystem[Nothing](rootBehavior, "ClusterSystem", config)
 
   }
 

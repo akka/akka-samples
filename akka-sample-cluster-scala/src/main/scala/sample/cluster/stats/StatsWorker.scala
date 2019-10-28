@@ -2,7 +2,8 @@ package sample.cluster.stats
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
-import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
+import sample.cluster.CborSerializable
 
 import scala.concurrent.duration._
 
@@ -10,22 +11,23 @@ import scala.concurrent.duration._
 object StatsWorker {
 
   trait Command
-  final case class Process(word: String, replyTo: ActorRef[Processed]) extends Command
+  final case class Process(word: String, replyTo: ActorRef[Processed]) extends Command with CborSerializable
   private case object EvictCache extends Command
 
-  final case class Processed(word: String, length: Int)
+  final case class Processed(word: String, length: Int) extends CborSerializable
 
   def apply(): Behavior[Command] = Behaviors.setup { ctx =>
     Behaviors.withTimers { timers =>
       ctx.log.info("Worker starting up")
       timers.startTimerWithFixedDelay(EvictCache, EvictCache, 30.seconds)
 
-      withCache(Map.empty)
+      withCache(ctx, Map.empty)
     }
   }
 
-  private def withCache(cache: Map[String, Int]): Behavior[Command] = Behaviors.receiveMessage {
+  private def withCache(ctx: ActorContext[Command], cache: Map[String, Int]): Behavior[Command] = Behaviors.receiveMessage {
     case Process(word, replyTo) =>
+      ctx.log.info("Worker processing request")
       cache.get(word) match {
         case Some(length) =>
           replyTo ! Processed(word, length)
@@ -34,10 +36,10 @@ object StatsWorker {
           val length = word.length
           val updatedCache = cache + (word -> length)
           replyTo ! Processed(word, length)
-          withCache(updatedCache)
+          withCache(ctx, updatedCache)
       }
     case EvictCache =>
-      withCache(Map.empty)
+      withCache(ctx, Map.empty)
   }
 }
 //#worker
