@@ -1,10 +1,28 @@
 package sample.cluster.transformation
 
-import akka.actor.typed.ActorSystem
+import akka.actor.typed.{ActorSystem, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
+import akka.cluster.typed.Cluster
 import com.typesafe.config.ConfigFactory
 
 object App {
+
+  object RootBehavior {
+    def apply(): Behavior[Nothing] = Behaviors.setup[Nothing] { ctx =>
+      val cluster = Cluster(ctx.system)
+
+      if (cluster.selfMember.hasRole("backend")) {
+        val workersPerNode = ctx.system.settings.config.getInt("transformation.workers-per-node")
+        (1 to workersPerNode).foreach { n =>
+          ctx.spawn(Worker(), s"Worker$n")
+        }
+      }
+      if (cluster.selfMember.hasRole("frontend")) {
+        ctx.spawn(Frontend(), "Frontend")
+      }
+      Behaviors.empty
+    }
+  }
 
   def main(args: Array[String]): Unit = {
     // starting 2 frontend nodes and 3 backend nodes
@@ -28,26 +46,7 @@ object App {
         """)
       .withFallback(ConfigFactory.load("transformation"))
 
-    val rootBehavior = Behaviors.setup[Nothing] { ctx =>
-
-      // start a different set of children depending on role
-      ctx.log.info("{} node starting up", role)
-      role match {
-        case "backend" =>
-          val workersPerNode = ctx.system.settings.config.getInt("transformation.workers-per-node")
-          (1 to workersPerNode).foreach { n =>
-            ctx.spawn(Worker(), s"Worker$n")
-          }
-        case "frontend" =>
-          ctx.spawn(Frontend(), "Frontend")
-
-        case unknown => throw new IllegalArgumentException(s"Unknown role $unknown")
-      }
-
-      Behaviors.empty
-    }
-
-    val system = ActorSystem[Nothing](rootBehavior, "ClusterSystem", config)
+    val system = ActorSystem[Nothing](RootBehavior(), "ClusterSystem", config)
 
   }
 

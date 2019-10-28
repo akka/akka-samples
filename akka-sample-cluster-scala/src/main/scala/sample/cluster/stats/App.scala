@@ -16,6 +16,27 @@ object App {
 
   val StatsServiceKey = ServiceKey[StatsService.ProcessText]("StatsService")
 
+  object RootBehavior {
+    def apply(): Behavior[Nothing] = Behaviors.setup[Nothing] { ctx =>
+      val cluster = Cluster(ctx.system)
+      if (cluster.selfMember.hasRole("compute")) {
+        // on every compute node there is one service instance that delegates to N local workers
+        val numberOfWorkers = ctx.system.settings.config.getInt("stats-service.workers-per-node")
+        val workers = ctx.spawn(Routers.pool(numberOfWorkers)(StatsWorker()), "WorkerRouter")
+        val service = ctx.spawn(StatsService(workers),"StatsService")
+
+        // published through the receptionist to the other nodes in the cluster
+        ctx.system.receptionist ! Receptionist.Register(StatsServiceKey, service)
+      }
+      if (cluster.selfMember.hasRole(("client"))) {
+        val serviceRouter = ctx.spawn(Routers.group(App.StatsServiceKey), "ServiceRouter")
+        ctx.spawn(StatsSampleClient(serviceRouter), "Client")
+      }
+      Behaviors.empty[Nothing]
+    }
+  }
+
+
   def main(args: Array[String]): Unit = {
     if (args.isEmpty) {
       startup("compute", 25251)
@@ -37,35 +58,7 @@ object App {
       """)
       .withFallback(ConfigFactory.load("stats"))
 
-    val rootBehavior = Behaviors.setup[Nothing] { ctx =>
-
-      role match {
-        case "compute" =>
-          // on every compute node there is one service instance that delegates to N local workers
-          val numberOfWorkers = ctx.system.settings.config.getInt("stats-service.workers-per-node")
-          val workers = ctx.spawn(Routers.pool(numberOfWorkers)(StatsWorker()), "WorkerRouter")
-          val service = ctx.spawn(StatsService(workers),"StatsService")
-
-          // published through the receptionist to the other nodes in the cluster
-          ctx.system.receptionist ! Receptionist.Register(StatsServiceKey, service)
-
-        case "client" =>
-          val serviceRouter = ctx.spawn(Routers.group(App.StatsServiceKey), "ServiceRouter")
-          ctx.spawn(StatsSampleClient(serviceRouter), "Client")
-
-        case unknown => throw new IllegalArgumentException(s"Unknown role $unknown")
-      }
-
-      if (Cluster(ctx.system).selfMember.roles("compute")) {
-
-      } else {
-
-      }
-
-      Behaviors.empty[Nothing]
-    }
-
-    val system = ActorSystem[Nothing](rootBehavior, "ClusterSystem", config)
+    val system = ActorSystem[Nothing](RootBehavior(), "ClusterSystem", config)
   }
 }
 

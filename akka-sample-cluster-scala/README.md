@@ -57,7 +57,7 @@ Now we have seen how to subscribe to cluster membership events. You can read mor
 The `Receptionist` is a service registry that will work both when in single JVM apps not using cluster, and in clustered apps. 
 `ActorRef`s are registered to the receptionist using a `ServiceKey`. The service key is defined with a type of message that actors registered for it will accept and a string identifier.  
 
-Let's take a look at an example that illustrates how workers, here only on nodes with the role *backend*, register themselves to the receptionist so that *frontend* nodes will know what workers are available to perform their work.
+Let's take a look at an example that illustrates how workers, here only on nodes with the role *backend*, register themselves to the receptionist so that *frontend* nodes will know what workers are available to perform their work. Note that a node could potentially have both roles, since the node roles are a set. The `main` provided only allows one role though. 
 
 The example application provides a service to transform text. At a periodic interval the frontend simulates an external request to process a text which it forwards to available workers if there are any. 
 

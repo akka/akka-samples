@@ -1,10 +1,20 @@
 package sample.cluster.simple
 
-import akka.actor.typed.ActorSystem
+import akka.actor.typed.{ActorSystem, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import com.typesafe.config.ConfigFactory
 
 object App {
+
+  object RootBehavior {
+    def apply(): Behavior[Nothing] = Behaviors.setup[Nothing] { context =>
+      // Create an actor that handles cluster domain events
+      context.spawn(ClusterListener(), "ClusterListener")
+
+      Behaviors.empty
+    }
+  }
+
   def main(args: Array[String]): Unit = {
     val ports =
       if (args.isEmpty)
@@ -21,13 +31,7 @@ object App {
       """).withFallback(ConfigFactory.load())
 
     // Create an Akka system
-    val rootBehavior = Behaviors.setup[Nothing] { context =>
-      // Create an actor that handles cluster domain events
-      context.spawn(ClusterListener(), "ClusterListener")
-
-      Behaviors.empty
-    }
-    val system = ActorSystem[Nothing](rootBehavior, "ClusterSystem", config)
+    val system = ActorSystem[Nothing](RootBehavior(), "ClusterSystem", config)
   }
 
 }
