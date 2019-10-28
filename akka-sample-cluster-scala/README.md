@@ -153,38 +153,6 @@ StatsSampleOneMaster starts 4 actor systems (cluster members) in the same JVM pr
 
     sbt "runMain sample.cluster.stats.AppOneMaster client 0"
 
-## Adaptive Load Balancing
-
-FIXME the factorial sample no longer is doing adaptive load balance, should we skip it or just rewrite text as another routing sample?
-
-The member nodes of the cluster collects system health metrics and publishes that to other nodes and to registered subscribers. This information is primarily used for load-balancing routers, such as the `AdaptiveLoadBalancingPool` and `AdaptiveLoadBalancingGroup` routers.
-
-You can read more about cluster metrics in the [documentation](http://doc.akka.io/docs/akka/2.6/scala/cluster-usage.html#Cluster_Metrics).
-
-Let's take a look at this router in action. What can be more demanding than calculating factorials?
-
-The backend worker that performs the factorial calculation is defined in [FactorialBackend.scala](src/main/scala/sample/cluster/factorial/Calculator.scala).
-
-The frontend that receives user jobs and delegates to the backends via the router is defined in [FactorialFrontend.scala](src/main/scala/sample/cluster/factorial/Calculator.scala).
-
-As you can see, the router is defined in the same way as other routers, and in this case it is configured in [factorial.conf](src/main/resources/factorial.conf).
-
-It is only router type `adaptive` and the `metrics-selector` that is specific to this router, other things work in the same way as other routers.
-
-To run this sample, type `sbt "runMain sample.cluster.factorial.FactorialApp"` if it is not already started.
-
-FactorialApp starts 4 actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and run the following commands in separate terminal windows.
-
-    sbt "runMain sample.cluster.factorial.FactorialBackend 2551"
-
-    sbt "runMain sample.cluster.factorial.FactorialBackend 2552"
-
-    sbt "runMain sample.cluster.factorial.FactorialBackend 0"
-
-    sbt "runMain sample.cluster.factorial.FactorialFrontend 0"
-
-Press ctrl-c in the terminal window of the frontend to stop the factorial calculations.
-
 ## Tests
 
 Tests can be found in [src/multi-jvm](src/multi-jvm). You can run them by typing `sbt multi-jvm:test`.
