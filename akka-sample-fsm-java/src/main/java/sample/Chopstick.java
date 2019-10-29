@@ -6,37 +6,30 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 
 public class Chopstick {
-    interface ChopstickMessage { }
+    interface Command { }
 
-    final static class Take implements ChopstickMessage {
-        public final ActorRef<ChopstickAnswer> hakker;
+    final static class Take implements Command {
+        public final ActorRef<Answer> hakker;
 
-        public Take(ActorRef<ChopstickAnswer> hakker) {
+        public Take(ActorRef<Answer> hakker) {
             this.hakker = hakker;
         }
     }
 
-    final static class Put implements ChopstickMessage {
-        public final ActorRef<ChopstickAnswer> hakker;
+    final static class Put implements Command {
+        public final ActorRef<Answer> hakker;
 
-        public Put(ActorRef<ChopstickAnswer> hakker) {
+        public Put(ActorRef<Answer> hakker) {
             this.hakker = hakker;
         }
     }
 
-    public static Behavior<ChopstickMessage> create() {
-        return Behaviors.setup(context-> new Chopstick(context).available());
-    }
 
-    interface ChopstickAnswer {
+    interface Answer {
 
-        ActorRef<ChopstickMessage> getChopstick();
+        ActorRef<Command> getChopstick();
 
-        default boolean isTakenBy() {
-            return false;
-        }
-
-        default boolean isTakenBy(ActorRef<ChopstickMessage> chopstick) {
+        default boolean isTaken() {
             return false;
         }
 
@@ -44,45 +37,38 @@ public class Chopstick {
             return false;
         }
 
-        default boolean isBusy(ActorRef<ChopstickMessage> chopstick) {
+        default boolean isBusy(ActorRef<Command> chopstick) {
             return false;
         }
-
-
     }
 
-    final static class Taken implements ChopstickAnswer {
-        public final ActorRef<ChopstickMessage> chopstick;
+    final static class Taken implements Answer {
+        public final ActorRef<Command> chopstick;
 
-        public Taken(ActorRef<ChopstickMessage> chopstick) {
+        public Taken(ActorRef<Command> chopstick) {
             this.chopstick = chopstick;
         }
 
         @Override
-        public ActorRef<ChopstickMessage> getChopstick() {
+        public ActorRef<Command> getChopstick() {
             return chopstick;
         }
 
         @Override
-        public boolean isTakenBy(ActorRef<ChopstickMessage> chopstick) {
-            return this.chopstick.equals(chopstick);
-        }
-
-        @Override
-        public boolean isTakenBy() {
+        public boolean isTaken() {
             return true;
         }
     }
 
-    final static class Busy implements ChopstickAnswer {
-        public final ActorRef<ChopstickMessage> chopstick;
+    final static class Busy implements Answer {
+        public final ActorRef<Command> chopstick;
 
-        public Busy(ActorRef<ChopstickMessage> chopstick) {
+        public Busy(ActorRef<Command> chopstick) {
             this.chopstick = chopstick;
         }
 
         @Override
-        public ActorRef<ChopstickMessage> getChopstick() {
+        public ActorRef<Command> getChopstick() {
             return chopstick;
         }
 
@@ -92,19 +78,23 @@ public class Chopstick {
         }
 
         @Override
-        public boolean isBusy(ActorRef<ChopstickMessage> chopstick) {
+        public boolean isBusy(ActorRef<Command> chopstick) {
             return this.chopstick.equals(chopstick);
         }
     }
 
-    private final ActorContext<ChopstickMessage> context;
+    public static Behavior<Command> create() {
+        return Behaviors.setup(context-> new Chopstick(context).available());
+    }
 
-    private Chopstick(ActorContext<ChopstickMessage> context) {
+    private final ActorContext<Command> context;
+
+    private Chopstick(ActorContext<Command> context) {
         this.context = context;
     }
 
-    private Behavior<ChopstickMessage> takenBy(ActorRef<ChopstickAnswer> hakker) {
-        return Behaviors.receive(ChopstickMessage.class)
+    private Behavior<Command> takenBy(ActorRef<Answer> hakker) {
+        return Behaviors.receive(Command.class)
                 .onMessage(Take.class, (msg) -> {
                     msg.hakker.tell(new Busy(context.getSelf()));
                     return Behaviors.same();
@@ -114,8 +104,8 @@ public class Chopstick {
 
     }
 
-    private Behavior<ChopstickMessage> available() {
-        return Behaviors.receive(ChopstickMessage.class)
+    private Behavior<Command> available() {
+        return Behaviors.receive(Command.class)
                 .onMessage(Take.class, (msg) -> {
                     msg.hakker.tell(new Taken(context.getSelf()));
                     return takenBy(msg.hakker);
