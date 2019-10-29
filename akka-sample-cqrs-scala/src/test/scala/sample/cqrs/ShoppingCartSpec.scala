@@ -11,19 +11,61 @@ class ShoppingCartSpec extends ScalaTestWithActorTestKit(s"""
       akka.persistence.snapshot-store.local.dir = "target/snapshot-${UUID.randomUUID().toString}"
     """) with WordSpecLike {
 
+  private var counter = 0
+  def newCartId(): String = {
+    counter += 1
+    s"cart-$counter"
+  }
+
   "The Shopping Cart" should {
+
+    "add item" in {
+      val cart = testKit.spawn(ShoppingCart(newCartId(), Set.empty))
+      val probe = testKit.createTestProbe[ShoppingCart.Confirmation]
+      cart ! ShoppingCart.AddItem("foo", 42, probe.ref)
+      probe.expectMessage(ShoppingCart.Accepted(ShoppingCart.Summary(Map("foo" -> 42), checkedOut = false)))
+    }
+
+    "reject already added item" in {
+      val cart = testKit.spawn(ShoppingCart(newCartId(), Set.empty))
+      val probe = testKit.createTestProbe[ShoppingCart.Confirmation]
+      cart ! ShoppingCart.AddItem("foo", 42, probe.ref)
+      probe.expectMessageType[ShoppingCart.Accepted]
+      cart ! ShoppingCart.AddItem("foo", 13, probe.ref)
+      probe.expectMessageType[ShoppingCart.Rejected]
+    }
+
+    "remove item" in {
+      val cart = testKit.spawn(ShoppingCart(newCartId(), Set.empty))
+      val probe = testKit.createTestProbe[ShoppingCart.Confirmation]
+      cart ! ShoppingCart.AddItem("foo", 42, probe.ref)
+      probe.expectMessageType[ShoppingCart.Accepted]
+      cart ! ShoppingCart.RemoveItem("foo", probe.ref)
+      probe.expectMessage(ShoppingCart.Accepted(ShoppingCart.Summary(Map.empty, checkedOut = false)))
+    }
+
+    "adjust quantity" in {
+      val cart = testKit.spawn(ShoppingCart(newCartId(), Set.empty))
+      val probe = testKit.createTestProbe[ShoppingCart.Confirmation]
+      cart ! ShoppingCart.AddItem("foo", 42, probe.ref)
+      probe.expectMessageType[ShoppingCart.Accepted]
+      cart ! ShoppingCart.AdjustItemQuantity("foo", 43, probe.ref)
+      probe.expectMessage(ShoppingCart.Accepted(ShoppingCart.Summary(Map("foo" -> 43), checkedOut = false)))
+    }
+
     "keep its state" in {
-      val cart1 = testKit.spawn(ShoppingCart("cart-1", Set.empty))
-      val probe = testKit.createTestProbe[ShoppingCart.Result]
-      cart1 ! ShoppingCart.UpdateItem("foo", 42, probe.ref)
-      probe.expectMessage(ShoppingCart.OK)
+      val cartId = newCartId()
+      val cart = testKit.spawn(ShoppingCart(cartId, Set.empty))
+      val probe = testKit.createTestProbe[ShoppingCart.Confirmation]
+      cart ! ShoppingCart.AddItem("foo", 42, probe.ref)
+      probe.expectMessage(ShoppingCart.Accepted(ShoppingCart.Summary(Map("foo" -> 42), checkedOut = false)))
 
-      testKit.stop(cart1)
+      testKit.stop(cart)
 
-      val stateProbe = testKit.createTestProbe[ShoppingCart.State]
-      val restartedCart1 = testKit.spawn(ShoppingCart("cart-1", Set.empty))
+      val stateProbe = testKit.createTestProbe[ShoppingCart.Summary]
+      val restartedCart1 = testKit.spawn(ShoppingCart(cartId, Set.empty))
       restartedCart1 ! ShoppingCart.Get(stateProbe.ref)
-      stateProbe.receiveMessage.items.size should be(1)
+      stateProbe.expectMessage(ShoppingCart.Summary(Map("foo" -> 42), checkedOut = false))
     }
   }
 

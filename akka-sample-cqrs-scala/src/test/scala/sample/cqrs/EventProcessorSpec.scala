@@ -52,7 +52,7 @@ class EventProcessorSpec extends ScalaTestWithActorTestKit(ConfigFactory.parseSt
   "The events from the Shopping Cart" should {
     "be consumed by the event processor" in {
       val cart1 = testKit.spawn(ShoppingCart("cart-1", Set("tag-0")))
-      val probe = testKit.createTestProbe[ShoppingCart.Result]
+      val probe = testKit.createTestProbe[ShoppingCart.Confirmation]
 
       val eventProbe = testKit.createTestProbe[ShoppingCart.Event]()
       testKit.system.eventStream ! EventStream.Subscribe(eventProbe.ref)
@@ -60,21 +60,24 @@ class EventProcessorSpec extends ScalaTestWithActorTestKit(ConfigFactory.parseSt
       testKit.spawn(
         EventProcessor(
           new ShoppingCartEventProcessorStream(system, system.executionContext, "EventProcessor", "tag-0")))
-      cart1 ! ShoppingCart.UpdateItem("foo", 42, probe.ref)
-      probe.expectMessage(ShoppingCart.OK)
-      eventProbe.expectMessage(ShoppingCart.ItemUpdated("cart-1", "foo", 42))
+      cart1 ! ShoppingCart.AddItem("foo", 42, probe.ref)
+      probe.expectMessageType[ShoppingCart.Accepted]
+      eventProbe.expectMessage(ShoppingCart.ItemAdded("cart-1", "foo", 42))
 
-      cart1 ! ShoppingCart.UpdateItem("bar", 17, probe.ref)
-      probe.expectMessage(ShoppingCart.OK)
-      eventProbe.expectMessage(ShoppingCart.ItemUpdated("cart-1", "bar", 17))
+      cart1 ! ShoppingCart.AddItem("bar", 17, probe.ref)
+      probe.expectMessageType[ShoppingCart.Accepted]
+      eventProbe.expectMessage(ShoppingCart.ItemAdded("cart-1", "bar", 17))
+      cart1 ! ShoppingCart.AdjustItemQuantity("bar", 18, probe.ref)
+      probe.expectMessageType[ShoppingCart.Accepted]
+      eventProbe.expectMessage(ShoppingCart.ItemQuantityAdjusted("cart-1", "bar", 18))
 
       val cart2 = testKit.spawn(ShoppingCart("cart-2", Set("tag-0")))
       // also verify that EventProcessor is logging
-      LoggingTestKit.info("consumed ItemUpdated(cart-2,another,1)").intercept {
-        cart2 ! ShoppingCart.UpdateItem("another", 1, probe.ref)
-        probe.expectMessage(ShoppingCart.OK)
+      LoggingTestKit.info("consumed ItemAdded(cart-2,another,1)").intercept {
+        cart2 ! ShoppingCart.AddItem("another", 1, probe.ref)
+        probe.expectMessageType[ShoppingCart.Accepted]
       }
-      eventProbe.expectMessage(ShoppingCart.ItemUpdated("cart-2", "another", 1))
+      eventProbe.expectMessage(ShoppingCart.ItemAdded("cart-2", "another", 1))
     }
   }
 

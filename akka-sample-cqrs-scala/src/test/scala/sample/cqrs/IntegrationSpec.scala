@@ -119,23 +119,26 @@ class IntegrationSpec
 
     "update and consume from different nodes" in {
       val cart1 = ClusterSharding(testKit1.system).entityRefFor(ShoppingCart.EntityKey, "cart-1")
-      val probe1 = testKit1.createTestProbe[ShoppingCart.Result]
+      val probe1 = testKit1.createTestProbe[ShoppingCart.Confirmation]
 
       val cart2 = ClusterSharding(testKit2.system).entityRefFor(ShoppingCart.EntityKey, "cart-2")
-      val probe2 = testKit2.createTestProbe[ShoppingCart.Result]
+      val probe2 = testKit2.createTestProbe[ShoppingCart.Confirmation]
 
       val eventProbe3 = testKit3.createTestProbe[ShoppingCart.Event]()
       testKit3.system.eventStream ! EventStream.Subscribe(eventProbe3.ref)
 
       // update from node1, consume event from node3
-      cart1 ! ShoppingCart.UpdateItem("foo", 42, probe1.ref)
-      probe1.expectMessage(ShoppingCart.OK)
-      eventProbe3.expectMessage(ShoppingCart.ItemUpdated("cart-1", "foo", 42))
+      cart1 ! ShoppingCart.AddItem("foo", 42, probe1.ref)
+      probe1.expectMessageType[ShoppingCart.Accepted]
+      eventProbe3.expectMessage(ShoppingCart.ItemAdded("cart-1", "foo", 42))
 
       // update from node2, consume event from node3
-      cart2 ! ShoppingCart.UpdateItem("bar", 17, probe2.ref)
-      probe2.expectMessage(ShoppingCart.OK)
-      eventProbe3.expectMessage(ShoppingCart.ItemUpdated("cart-2", "bar", 17))
+      cart2 ! ShoppingCart.AddItem("bar", 17, probe2.ref)
+      probe2.expectMessageType[ShoppingCart.Accepted]
+      cart2 ! ShoppingCart.AdjustItemQuantity("bar", 18, probe2.ref)
+      probe2.expectMessageType[ShoppingCart.Accepted]
+      eventProbe3.expectMessage(ShoppingCart.ItemAdded("cart-2", "bar", 17))
+      eventProbe3.expectMessage(ShoppingCart.ItemQuantityAdjusted("cart-2", "bar", 18))
     }
 
     "continue even processing from offset" in {
@@ -151,17 +154,17 @@ class IntegrationSpec
       }
 
       val cart3 = ClusterSharding(testKit1.system).entityRefFor(ShoppingCart.EntityKey, "cart-3")
-      val probe3 = testKit1.createTestProbe[ShoppingCart.Result]
+      val probe3 = testKit1.createTestProbe[ShoppingCart.Confirmation]
 
       val eventProbe4 = testKit4.createTestProbe[ShoppingCart.Event]()
       testKit4.system.eventStream ! EventStream.Subscribe(eventProbe4.ref)
 
       // update from node1, consume event from node4
-      cart3 ! ShoppingCart.UpdateItem("abc", 43, probe3.ref)
-      probe3.expectMessage(ShoppingCart.OK)
+      cart3 ! ShoppingCart.AddItem("abc", 43, probe3.ref)
+      probe3.expectMessageType[ShoppingCart.Accepted]
       // note that node4 is new, but continues reading from previous offset, i.e. not receiving events
       // that have already been consumed
-      eventProbe4.expectMessage(ShoppingCart.ItemUpdated("cart-3", "abc", 43))
+      eventProbe4.expectMessage(ShoppingCart.ItemAdded("cart-3", "abc", 43))
     }
 
   }
