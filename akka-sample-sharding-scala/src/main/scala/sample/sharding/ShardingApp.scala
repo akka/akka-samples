@@ -20,7 +20,7 @@ object ShardingApp {
       val config = ConfigFactory
         .parseString(s"""
         akka.remote.artery.canonical.port=$port
-        sample.sending-temperatures = ${port == "2555"}
+        sample.sending-temperatures = ${port == "2553"}
         """)
         .withFallback(ConfigFactory.load())
 

@@ -58,26 +58,34 @@ class Devices extends Actor with ActorLogging with Timers {
 
   def receive = {
     case Start =>
-      timers.startTimerWithFixedDelay(UpdateDevice, UpdateDevice, 100.millis)
-      timers.startTimerWithFixedDelay(
+//      timers.startTimerWithFixedDelay(UpdateDevice, UpdateDevice, 100.millis)
+//      timers.startTimerWithFixedDelay(
+//        ReadTemperatures,
+//        ReadTemperatures,
+//        15.seconds
+//      )
+      timers.startPeriodicTimer(UpdateDevice, UpdateDevice, 200.millis)
+      timers.startPeriodicTimer(
         ReadTemperatures,
         ReadTemperatures,
         15.seconds
       )
 
     case UpdateDevice =>
-      seqNr += 1
-      //val deviceId = random.nextInt(numberOfDevices)
-      val deviceId = (seqNr % numberOfDevices).toInt
-      sequenceNumbers = sequenceNumbers.updated(seqNr, deviceId)
-      val temperature = 5 + 30 * random.nextDouble()
-      val msg = Device.RecordTemperature(deviceId, temperature, System.nanoTime(), seqNr)
-      log.info(s"Sending $msg")
-      deviceRegion ! msg
+      (1 to numberOfDevices).foreach {_ =>
+        seqNr += 1
+        //val deviceId = random.nextInt(numberOfDevices)
+        val deviceId = (seqNr % numberOfDevices).toInt
+        sequenceNumbers = sequenceNumbers.updated(seqNr, deviceId)
+        val temperature = 5 + 30 * random.nextDouble()
+        val msg = Device.RecordTemperature(deviceId, temperature, System.nanoTime(), seqNr)
+        log.info(s"Sending $msg")
+        deviceRegion ! msg
+      }
 
     case Device.RecordTemperatureAck(deviceId, startTime, seqNr) =>
       val durationMs = (System.nanoTime() - startTime) / 1000 / 1000
-      if (durationMs > 500)
+      if (durationMs > 300)
         log.info("Delayed ack of device {} seqNr {} after {} ms", deviceId, seqNr, durationMs)
       else
         log.info("Ack of device {} seqNr {} after {} ms", deviceId, seqNr, durationMs)

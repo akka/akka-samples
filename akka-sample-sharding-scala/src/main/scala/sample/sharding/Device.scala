@@ -59,6 +59,8 @@ class Device extends Actor with ActorLogging {
     else values.sum / values.size
 
   override def postStop(): Unit = {
+//    log.info("Stopping Device {}", self.path.name)
+//    Thread.sleep(200) // FIXME slow stopping
     log.info("Stopped Device {}", self.path.name)
   }
 }
