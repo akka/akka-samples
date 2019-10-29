@@ -75,8 +75,8 @@ object Main {
       """
 
     // ok to block here, main thread
-    Await.ready(session.executeCreateTable(keyspaceStmt), 30.seconds)
-    Await.ready(session.executeCreateTable(offsetTableStmt), 30.seconds)
+    Await.ready(session.executeDDL(keyspaceStmt), 30.seconds)
+    Await.ready(session.executeDDL(offsetTableStmt), 30.seconds)
   }
 
 }
