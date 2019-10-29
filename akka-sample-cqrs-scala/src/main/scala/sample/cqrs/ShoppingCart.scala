@@ -16,7 +16,7 @@ object ShoppingCart {
   /**
    * The current state held by the persistent entity.
    */
-  case class State(items: Map[String, Int], checkedOut: Boolean) {
+  final case class State(items: Map[String, Int], checkedOut: Boolean) {
     def updateItem(productId: String, quantity: Int): State = {
       quantity match {
         case 0 => copy(items = items - productId)
@@ -37,7 +37,7 @@ object ShoppingCart {
 
   sealed trait Result extends CborSerializable
   case object OK extends Result
-  case class Rejected(msg: String) extends Result
+  final case class Rejected(msg: String) extends Result
 
   /**
    * A command to update an item.
@@ -45,14 +45,14 @@ object ShoppingCart {
    * It can reply with `Result`, which is sent back to the caller when
    * all the events emitted by this command are successfully persisted.
    */
-  case class UpdateItem(productId: String, quantity: Int, replyTo: ActorRef[Result]) extends Command
+  final case class UpdateItem(productId: String, quantity: Int, replyTo: ActorRef[Result]) extends Command
 
   /**
    * A command to get the current state of the shopping cart.
    *
    * It can reply with the state of the ShoppingCart
    */
-  case class Get(replyTo: ActorRef[State]) extends Command
+  final case class Get(replyTo: ActorRef[State]) extends Command
 
   /**
    * A command to checkout the shopping cart.
@@ -60,7 +60,7 @@ object ShoppingCart {
    * It can reply with `Result`, which will be returned when the fact that checkout
    * has started has successfully been persisted.
    */
-  case class Checkout(replyTo: ActorRef[Result]) extends Command
+  final case class Checkout(replyTo: ActorRef[Result]) extends Command
 
   /**
    * This interface defines all the events that the ShoppingCart supports.
@@ -72,12 +72,12 @@ object ShoppingCart {
   /**
    * An event that represents a item updated event.
    */
-  case class ItemUpdated(cartId: String, productId: String, quantity: Int) extends Event
+  final case class ItemUpdated(cartId: String, productId: String, quantity: Int) extends Event
 
   /**
    * An event that represents a checked out event.
    */
-  case class CheckedOut(cartId: String) extends Event
+  final case class CheckedOut(cartId: String) extends Event
 
   val EntityKey: EntityTypeKey[Command] = EntityTypeKey[Command]("ShoppingCart")
 
