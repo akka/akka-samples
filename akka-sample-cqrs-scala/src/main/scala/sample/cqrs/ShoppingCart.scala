@@ -2,13 +2,17 @@ package sample.cqrs
 
 import java.time.Instant
 
+import scala.concurrent.duration._
+
 import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
+import akka.actor.typed.SupervisorStrategy
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.sharding.typed.scaladsl.Entity
 import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
 import akka.persistence.typed.PersistenceId
+import akka.persistence.typed.scaladsl.RetentionCriteria
 import akka.persistence.typed.scaladsl.Effect
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import akka.persistence.typed.scaladsl.ReplyEffect
@@ -78,6 +82,9 @@ object ShoppingCart {
    */
   final case class Get(replyTo: ActorRef[Summary]) extends Command
 
+  /**
+   * Summary of the shopping cart state, used in reply messages.
+   */
   final case class Summary(items: Map[String, Int], checkedOut: Boolean) extends CborSerializable
 
   sealed trait Confirmation extends CborSerializable
@@ -124,6 +131,8 @@ object ShoppingCart {
           else openShoppingCart(cartId, state, command),
         (state, event) => handleEvent(state, event))
       .withTagger(_ => eventProcessorTags)
+      .withRetention(RetentionCriteria.snapshotEvery(numberOfEvents = 100, keepNSnapshots = 3))
+      .onPersistFailure(SupervisorStrategy.restartWithBackoff(200.millis, 5.seconds, 0.1))
   }
 
   private def openShoppingCart(cartId: String, state: State, command: Command): ReplyEffect[Event, State] =
