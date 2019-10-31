@@ -1,25 +1,21 @@
-This tutorial contains examples that illustrate a subset of[Akka Persistence](http://doc.akka.io/docs/akka/2.6/scala/persistence.html) features.
+This example illustrates event sourcing with [Akka Persistence](https://doc.akka.io/docs/akka/2.6/typed/persistence.html).
 
-- persistent actor
-- persistent actor snapshots
-- persistent actor recovery
+Study the source code of the [ShoppingCart.scala](src/main/scala/sample/persistence/ShoppingCart.scala). A few things
+to note:
 
-Custom storage locations for the journal and snapshots can be defined in [application.conf](src/main/resources/application.conf).
+* The actor is implemented with the `EventSourcedBehavior`
+* It defines `Command`, `Event` and `State`
+* Commands define `replyTo: ActorRef` to send a confirmation when the event has been successfully persisted
+* `State` is only updated in the event handler
+* `withRetention` to enable [snapshotting](https://doc.akka.io/docs/akka/2.6/typed/persistence-snapshot.html)
+* `onPersistFailure` defines restarts with backoff in case of failures
 
-## Persistent actor
+Tests are defined in [ShoppingCartSpec.scala](src/test/scala/sample/persistence/ShoppingCartSpec.scala).
+To run the tests, enter:
 
-[PersistentActorExample.scala](src/main/scala/sample/persistence/PersistentActorExample.scala) is described in detail in the [Event sourcing](http://doc.akka.io/docs/akka/2.6/scala/persistence.html#event-sourcing) section of the user documentation. With every application run, the `ExamplePersistentActor` is recovered from events stored in previous application runs, processes new commands, stores new events and snapshots and prints the current persistent actor state to `stdout`.
+```
+sbt
+sbt:akka-sample-persistence-scala> test
+```
 
-To run this example, type `sbt "runMain sample.persistence.PersistentActorExample"`.
-
-## Persistent actor snapshots
-
-[SnapshotExample.scala](src/main/scala/sample/persistence/SnapshotExample.scala) demonstrates how persistent actors can take snapshots of application state and recover from previously stored snapshots. Snapshots are offered to persistent actors at the beginning of recovery, before any messages (younger than the snapshot) are replayed.
-
-To run this example, type `sbt "runMain sample.persistence.SnapshotExample"`. With every run, the state offered by the most recent snapshot is printed to `stdout`, followed by the updated state after sending new persistent messages to the persistent actor.
-
-## Persistent actor recovery
-
-[PersistentActorFailureExample.scala](src/main/scala/sample/persistence/PersistentActorFailureExample.scala) shows how a persistent actor can throw an exception, restart and restore the state by replaying the events.
-
-To run this example, type `sbt "runMain sample.persistence.PersistentActorFailureExample"`.
+The `ShoppingCart` application is expanded further in the `akka-sample-cqrs-scala` sample. In that sample the events are tagged to be consumed by even processors to build other representations from the events, or publish the events to other services.
