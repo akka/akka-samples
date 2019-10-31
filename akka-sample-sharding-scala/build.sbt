@@ -1,37 +1,16 @@
-import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
-import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val AkkaVersion = "2.6.0-RC1"
+val AkkaVersion = "2.6.0-RC2"
 
 lazy val buildSettings = Seq(
   organization := "com.lightbend.akka.samples",
   scalaVersion := "2.12.10"
 )
 
-lazy val disciplineScalacOptions = Seq(
-  // not in 2.13
-  "-Ywarn-value-discard",
-  "-Ywarn-numeric-widen",
-  "-Yno-adapted-args",
-  // end
-  "-Xlog-reflective-calls",
-  "-Xlint",
-  "-deprecation",
-  "-Ywarn-dead-code",
-  "-Ywarn-inaccessible",
-  "-Ywarn-infer-any",
-  "-Ywarn-nullary-override",
-  "-Ywarn-nullary-unit",
-  "-Ywarn-unused:_",
-  "-Ypartial-unification",
-  "-Ywarn-extra-implicit"
-)
-
-lazy val commonScalacOptions =
-  disciplineScalacOptions ++ Seq(
+lazy val commonScalacOptions = Seq(
   "-deprecation",
   "-feature",
   "-unchecked",
+  "-Xlint",
   "-encoding", "UTF-8"
 )
 
@@ -42,7 +21,6 @@ lazy val commonJavacOptions = Seq(
 
 lazy val `akka-sample-sharding-scala` = project
   .in(file("."))
-  .settings(multiJvmSettings: _*)
   .settings(
     Compile / scalacOptions ++= commonScalacOptions,
     Compile / javacOptions ++= commonJavacOptions,
@@ -52,15 +30,19 @@ lazy val `akka-sample-sharding-scala` = project
       "com.typesafe.akka" %% "akka-cluster-sharding-typed" % AkkaVersion,
       "com.typesafe.akka" %% "akka-serialization-jackson" % AkkaVersion,
       "com.typesafe.akka" %% "akka-slf4j" % AkkaVersion,
+      "com.typesafe.akka" %% "akka-http" % "10.1.10",
+      "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.10",
       "ch.qos.logback" % "logback-classic" % "1.2.3",
+      "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
+      "org.scalatest" %% "scalatest" % "3.0.7" % Test
     ),
-    mainClass in (Compile, run) := Some("sample.sharding.ShardingApp"),
+    mainClass in (Compile, run) := Some("sample.sharding.Main"),
     licenses := Seq(
       ("CC0", url("http://creativecommons.org/publicdomain/zero/1.0"))
     ),
 
-    addCommandAlias("sharding1", "runMain sample.sharding.ShardingApp 2551"),
-    addCommandAlias("sharding2", "runMain sample.sharding.ShardingApp 2552"),
-    addCommandAlias("sharding3", "runMain sample.sharding.ShardingApp 0"),
+    // Startup aliases for the first two seed nodes and a third, more can be started.
+    addCommandAlias("sharding1", "runMain sample.sharding.KillrWeather 2551"),
+    addCommandAlias("sharding2", "runMain sample.sharding.KillrWeather 2552"),
+    addCommandAlias("sharding3", "runMain sample.sharding.KillrWeather 0"),
   )
-  .configs(MultiJvm)

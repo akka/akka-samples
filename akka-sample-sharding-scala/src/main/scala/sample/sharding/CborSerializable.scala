@@ -4,6 +4,6 @@
 package sample.sharding
 
 /**
- * Marker interface for actor messages that are serialized.
+ * Marker trait for serialization with Jackson CBOR.
  */
-trait Message
+trait CborSerializable

@@ -1,58 +1,55 @@
 package sample.sharding
 
-import akka.actor.typed.{ ActorRef, Behavior }
+import akka.actor.typed.{ ActorSystem, Behavior }
 import akka.actor.typed.scaladsl.Behaviors
+import akka.cluster.sharding.typed.scaladsl.{ ClusterSharding, Entity, EntityTypeKey }
+
+/** Base aggregator behavior to compute any implementation of data aggregation. */
+trait Aggregator {
+  import Protocol._
+
+  protected def aggregating(id: String, values: Vector[Double]): Behavior[Command] =
+    Behaviors.setup { context =>
+      context.log.info("Starting sharded aggregator {}.", id)
+
+      Behaviors.receiveMessage {
+        case UpdateDevice(sid, did, data) =>
+          val updated = values ++ data.toVector
+          context.log.info(
+            s"Recording latest $data for device $did from station $sid, average is ${Aggregate.average(updated)} after " +
+            s"${updated.size} readings.")
+
+          aggregating(id, updated)
+
+        case GetAggregate(sid, did, replyTo) =>
+          context.log.info("Sending aggregate for device {}.", id)
+          replyTo ! Aggregate(sid, did, values)
+          Behaviors.same
+
+        case GetHiLow(sid, did, replyTo) =>
+          context.log.info("Sending HiLow for device {}.", id)
+          replyTo ! HighLow(sid, did, values.min, values.max, values.size)
+          Behaviors.same
+
+      }
+    }
+}
 
 /**
  * This is just an example: cluster sharding would be overkill for just keeping a small amount of data,
  * but becomes useful when you have a collection of 'heavy' actors (in terms of processing or state)
  * so you need to distribute them across several nodes.
  */
-object Device {
+object TemperatureDevice extends Aggregator {
+  import Protocol._
 
-  sealed trait Command extends Message
+  val TypeKey: EntityTypeKey[Command] =
+    EntityTypeKey[Command]("Temperature")
 
-  final case class RecordTemperature(deviceId: Int, temperature: Double) extends Command
-
-  final case class GetTemperature(deviceId: Int, replyTo: ActorRef[Temperature]) extends Command
-
-  final case class Temperature(deviceId: Int, average: Double, latest: Double, readings: Int)
-      extends TemperatureService.TemperatureEvent
-
-  object Temperature {
-
-    def apply(id: Int, values: Vector[Double]): Temperature =
-      if (values.isEmpty)
-        Temperature(id, Double.NaN, Double.NaN, 0)
-      else
-        Temperature(id, average(values), values.last, values.size)
-
-    def average(values: Vector[Double]): Double =
-      if (values.isEmpty) Double.NaN
-      else values.sum / values.size
-
+  def init(system: ActorSystem[_]): Unit = {
+    ClusterSharding(system).init(Entity(TypeKey)(entityContext => TemperatureDevice(entityContext.entityId)))
   }
 
-  def apply(entityId: String): Behavior[Command] =
-    Behaviors.setup { context =>
+  def apply(id: String): Behavior[Command] = aggregating(id, Vector.empty)
 
-      def counting(values: Vector[Double]): Behavior[Command] =
-        Behaviors.receiveMessage {
-          case RecordTemperature(id, temp) =>
-            val temperatures = values :+ temp
-            context.log.info(
-              s"Recording temperature $temp for device $id, average is ${Temperature.average(temperatures)} after " +
-              s"${temperatures.size} readings.")
-
-            counting(temperatures)
-
-          case GetTemperature(id, replyTo) =>
-            context.log.info("Sending temperature for entity {}.", entityId)
-            replyTo ! Temperature(id, values)
-            Behaviors.same
-
-        }
-
-      counting(Vector.empty)
-    }
 }

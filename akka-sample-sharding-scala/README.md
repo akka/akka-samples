@@ -2,19 +2,32 @@ This tutorial contains a sample illustrating [Akka Cluster Sharding](http://doc.
 
 ## Example overview
 
-First of all, make sure the correct settings in [application.conf](src/main/resources/application.conf) are set as described in the akka-sample-cluster tutorial.
+First make sure the correct settings in [application.conf](src/main/resources/application.conf) are set as described in the akka-sample-cluster tutorial.
 
-Open [ShardingApp.scala](src/main/scala/sample/sharding/ShardingApp.scala).
+Open [KillrWeather.scala](src/main/scala/sample/sharding/KillrWeather.scala).
 
-This small program starts an ActorSystem with Cluster Sharding enabled. It joins the cluster and starts a `Devices` actor. This actor starts the infrastructure to shard `Device` instances and starts sending messages to arbitrary devices.
+This small program starts an ActorSystem with Cluster Sharding enabled. It joins the cluster and starts a `Guardian` actor for the system,
+and a `TemperatureDevice` actor. The `TemperatureDevice` is an `Aggregator` that can aggregate any type of device data it receives,
+and respond to queries against that data, for example high/low, average, etc.
+The `Guardian` starts the infrastructure to shard device `Aggregator` instances, which in this simple sample is temperature devices.
+Other types can easily be added.
 
-To run this sample, type `sbt "runMain sample.sharding.ShardingApp"` if it is not already started.
+`EdgesApp` is the program simulating multiple weather stations and their devices which read and report weather data.
+This example shows temperature, though in the wild would have other device data points such
+as pressure, wind speed, precipitation, etc. This program starts the infrastructure to shard `Device` instances
+and send data via HTTP to the cluster, using [Akka HTTP](https://doc.akka.io/docs/akka-http/current/index.html), for processing and analytics.
 
-`ShardingApp` starts three actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and then open three terminal windows.
+## Running the samples
+
+### KillrWeather Cluster Sharding
+
+To run this sample, first type `sbt "runMain sample.sharding.KillrWeather"` if it is not already started.
+
+`KillrWeather` starts three actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and then open three terminal windows.
 
 In the first terminal window, start the first seed node with the following command:
 
-    sbt sharding1
+    sbt "runMain sample.sharding.KillrWeather 2551"
 
 2551 corresponds to the port of the first seed-nodes element in the configuration. In the log output you see that the cluster node has been started and changed status to 'Up'.
 
@@ -22,7 +35,7 @@ You'll see a log message when `Devices` sends a message to record the current te
 
 In the second terminal window, start the second seed node with the following command:
 
-    sbt sharding2
+    sbt "runMain sample.sharding.KillrWeather 2552"
 
 2552 corresponds to the port of the second seed-nodes element in the configuration. In the log output you see that the cluster node has been started and joins the other seed node and becomes a member of the cluster. Its status changed to 'Up'. Switch over to the first terminal window and see in the log output that the member joined.
 
@@ -30,10 +43,18 @@ Some of the devices that were originally on the `ActorSystem` on port 2551 will 
 
 Start another node in the third terminal window with the following command:
 
-    sbt sharding3
+    sbt "runMain sample.sharding.KillrWeather 0"
 
 Now you don't need to specify the port number, 0 means that it will use a random available port. It joins one of the configured seed nodes. Look at the log output in the different terminal windows.
 
 Start even more nodes in the same way, if you like.
+
+### EdgesApp - weather stations
+
+In another terminal start the `EdgesApp` :
+
+    sbt "runMain sample.sharding.EdgesApp 2552"
+
+### Shutting down
 
 Shut down one of the nodes by pressing 'ctrl-c' in one of the terminal windows. The other nodes will detect the failure after a while, which you can see in the log output in the other terminals.
