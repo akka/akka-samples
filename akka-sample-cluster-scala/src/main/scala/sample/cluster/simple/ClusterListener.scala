@@ -16,19 +16,19 @@ object ClusterListener {
 
   sealed trait Event
   // internal adapted cluster events only
-  private final case class Reachability(reachabilityEvent: ReachabilityEvent) extends Event
+  private final case class ReachabilityChange(reachabilityEvent: ReachabilityEvent) extends Event
   private final case class MemberChange(event: MemberEvent) extends Event
 
   def apply(): Behavior[Event] = Behaviors.setup { ctx =>
     val memberEventAdapter: ActorRef[MemberEvent] = ctx.messageAdapter(MemberChange)
     Cluster(ctx.system).subscriptions ! Subscribe(memberEventAdapter, classOf[MemberEvent])
 
-    val reachabilityAdapter = ctx.messageAdapter(Reachability)
+    val reachabilityAdapter = ctx.messageAdapter(ReachabilityChange)
     Cluster(ctx.system).subscriptions ! Subscribe(reachabilityAdapter, classOf[ReachabilityEvent])
 
     Behaviors.receiveMessage { message =>
       message match {
-        case Reachability(reachabilityEvent) =>
+        case ReachabilityChange(reachabilityEvent) =>
           reachabilityEvent match {
             case UnreachableMember(member) =>
               ctx.log.info("Member detected as unreachable: {}", member)

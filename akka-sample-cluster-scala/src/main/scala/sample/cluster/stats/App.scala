@@ -1,7 +1,6 @@
 package sample.cluster.stats
 
 import com.typesafe.config.ConfigFactory
-import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
@@ -10,13 +9,11 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.Routers
 import akka.cluster.typed.Cluster
 
-import scala.concurrent.duration._
-
 object App {
 
-  val StatsServiceKey = ServiceKey[StatsService.ProcessText]("StatsService")
+  private val StatsServiceKey = ServiceKey[StatsService.ProcessText]("StatsService")
 
-  object RootBehavior {
+  private object RootBehavior {
     def apply(): Behavior[Nothing] = Behaviors.setup[Nothing] { ctx =>
       val cluster = Cluster(ctx.system)
       if (cluster.selfMember.hasRole("compute")) {
@@ -30,7 +27,7 @@ object App {
       }
       if (cluster.selfMember.hasRole(("client"))) {
         val serviceRouter = ctx.spawn(Routers.group(App.StatsServiceKey), "ServiceRouter")
-        ctx.spawn(StatsSampleClient(serviceRouter), "Client")
+        ctx.spawn(StatsClient(serviceRouter), "Client")
       }
       Behaviors.empty[Nothing]
     }
@@ -49,7 +46,7 @@ object App {
     }
   }
 
-  def startup(role: String, port: Int): Unit = {
+  private def startup(role: String, port: Int): Unit = {
 
     // Override the configuration of the port when specified as program argument
     val config = ConfigFactory.parseString(s"""
@@ -62,28 +59,3 @@ object App {
   }
 }
 
-object StatsSampleClient {
-
-  sealed trait Event
-  private case object Tick extends Event
-  private case class ServiceResponse(result: StatsService.Response) extends Event
-
-  def apply(service: ActorRef[StatsService.ProcessText]): Behavior[Event] =
-    Behaviors.setup { ctx =>
-      Behaviors.withTimers { timers =>
-        timers.startTimerWithFixedDelay(Tick, Tick, 2.seconds)
-        val responseAdapter = ctx.messageAdapter(ServiceResponse)
-
-        Behaviors.receiveMessage {
-          case Tick =>
-            ctx.log.info("Sending process request")
-            service ! StatsService.ProcessText("this is the text that will be analyzed", responseAdapter)
-            Behaviors.same
-          case ServiceResponse(result) =>
-            ctx.log.info("Service result: {}", result)
-            Behaviors.same
-        }
-      }
-    }
-
-}

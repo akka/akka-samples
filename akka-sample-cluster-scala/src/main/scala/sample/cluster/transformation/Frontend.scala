@@ -17,7 +17,7 @@ object Frontend {
   sealed trait Event
   private case object Tick extends Event
   private final case class WorkersUpdated(newWorkers: Set[ActorRef[Worker.TransformText]]) extends Event
-  private final case class TransformCompleted(originalTest: String, transformedText: String) extends Event
+  private final case class TransformCompleted(originalText: String, transformedText: String) extends Event
   private final case class JobFailed(why: String, text: String) extends Event
 
 

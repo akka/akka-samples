@@ -42,7 +42,7 @@ object AppOneMaster {
         }
       }
       if (cluster.selfMember.hasRole("client")) {
-        ctx.spawn(StatsSampleClient(serviceProxy), "Client")
+        ctx.spawn(StatsClient(serviceProxy), "Client")
       }
       Behaviors.empty
     }
