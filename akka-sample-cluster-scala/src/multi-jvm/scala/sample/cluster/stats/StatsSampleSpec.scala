@@ -2,10 +2,12 @@ package sample.cluster.stats
 
 import akka.actor.testkit.typed.scaladsl.TestProbe
 import akka.actor.typed.receptionist.Receptionist
-import scala.concurrent.duration._
-import akka.actor.typed.scaladsl.adapter._
 import akka.actor.typed.scaladsl.AskPattern._
-import akka.actor.typed.{ActorRef, Behavior, Props, SpawnProtocol}
+import akka.actor.typed.scaladsl.adapter._
+import akka.actor.typed.ActorRef
+import akka.actor.typed.Behavior
+import akka.actor.typed.Props
+import akka.actor.typed.SpawnProtocol
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.ClusterEvent.MemberUp
@@ -13,7 +15,9 @@ import akka.remote.testkit.MultiNodeConfig
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
+import scala.concurrent.Await
+import scala.concurrent.Future
 
 object StatsSampleSpecConfig extends MultiNodeConfig {
   // register the named roles (nodes) of the test
@@ -35,11 +39,11 @@ class StatsSampleSpecMultiJvmNode1 extends StatsSampleSpec
 class StatsSampleSpecMultiJvmNode2 extends StatsSampleSpec
 class StatsSampleSpecMultiJvmNode3 extends StatsSampleSpec
 
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.WordSpecLike
-import org.scalatest.Matchers
 import akka.remote.testkit.MultiNodeSpec
 import akka.testkit.ImplicitSender
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.Matchers
+import org.scalatest.WordSpecLike
 
 abstract class StatsSampleSpec extends MultiNodeSpec(StatsSampleSpecConfig)
   with WordSpecLike with Matchers with BeforeAndAfterAll

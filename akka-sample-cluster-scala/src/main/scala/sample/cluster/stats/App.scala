@@ -1,6 +1,5 @@
 package sample.cluster.stats
 
-import com.typesafe.config.ConfigFactory
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
@@ -8,10 +7,11 @@ import akka.actor.typed.receptionist.ServiceKey
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.Routers
 import akka.cluster.typed.Cluster
+import com.typesafe.config.ConfigFactory
 
 object App {
 
-  private val StatsServiceKey = ServiceKey[StatsService.ProcessText]("StatsService")
+  val StatsServiceKey = ServiceKey[StatsService.ProcessText]("StatsService")
 
   private object RootBehavior {
     def apply(): Behavior[Nothing] = Behaviors.setup[Nothing] { ctx =>

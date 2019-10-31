@@ -1,15 +1,16 @@
 package sample.cluster.stats
 
-import akka.actor.typed.{ActorSystem, Behavior}
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.receptionist.ServiceKey
-import com.typesafe.config.ConfigFactory
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.Routers
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.Behavior
 import akka.cluster.typed.Cluster
 import akka.cluster.typed.ClusterSingleton
 import akka.cluster.typed.ClusterSingletonSettings
 import akka.cluster.typed.SingletonActor
+import com.typesafe.config.ConfigFactory
 
 object AppOneMaster {
 

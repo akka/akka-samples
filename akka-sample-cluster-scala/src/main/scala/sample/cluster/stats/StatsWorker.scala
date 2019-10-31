@@ -2,7 +2,8 @@ package sample.cluster.stats
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
-import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
+import akka.actor.typed.scaladsl.ActorContext
+import akka.actor.typed.scaladsl.Behaviors
 import sample.cluster.CborSerializable
 
 import scala.concurrent.duration._

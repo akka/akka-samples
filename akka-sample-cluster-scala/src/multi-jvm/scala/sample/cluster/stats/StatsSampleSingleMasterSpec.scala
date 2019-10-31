@@ -1,25 +1,32 @@
 package sample.cluster.stats
 
-import scala.concurrent.duration._
-import com.typesafe.config.ConfigFactory
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.WordSpecLike
-import org.scalatest.Matchers
-import akka.actor.typed.scaladsl.adapter._
-import akka.actor.typed.scaladsl.AskPattern._
-import akka.actor.typed.scaladsl.{Behaviors, Routers}
-import akka.actor.typed.{ActorRef, Behavior, Props, SpawnProtocol}
-import akka.cluster.typed.{ClusterSingleton, ClusterSingletonSettings, SingletonActor}
 import akka.actor.testkit.typed.scaladsl.TestProbe
+import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.scaladsl.adapter._
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.scaladsl.Routers
+import akka.actor.typed.ActorRef
+import akka.actor.typed.Behavior
+import akka.actor.typed.Props
+import akka.actor.typed.SpawnProtocol
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.ClusterEvent.MemberUp
+import akka.cluster.typed.ClusterSingleton
+import akka.cluster.typed.ClusterSingletonSettings
+import akka.cluster.typed.SingletonActor
 import akka.remote.testkit.MultiNodeConfig
 import akka.remote.testkit.MultiNodeSpec
 import akka.testkit.ImplicitSender
 import akka.util.Timeout
+import com.typesafe.config.ConfigFactory
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.Matchers
+import org.scalatest.WordSpecLike
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
+import scala.concurrent.Await
+import scala.concurrent.Future
 
 object StatsSampleSingleMasterSpecConfig extends MultiNodeConfig {
   // register the named roles (nodes) of the test

@@ -1,7 +1,8 @@
 package sample.cluster.simple
 
-import akka.actor.typed.{ActorSystem, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.Behavior
 import com.typesafe.config.ConfigFactory
 
 object App {

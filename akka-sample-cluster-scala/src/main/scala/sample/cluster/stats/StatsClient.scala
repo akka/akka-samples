@@ -6,6 +6,7 @@ package sample.cluster.stats
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
+
 import scala.concurrent.duration._
 
 object StatsClient {

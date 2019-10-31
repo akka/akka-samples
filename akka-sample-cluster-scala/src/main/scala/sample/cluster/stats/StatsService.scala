@@ -1,10 +1,11 @@
 package sample.cluster.stats
 
-import scala.concurrent.duration._
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import sample.cluster.CborSerializable
+
+import scala.concurrent.duration._
 
 //#service
 object StatsService {
