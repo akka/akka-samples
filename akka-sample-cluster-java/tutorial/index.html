@@ -59,7 +59,7 @@ You can read more about the cluster concepts in the
 
 <p>
 To run this sample, go to the <a href="#run" class="shortcut">Run</a>
-tab, and start the application main class <b><code>sample.cluster.simple.SimpleClusterApp</code></b>
+tab, and start the application main class <b><code>sample.cluster.simple.App</code></b>
 if it is not already started.
 </p>
 
@@ -75,7 +75,7 @@ In the first terminal window, start the first seed node with the following comma
 
 <pre><code>
 &lt;path to activator dir&gt;/activator 
-  "runMain sample.cluster.simple.SimpleClusterApp 2551"		
+  "runMain sample.cluster.simple.App 2551"
 </code></pre>
 
 <p>
@@ -89,7 +89,7 @@ In the second terminal window, start the second seed node with the following com
 
 <pre><code>
 &lt;path to activator dir&gt;/activator 
-  "runMain sample.cluster.simple.SimpleClusterApp 2552"		
+  "runMain sample.cluster.simple.App 2552"
 </code></pre>
 
 <p>
@@ -108,7 +108,7 @@ Start another node in the third terminal window with the following command (on o
 
 <pre><code>
 &lt;path to activator dir&gt;/activator 
-  "runMain sample.cluster.simple.SimpleClusterApp 0"		
+  "runMain sample.cluster.simple.App 0"
 </code></pre>
 
 <p>
@@ -191,7 +191,7 @@ actor.
 
 <p>
 To run this sample, go to the <a href="#run" class="shortcut">Run</a>
-tab, and start the application main class <b><code>sample.cluster.transformation.TransformationApp</code></b>
+tab, and start the application main class <b><code>sample.cluster.transformation.App</code></b>
 if it is not already started.
 </p>
 
@@ -303,7 +303,7 @@ This means that user requests can be sent to <code>StatsService</code> on any no
 
 <p>
 To run this sample, go to the <a href="#run" class="shortcut">Run</a>
-tab, and start the application main class <b><code>sample.cluster.stats.StatsSampleMain</code></b>
+tab, and start the application main class <b><code>sample.cluster.stats.App</code></b>
 if it is not already started.
 </p>
 
@@ -316,12 +316,12 @@ interesting to run them in separate processes. Stop the application in the
 
 <pre><code>
 &lt;path to activator dir&gt;/activator 
-  "runMain sample.cluster.stats.StatsSampleMain 2551"		
+  "runMain sample.cluster.stats.App 2551"
 </code></pre>
 
 <pre><code>
 &lt;path to activator dir&gt;/activator 
-  "runMain sample.cluster.stats.StatsSampleMain 2552"		
+  "runMain sample.cluster.stats.App 2552"
 </code></pre>
 
 <pre><code>
@@ -331,7 +331,7 @@ interesting to run them in separate processes. Stop the application in the
 
 <pre><code>
 &lt;path to activator dir&gt;/activator 
-  "runMain sample.cluster.stats.StatsSampleMain 0"		
+  "runMain sample.cluster.stats.App 0"
 </code></pre>
 
 </div>
@@ -390,7 +390,7 @@ interesting to run them in separate processes. Stop the application in the
 
 <pre><code>
 &lt;path to activator dir&gt;/activator 
-  "runMain sample.cluster.stats.StatsSampleOneMasterClientMain"		
+  "runMain sample.cluster.stats.AppOneMaster"
 </code></pre>
 
 <pre><code>

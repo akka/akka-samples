@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.6.0-M1"
+val akkaVersion = "2.6.0-RC2"
 
 val `akka-sample-cluster-java` = project
   .in(file("."))
@@ -14,14 +14,13 @@ val `akka-sample-cluster-java` = project
     javacOptions in doc in Compile := Seq("-Xdoclint:none"),
     javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m", "-Djava.library.path=./target/native"),
     libraryDependencies ++= Seq(
-      "com.typesafe.akka" %% "akka-actor" % akkaVersion,
-      "com.typesafe.akka" %% "akka-remote" % akkaVersion,
-      "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
-      "com.typesafe.akka" %% "akka-cluster-metrics" % akkaVersion,
-      "com.typesafe.akka" %% "akka-cluster-tools" % akkaVersion,
-      "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion,
-      "org.scalatest" %% "scalatest" % "3.0.7" % Test,
-      "io.kamon" % "sigar-loader" % "1.6.6-rev002"),
+      "com.typesafe.akka" %% "akka-actor-typed"           % akkaVersion,
+      "com.typesafe.akka" %% "akka-cluster-typed"         % akkaVersion,
+      "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
+      "com.typesafe.akka" %% "akka-multi-node-testkit"    % akkaVersion,
+      "ch.qos.logback"    %  "logback-classic"             % "1.2.3",
+      "org.scalatest"     %% "scalatest"                  % "3.0.8"     % Test,
+      "com.typesafe.akka" %% "akka-actor-testkit-typed"   % akkaVersion % Test),
     fork in run := true,
     mainClass in (Compile, run) := Some("sample.cluster.simple.SimpleClusterApp"),
     // disable parallel tests

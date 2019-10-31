@@ -76,7 +76,7 @@ abstract class TransformationSampleSpec extends MultiNodeSpec(TransformationSamp
       runOn(frontend1) {
         // this will only run on the 'first' node
         Cluster(system) join node(frontend1).address
-        val transformationFrontend = system.actorOf(Props[TransformationFrontend], name = "frontend")
+        val transformationFrontend = system.actorOf(Props[Frontend], name = "frontend")
         transformationFrontend ! new TransformationJob("hello")
         expectMsgPF() {
           // no backends yet, service unavailable
@@ -92,7 +92,7 @@ abstract class TransformationSampleSpec extends MultiNodeSpec(TransformationSamp
     "illustrate how a backend automatically registers" in within(15 seconds) {
       runOn(backend1) {
         Cluster(system) join node(frontend1).address
-        system.actorOf(Props[TransformationBackend], name = "backend")
+        system.actorOf(Props[Worker], name = "backend")
       }
       testConductor.enter("backend1-started")
 
@@ -106,12 +106,12 @@ abstract class TransformationSampleSpec extends MultiNodeSpec(TransformationSamp
     "illustrate how more nodes registers" in within(20 seconds) {
       runOn(frontend2) {
         Cluster(system) join node(frontend1).address
-        system.actorOf(Props[TransformationFrontend], name = "frontend")
+        system.actorOf(Props[Frontend], name = "frontend")
       }
       testConductor.enter("frontend2-started")
       runOn(backend2, backend3) {
         Cluster(system) join node(backend1).address
-        system.actorOf(Props[TransformationBackend], name = "backend")
+        system.actorOf(Props[Worker], name = "backend")
       }
 
       testConductor.enter("all-started")

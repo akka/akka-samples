@@ -21,19 +21,19 @@ The small program together with its configuration starts an ActorSystem with the
 
 You can read more about the cluster concepts in the [documentation](http://doc.akka.io/docs/akka/2.6/java/cluster-usage.html).
 
-To run this sample, type `sbt "runMain sample.cluster.simple.SimpleClusterApp"` if it is not already started. If you are using maven, use `mvn compile exec:java -Dexec.mainClass="sample.cluster.simple.SimpleClusterApp"` instead. To pass parameters to maven add `-Dexec.args="..."`.
+To run this sample, type `sbt "runMain sample.cluster.simple.App"` if it is not already started. If you are using maven, use `mvn compile exec:java -Dexec.mainClass="sample.cluster.simple.App"` instead. To pass parameters to maven add `-Dexec.args="..."`.
 
 `SimpleClusterApp` starts three actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and then open three terminal windows.
 
 In the first terminal window, start the first seed node with the following command:
 
-    sbt "runMain sample.cluster.simple.SimpleClusterApp 2551"
+    sbt "runMain sample.cluster.simple.App 2551"
 
 2551 corresponds to the port of the first seed-nodes element in the configuration. In the log output you see that the cluster node has been started and changed status to 'Up'.
 
 In the second terminal window, start the second seed node with the following command:
 
-    sbt "runMain sample.cluster.simple.SimpleClusterApp 2552"
+    sbt "runMain sample.cluster.simple.App 2552"
 
 2552 corresponds to the port of the second seed-nodes element in the configuration. In the log output you see that the cluster node has been started and joins the other seed node and becomes a member of the cluster. Its status changed to 'Up'.
 
@@ -41,7 +41,7 @@ Switch over to the first terminal window and see in the log output that the memb
 
 Start another node in the third terminal window with the following command:
 
-    sbt "runMain sample.cluster.simple.SimpleClusterApp 0"
+    sbt "runMain sample.cluster.simple.App 0"
 
 Now you don't need to specify the port number, 0 means that it will use a random available port. It joins one of the configured seed nodes. Look at the log output in the different terminal windows.
 
@@ -69,7 +69,7 @@ The frontend that receives user jobs and delegates to one of the registered back
 
 Note that the `TransformationFrontend` actor watch the registered backend to be able to remove it from its list of available backend workers. Death watch uses the cluster failure detector for nodes in the cluster, i.e. it detects network failures and JVM crashes, in addition to graceful termination of watched actor.
 
-To run this sample, type `sbt "runMain sample.cluster.transformation.TransformationApp"` if it is not already started.
+To run this sample, type `sbt "runMain sample.cluster.transformation.App"` if it is not already started.
 
 TransformationApp starts 5 actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and run the following commands in separate terminal windows.
 
@@ -109,17 +109,17 @@ All nodes start `StatsService` and `StatsWorker` actors. Remember, routees are t
 
 Open [stats1.conf](src/main/resources/stats1.conf). The router is configured with `routees.paths`. This means that user requests can be sent to `StatsService` on any node and it will use`StatsWorker` on all nodes.
 
-To run this sample, type `sbt "runMain sample.cluster.stats.StatsSampleMain"` if it is not already started.
+To run this sample, type `sbt "runMain sample.cluster.stats.App"` if it is not already started.
 
 StatsSampleMain starts 4 actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and run the following commands in separate terminal windows.
 
-    sbt "runMain sample.cluster.stats.StatsSampleMain 2551"
+    sbt "runMain sample.cluster.stats.App 2551"
 
-    sbt "runMain sample.cluster.stats.StatsSampleMain 2552"
+    sbt "runMain sample.cluster.stats.App 2552"
 
     sbt "runMain sample.cluster.stats.StatsSampleClientMain"
 
-    sbt "runMain sample.cluster.stats.StatsSampleMain 0"
+    sbt "runMain sample.cluster.stats.App 0"
 
 ## Router Example with Pool of Remote Deployed Routees
 
@@ -141,7 +141,7 @@ StatsSampleOneMasterMain starts 4 actor systems (cluster members) in the same JV
 
     sbt "runMain sample.cluster.stats.StatsSampleOneMasterMain 2552"
 
-    sbt "runMain sample.cluster.stats.StatsSampleOneMasterClientMain"
+    sbt "runMain sample.cluster.stats.AppOneMaster"
 
     sbt "runMain sample.cluster.stats.StatsSampleOneMasterMain 0"
 
