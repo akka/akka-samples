@@ -25,6 +25,8 @@ lazy val `akka-sample-sharding-scala` = project
     Compile / scalacOptions ++= commonScalacOptions,
     Compile / javacOptions ++= commonJavacOptions,
     run / javaOptions ++= Seq("-Xms128m", "-Xmx1024m"),
+    run / fork := false,
+    Global / cancelable := false,
 
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-sharding-typed" % AkkaVersion,
