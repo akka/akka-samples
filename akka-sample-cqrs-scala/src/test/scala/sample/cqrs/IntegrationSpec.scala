@@ -45,7 +45,7 @@ object IntegrationSpec {
       }
       # For LoggingTestKit
       akka.actor.testkit.typed.filter-leeway = 5s
-    """).withFallback(ConfigFactory.defaultApplication())
+    """).withFallback(ConfigFactory.load())
 }
 
 class IntegrationSpec
@@ -110,7 +110,7 @@ class IntegrationSpec
       }
 
       // let the nodes join and become Up
-      eventually(PatienceConfiguration.Timeout(5.seconds)) {
+      eventually(PatienceConfiguration.Timeout(10.seconds)) {
         systems3.foreach { sys =>
           Cluster(sys).selfMember.status should ===(MemberStatus.Up)
         }
@@ -148,8 +148,8 @@ class IntegrationSpec
 
       Cluster(testKit4.system).manager ! Join(Cluster(testKit1.system).selfMember.address)
 
-      // let the nodes join and become Up
-      eventually(PatienceConfiguration.Timeout(5.seconds)) {
+      // let the node join and become Up
+      eventually(PatienceConfiguration.Timeout(10.seconds)) {
         Cluster(testKit4.system).selfMember.status should ===(MemberStatus.Up)
       }
 

@@ -17,12 +17,29 @@ import akka.persistence.typed.scaladsl.Effect
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import akka.persistence.typed.scaladsl.ReplyEffect
 
+/**
+ * This is an event sourced actor. It has a state, [[ShoppingCart.State]], which
+ * stores the current shopping cart items and whether it's checked out.
+ *
+ * Event sourced actors are interacted with by sending them commands,
+ * see classes implementing [[ShoppingCart.Command]].
+ *
+ * Commands get translated to events, see classes implementing [[ShoppingCart.Event]].
+ * It's the events that get persisted by the entity. Each event will have an event handler
+ * registered for it, and an event handler updates the current state based on the event.
+ * This will be done when the event is first created, and it will also be done when the entity is
+ * loaded from the database - each event will be replayed to recreate the state
+ * of the entity.
+ */
 object ShoppingCart {
 
   /**
    * The current state held by the persistent entity.
    */
-  final case class State(items: Map[String, Int], checkedOut: Boolean) {
+  final case class State(items: Map[String, Int], checkoutDate: Option[Instant]) {
+
+    def isCheckedOut: Boolean =
+      checkoutDate.isDefined
 
     def hasItem(itemId: String): Boolean =
       items.contains(itemId)
@@ -40,13 +57,14 @@ object ShoppingCart {
     def removeItem(itemId: String): State =
       copy(items = items - itemId)
 
-    def checkout(): State = copy(checkedOut = true)
+    def checkout(now: Instant): State =
+      copy(checkoutDate = Some(now))
 
     def toSummary: Summary =
-      Summary(items, checkedOut)
+      Summary(items, isCheckedOut)
   }
   object State {
-    val empty = State(Map.empty, checkedOut = false)
+    val empty = State(items = Map.empty, checkoutDate = None)
   }
 
   /**
@@ -110,8 +128,7 @@ object ShoppingCart {
 
   val EntityKey: EntityTypeKey[Command] = EntityTypeKey[Command]("ShoppingCart")
 
-  def init(system: ActorSystem[_]): Unit = {
-    val eventProcessorSettings = EventProcessorSettings(system)
+  def init(system: ActorSystem[_], eventProcessorSettings: EventProcessorSettings): Unit = {
     ClusterSharding(system).init(Entity(EntityKey) { entityContext =>
       val n = math.abs(entityContext.entityId.hashCode % eventProcessorSettings.parallelism)
       val eventProcessorTag = eventProcessorSettings.tagPrefix + "-" + n
@@ -127,7 +144,7 @@ object ShoppingCart {
         (state, command) =>
           //The shopping cart behavior changes if it's checked out or not.
           // The commands are handled differently for each case.
-          if (state.checkedOut) checkedOutShoppingCart(cartId, state, command)
+          if (state.isCheckedOut) checkedOutShoppingCart(cartId, state, command)
           else openShoppingCart(cartId, state, command),
         (state, event) => handleEvent(state, event))
       .withTagger(_ => eventProcessorTags)
@@ -194,7 +211,7 @@ object ShoppingCart {
       case ItemAdded(_, itemId, quantity)            => state.updateItem(itemId, quantity)
       case ItemRemoved(_, itemId)                    => state.removeItem(itemId)
       case ItemQuantityAdjusted(_, itemId, quantity) => state.updateItem(itemId, quantity)
-      case CheckedOut(_, _)                          => state.checkout()
+      case CheckedOut(_, eventTime)                  => state.checkout(eventTime)
     }
   }
 }

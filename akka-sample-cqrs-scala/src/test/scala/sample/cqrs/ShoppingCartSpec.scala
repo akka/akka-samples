@@ -53,6 +53,18 @@ class ShoppingCartSpec extends ScalaTestWithActorTestKit(s"""
       probe.expectMessage(ShoppingCart.Accepted(ShoppingCart.Summary(Map("foo" -> 43), checkedOut = false)))
     }
 
+    "checkout" in {
+      val cart = testKit.spawn(ShoppingCart(newCartId(), Set.empty))
+      val probe = testKit.createTestProbe[ShoppingCart.Confirmation]
+      cart ! ShoppingCart.AddItem("foo", 42, probe.ref)
+      probe.expectMessageType[ShoppingCart.Accepted]
+      cart ! ShoppingCart.Checkout(probe.ref)
+      probe.expectMessage(ShoppingCart.Accepted(ShoppingCart.Summary(Map("foo" -> 42), checkedOut = true)))
+
+      cart ! ShoppingCart.AddItem("bar", 13, probe.ref)
+      probe.expectMessageType[ShoppingCart.Rejected]
+    }
+
     "keep its state" in {
       val cartId = newCartId()
       val cart = testKit.spawn(ShoppingCart(cartId, Set.empty))
@@ -62,9 +74,10 @@ class ShoppingCartSpec extends ScalaTestWithActorTestKit(s"""
 
       testKit.stop(cart)
 
+      // start again with same cartId
+      val restartedCart = testKit.spawn(ShoppingCart(cartId, Set.empty))
       val stateProbe = testKit.createTestProbe[ShoppingCart.Summary]
-      val restartedCart1 = testKit.spawn(ShoppingCart(cartId, Set.empty))
-      restartedCart1 ! ShoppingCart.Get(stateProbe.ref)
+      restartedCart ! ShoppingCart.Get(stateProbe.ref)
       stateProbe.expectMessage(ShoppingCart.Summary(Map("foo" -> 42), checkedOut = false))
     }
   }

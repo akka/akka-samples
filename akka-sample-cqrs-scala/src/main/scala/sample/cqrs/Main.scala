@@ -34,7 +34,7 @@ object Main {
   }
 
   def startNode(port: Int): Unit = {
-    val system = ActorSystem[Nothing](Guardian(), "ClusterSystem", config(port))
+    val system = ActorSystem[Nothing](Guardian(), "Shopping", config(port))
 
     if (Cluster(system).selfMember.hasRole("read-model"))
       createTables(system)
@@ -43,7 +43,7 @@ object Main {
   def config(port: Int): Config =
     ConfigFactory.parseString(s"""
       akka.remote.artery.canonical.port = $port
-       """).withFallback(ConfigFactory.load("application.conf"))
+       """).withFallback(ConfigFactory.load())
 
   /**
    * To make the sample easier to run we kickstart a Cassandra instance to
@@ -52,7 +52,7 @@ object Main {
    */
   def startCassandraDatabase(): Unit = {
     val databaseDirectory = new File("target/cassandra-db")
-    CassandraLauncher.start(databaseDirectory, CassandraLauncher.DefaultTestConfigResource, clean = true, port = 9042)
+    CassandraLauncher.start(databaseDirectory, CassandraLauncher.DefaultTestConfigResource, clean = false, port = 9042)
   }
 
   def createTables(system: ActorSystem[_]): Unit = {
@@ -86,15 +86,15 @@ object Guardian {
     Behaviors.setup[Nothing] { context =>
       val system = context.system
       val selfRoles = Cluster(system).selfMember.roles
+      val settings = EventProcessorSettings(system)
 
-      if (selfRoles.contains("write-model")) {
-        ShoppingCart.init(system)
+      if (Cluster(system).selfMember.hasRole("write-model")) {
+        ShoppingCart.init(system, settings)
       }
 
-      if (selfRoles.contains("read-model")) {
-        val settings = EventProcessorSettings(system)
+      if (Cluster(system).selfMember.hasRole("read-model")) {
         EventProcessor.init(
-          context.system,
+          system,
           settings,
           tag => new ShoppingCartEventProcessorStream(system, system.executionContext, settings.id, tag))
       }

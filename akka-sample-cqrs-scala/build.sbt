@@ -24,9 +24,13 @@ lazy val `akka-sample-cqrs-scala` = project
         "org.scalatest" %% "scalatest" % "3.0.8" % Test,
         "commons-io" % "commons-io" % "2.4" % Test),
     fork in run := false,
+    Global / cancelable := false, // ctrl-c
     mainClass in (Compile, run) := Some("sample.cqrs.Main"),
     // disable parallel tests
     parallelExecution in Test := false,
+    // show full stack traces and test case durations
+    testOptions in Test += Tests.Argument("-oDF"),
+    logBuffered in Test := false,
     // add aliases to start up a write model (wmodel1) and read model instances (rmodel1, rmodel2, rmodel3)
     addCommandAlias("wmodel1", "runMain sample.cqrs.Main 2551 -Dakka.cluster.roles.0=write-model"),
     addCommandAlias("rmodel1", "runMain sample.cqrs.Main 2552 -Dakka.cluster.roles.0=read-model"),

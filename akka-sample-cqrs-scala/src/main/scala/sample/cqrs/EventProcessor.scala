@@ -6,6 +6,7 @@ import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
 import akka.Done
+import akka.NotUsed
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.PostStop
@@ -94,19 +95,9 @@ abstract class EventProcessorStream[Event: ClassTag](
         Source.futureSource {
           readOffset().map { offset =>
             log.info("Starting stream for tag [{}] from offset [{}]", tag, offset)
-            query
-              .eventsByTag(tag, offset)
-              .mapAsync(1) { eventEnvelope =>
-                eventEnvelope.event match {
-                  case event: Event =>
-                    processEvent(event, PersistenceId.ofUniqueId(eventEnvelope.persistenceId), eventEnvelope.sequenceNr)
-                      .map(_ => eventEnvelope.offset)
-                  case other =>
-                    Future.failed(new IllegalArgumentException(s"Unexpected event [${other.getClass.getName}]"))
-                }
-              }
-              // groupedWithin can be used here to improve performance by reducing number of offset writes,
-              // with the trade-off of possibility of more duplicate events when stream is restarted
+            processEventsByTag(offset)
+            // groupedWithin can be used here to improve performance by reducing number of offset writes,
+            // with the trade-off of possibility of more duplicate events when stream is restarted
               .mapAsync(1)(writeOffset)
           }
         }
@@ -115,10 +106,22 @@ abstract class EventProcessorStream[Event: ClassTag](
       .runWith(Sink.ignore)
   }
 
+  private def processEventsByTag(offset: Offset): Source[Offset, NotUsed] = {
+    query.eventsByTag(tag, offset).mapAsync(1) { eventEnvelope =>
+      eventEnvelope.event match {
+        case event: Event =>
+          processEvent(event, PersistenceId.ofUniqueId(eventEnvelope.persistenceId), eventEnvelope.sequenceNr).map(_ =>
+            eventEnvelope.offset)
+        case other =>
+          Future.failed(new IllegalArgumentException(s"Unexpected event [${other.getClass.getName}]"))
+      }
+    }
+  }
+
   private def readOffset(): Future[Offset] = {
     session
       .selectOne(
-        s"SELECT timeUuidOffset FROM akka_cqrs_sample.offsetStore WHERE eventProcessorId = ? AND tag = ?",
+        "SELECT timeUuidOffset FROM akka_cqrs_sample.offsetStore WHERE eventProcessorId = ? AND tag = ?",
         eventProcessorId,
         tag)
       .map(extractOffset)

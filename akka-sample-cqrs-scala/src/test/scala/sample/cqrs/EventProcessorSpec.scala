@@ -26,7 +26,7 @@ class EventProcessorSpec extends ScalaTestWithActorTestKit(ConfigFactory.parseSt
       }
       # For LoggingTestKit
       akka.actor.testkit.typed.filter-leeway = 5s
-    """).withFallback(ConfigFactory.defaultApplication())) with WordSpecLike {
+    """).withFallback(ConfigFactory.load())) with WordSpecLike {
 
   val databaseDirectory = new File("target/cassandra-EventProcessorSpec")
 
