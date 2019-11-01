@@ -38,6 +38,7 @@ public class EventProcessorTest {
       "    eventual-consistency-delay = 200 ms \n" +
       "  } \n" +
       "} \n" +
+      "akka.actor.testkit.typed.single-expect-default = 5s \n" +
       "# For LoggingTestKit \n" +
       "akka.actor.testkit.typed.filter-leeway = 5s \n")
       .withFallback(ConfigFactory.load())
