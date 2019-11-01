@@ -60,10 +60,15 @@ object WeatherHttpApi {
 
   final case class Data(stationId: Int, deviceId: Int, data: List[Double])
 
+  // This formatter determines how to convert to and from Data objects:
+  import spray.json._
+  import spray.json.DefaultJsonProtocol._
+  implicit val dataFormat: RootJsonFormat[Data] = jsonFormat3(Data)
+
   def apply(stationId: Int, port: Int): Behavior[Data] =
     Behaviors.setup[Data] { context =>
       import akka.http.scaladsl.Http
-      import akka.http.scaladsl.model.{ ContentTypes, HttpEntity, HttpMethods, HttpRequest }
+      import akka.http.scaladsl.model.HttpRequest
 
       implicit val sys = context.system
       import context.executionContext
@@ -74,23 +79,19 @@ object WeatherHttpApi {
       def runRequest(req: HttpRequest) =
         http.singleRequest(req).flatMap { _.entity.dataBytes.runReduce(_ ++ _) }
 
-      Behaviors.receiveMessage[Data] {
-        case Data(sid, did, data) =>
-          // TODO marshalling vs scary hand-coded!
-          val values = data.mkString(",")
-          val json = s"""{"stationId":$sid,"deviceId":$did,"data":[$values]}"""
-          context.log.info("Read: {}", json)
+      // This import makes the 'format' above available to the Akka HTTP
+      // marshalling infractructure used when constructing the Post below:
+      import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 
-          // See https://doc.akka.io/docs/akka-http/current/common/index.html
-          // for marshalling, unmarshalling, json support in the wild.
-          val httpEntity = HttpEntity(ContentTypes.`application/json`, json)
-          runRequest(
-            HttpRequest(method = HttpMethods.POST, uri = s"http://localhost:$port/temperatures", entity = httpEntity))
-            .onComplete {
-              case Success(response) =>
-                context.log.info(response.utf8String)
-              case Failure(e) => context.log.error("Something wrong.", e)
-            }
+      import akka.http.scaladsl.client.RequestBuilding.Post
+
+      Behaviors.receiveMessage[Data] {
+        case data: Data =>
+          runRequest(Post(s"http://localhost:$port/temperatures", data)).onComplete {
+            case Success(response) =>
+              context.log.info(response.utf8String)
+            case Failure(e) => context.log.error("Something wrong.", e)
+          }
 
           Behaviors.same
       }
