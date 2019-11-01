@@ -20,9 +20,29 @@ The implementation is resilient: it uses an *Akka Cluster Singleton* in combinat
 
 ## Running the sample code
 
-1. Start a Cassandra server by running `sbt "run cassandra"`
-2. Start a node that runs the write model: `sbt wmodel1`
-3. Start a node that runs the read model: `sbt rmodel1`
-4. More write or read nodes can be started with `sbt wmodel2` and `sbt rmodel2` 
+1. Start a Cassandra server by running:
+
+```
+mvn exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="cassandra"
+```
+
+2. Start a node that runs the write model:
+
+```
+mvn -Dakka.cluster.roles.0=write-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2551"
+```
+
+3. Start a node that runs the read model:
+
+```
+mvn -Dakka.cluster.roles.0=read-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2552"
+```
+
+4. More write or read nodes can be started by defining roles and port:
+
+```
+mvn -Dakka.cluster.roles.0=write-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2553"
+mvn -Dakka.cluster.roles.0=read-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2554"
+``` 
 
 TODO: how to enter or simulate updates
