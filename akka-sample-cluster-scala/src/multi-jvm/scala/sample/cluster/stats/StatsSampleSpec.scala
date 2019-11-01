@@ -58,15 +58,6 @@ abstract class StatsSampleSpec extends MultiNodeSpec(StatsSampleSpecConfig)
   override def afterAll() = multiNodeSpecAfterAll()
 
   implicit val typedSystem = system.toTyped
-  // use the SpawnProtocol to run actors even though the multi-jvm testkit only knows of the classic APIs
-  val spawnActor = system.actorOf(PropsAdapter(SpawnProtocol())).toTyped[SpawnProtocol.Command]
-  def spawn[T](behavior: Behavior[T], name: String): ActorRef[T] = {
-    implicit val timeout: Timeout = 3.seconds
-    val f: Future[ActorRef[T]] = spawnActor.ask(SpawnProtocol.Spawn(behavior, name, Props.empty, _))
-
-    Await.result(f, 3.seconds)
-  }
-
 
   "The stats sample" must {
 
@@ -91,8 +82,8 @@ abstract class StatsSampleSpec extends MultiNodeSpec(StatsSampleSpecConfig)
 
     "show usage of the statsService from one node" in within(15.seconds) {
       runOn(first, second) {
-        val worker = spawn(StatsWorker(), "StatsWorker")
-        val service = spawn(StatsService(worker), "StatsService")
+        val worker = system.spawn(StatsWorker(), "StatsWorker")
+        val service = system.spawn(StatsService(worker), "StatsService")
         typedSystem.receptionist ! Receptionist.Register(App.StatsServiceKey, service)
       }
       runOn(third) {
