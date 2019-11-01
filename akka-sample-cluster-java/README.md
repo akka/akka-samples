@@ -20,19 +20,19 @@ The small program together with its configuration starts an ActorSystem with the
 
 You can read more about the cluster concepts in the [documentation](https://doc.akka.io/docs/akka/2.6/typed/cluster.html).
 
-To run this sample, type `sbt "runMain sample.cluster.simple.App"`.
+To run this sample, type `mvn exec:java -Dexec.mainClass="sample.cluster.simple.App"`.
 
 `sample.cluster.simple.App` starts three actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and then open three terminal windows.
 
 In the first terminal window, start the first seed node with the following command:
 
-    sbt "runMain sample.cluster.simple.App 25251"
+    mvn exec:java -Dexec.mainClass="sample.cluster.simple.App" -Dexec.args=25251
 
 25251 corresponds to the port of the first seed-nodes element in the configuration. In the log output you see that the cluster node has been started and changed status to 'Up'.
 
 In the second terminal window, start the second seed node with the following command:
 
-    sbt "runMain sample.cluster.simple.App 25252"
+    mvn exec:java -Dexec.mainClass="sample.cluster.simple.App" -Dexec.args=25252
 
 25252 corresponds to the port of the second seed-nodes element in the configuration. In the log output you see that the cluster node has been started and joins the other seed node and becomes a member of the cluster. Its status changed to 'Up'.
 
@@ -40,7 +40,7 @@ Switch over to the first terminal window and see in the log output that the memb
 
 Start another node in the third terminal window with the following command:
 
-    sbt "runMain sample.cluster.simple.App 0"
+    mvn exec:java -Dexec.mainClass="sample.cluster.simple.App" -Dexec.args=0
 
 Now you don't need to specify the port number, 0 means that it will use a random available port. It joins one of the configured seed nodes. Look at the log output in the different terminal windows.
 
@@ -67,19 +67,19 @@ The backend worker that performs the transformation job is defined in [Worker.ja
 
 The frontend that simulates user jobs as well as keeping track of available workers is defined in [Frontend.java](src/main/java/sample/cluster/transformation/Frontend.java). The actor subscribes to the `Receptionist` with the `WorkerServiceKey` to receive updates when the set of available workers in the cluster changes. If a worker dies or its node is removed from the cluster the receptionist will send out an updated listing so the frontend does not need to `watch` the workers.
 
-To run this sample, make sure you have shut down any previously started cluster sample, then type `sbt "runMain sample.cluster.transformation.App"`.
+To run this sample, make sure you have shut down any previously started cluster sample, then type `mvn exec:java -Dexec.mainClass="sample.cluster.transformation.App"`.
 
 TransformationApp starts 5 actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and run the following commands in separate terminal windows.
 
-    sbt "runMain sample.cluster.transformation.App backend 25251"
-
-    sbt "runMain sample.cluster.transformation.App backend 25252"
-
-    sbt "runMain sample.cluster.transformation.App backend 0"
-
-    sbt "runMain sample.cluster.transformation.App frontend 0"
-
-    sbt "runMain sample.cluster.transformation.App frontend 0"
+    mvn exec:java -Dexec.mainClass="sample.cluster.transformation.App" -Dexec.args="backend 25251"
+    
+    mvn exec:java -Dexec.mainClass="sample.cluster.transformation.App" -Dexec.args="backend 25252"
+    
+    mvn exec:java -Dexec.mainClass="sample.cluster.transformation.App" -Dexec.args="backend 0"
+    
+    mvn exec:java -Dexec.mainClass="sample.cluster.transformation.App" -Dexec.args="frontend 0"
+    
+    mvn exec:java -Dexec.mainClass="sample.cluster.transformation.App" -Dexec.args="frontend 0"
 
 There is a component built into Akka that performs the task of subscribing to the receptionist and keeping track of available actors significantly simplifying such interactions: the group router. Let's look into how we can use those in the next section!
 
@@ -93,7 +93,7 @@ Let's take a look at a few samples that make use of cluster aware routers.
 
 Let's take a look at two different ways to distribute work across a cluster using routers. 
 
-Note that the samples just shows off various parts of Akka Cluster and does not provide a complete structure to build a resilient distributed application with. The [Distributed Workers With Akka](https://developer.lightbend.com/guides/akka-distributed-workers-scala/) sample covers  more of the problems you would have to solve to build a resilient distributed processing application.
+Note that the samples just shows off various parts of Akka Cluster and does not provide a complete structure to build a resilient distributed application with. The [Distributed Workers With Akka](https://developer.lightbend.com/guides/akka-distributed-workers-java/) sample covers  more of the problems you would have to solve to build a resilient distributed processing application.
 
 ### Example with Group of routees
 
@@ -116,17 +116,17 @@ when started.
 With this design a single `compute` node crashing will only lose the ongoing work in that node and have the other nodes
 keep on with their work, but there is no single place to ask for a list of the current work in progress. 
 
-To run the sample, type `sbt "runMain sample.cluster.stats.App"` if it is not already started.
+To run the sample, type `mvn exec:java -Dexec.mainClass="sample.cluster.stats.App"` if it is not already started.
 
 StatsSample starts 4 actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and run the following commands in separate terminal windows.
 
-    sbt "runMain sample.cluster.stats.App compute 25251"
-
-    sbt "runMain sample.cluster.stats.App compute 25252"
-
-    sbt "runMain sample.cluster.stats.App compute  0"
-
-    sbt "runMain sample.cluster.stats.App client 0"
+    mvn exec:java -Dexec.mainClass="sample.cluster.stats.App" -Dexec.args="compute 25251"
+    
+    mvn exec:java -Dexec.mainClass="sample.cluster.stats.App" -Dexec.args="compute 25252"
+    
+    mvn exec:java -Dexec.mainClass="sample.cluster.stats.App" -Dexec.args="compute 0"
+    
+    mvn exec:java -Dexec.mainClass="sample.cluster.stats.App" -Dexec.args="client 0"
 
 
 ### Router example with Cluster Singleton 
@@ -141,18 +141,20 @@ and could potentially make decisions based on knowing exactly what work is curre
 
 If the singleton node crashes however, all ongoing work is lost though since the state of the singleton is not persistent, when it is started on a new node the `StatsService` will not know of any previous work. It also means that since all work has to go through the singleton it could be come a bottleneck. If one of the other nodes crash only the ongoing work sent to them is lost, however since each ongoing request could be handled by multiple different workers on different nodes a crash could cause problems to many requests.
 
-To run this sample, type `sbt "runMain sample.cluster.stats.AppOneMaster"` if it is not already started.
+To run this sample, type `mvn exec:java -Dexec.mainClass="sample.cluster.stats.AppOneMaster"` if it is not already started.
 
-StatsSampleOneMaster starts 4 actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and run the following commands in separate terminal windows.
+AppOneMaster starts 4 actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and run the following commands in separate terminal windows.
 
-    sbt "runMain sample.cluster.stats.AppOneMaster compute 25251"
+    mvn exec:java -Dexec.mainClass="sample.cluster.stats.AppOneMaster" -Dexec.args="compute 25251"
+    
+    mvn exec:java -Dexec.mainClass="sample.cluster.stats.AppOneMaster" -Dexec.args="compute 25252"
 
-    sbt "runMain sample.cluster.stats.AppOneMaster compute 25252"
-
-    sbt "runMain sample.cluster.stats.AppOneMaster compute 0"
-
-    sbt "runMain sample.cluster.stats.AppOneMaster client 0"
-
+    mvn exec:java -Dexec.mainClass="sample.cluster.stats.AppOneMaster" -Dexec.args="compute 0"
+    
+    mvn exec:java -Dexec.mainClass="sample.cluster.stats.AppOneMaster" -Dexec.args="client 0"
+    
 ## Tests
 
-Tests can be found in [src/multi-jvm](src/multi-jvm). You can run them by typing `sbt multi-jvm:test`.
+The multi-jvm testkit which allows for starting a cluster with multiple separate JVMs is only available from Scala with
+the Scala build tool `sbt`. Such tests are included for completeness and can be found in [src/multi-jvm](src/multi-jvm). 
+You can run them by typing `sbt multi-jvm:test`.
