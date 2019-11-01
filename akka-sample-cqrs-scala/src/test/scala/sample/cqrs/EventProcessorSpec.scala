@@ -24,6 +24,7 @@ class EventProcessorSpec extends ScalaTestWithActorTestKit(ConfigFactory.parseSt
           eventual-consistency-delay = 200 ms
         }
       }
+      akka.actor.testkit.typed.single-expect-default = 5s
       # For LoggingTestKit
       akka.actor.testkit.typed.filter-leeway = 5s
     """).withFallback(ConfigFactory.load())) with WordSpecLike {

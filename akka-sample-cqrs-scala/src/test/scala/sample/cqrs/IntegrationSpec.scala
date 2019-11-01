@@ -43,6 +43,7 @@ object IntegrationSpec {
       event-processor {
         keep-alive-interval = 1 seconds
       }
+      akka.actor.testkit.typed.single-expect-default = 5s
       # For LoggingTestKit
       akka.actor.testkit.typed.filter-leeway = 5s
     """).withFallback(ConfigFactory.load())
