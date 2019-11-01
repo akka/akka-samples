@@ -6,6 +6,7 @@ import scala.util.{ Failure, Random, Success }
 import akka.actor.typed.{ ActorRef, ActorSystem, Behavior }
 import akka.actor.typed.scaladsl.{ Behaviors, TimerScheduler }
 import com.typesafe.config.ConfigFactory
+import akka.stream.SystemMaterializer
 
 /** Simulate devices and stations.
  * In the wild, each station would run its own simple system,
@@ -68,16 +69,12 @@ object WeatherHttpApi {
   def apply(stationId: Int, port: Int): Behavior[Data] =
     Behaviors.setup[Data] { context =>
       import akka.http.scaladsl.Http
-      import akka.http.scaladsl.model.HttpRequest
 
-      implicit val sys = context.system
       import context.executionContext
       import akka.actor.typed.scaladsl.adapter._
+      import akka.http.scaladsl.unmarshalling.Unmarshal
       val http = Http(context.system.toClassic)
-
-      // Run and completely consume a single akka http request
-      def runRequest(req: HttpRequest) =
-        http.singleRequest(req).flatMap { _.entity.dataBytes.runReduce(_ ++ _) }
+      implicit val mat: akka.stream.Materializer = SystemMaterializer(context.system.toClassic).materializer
 
       // This import makes the 'format' above available to the Akka HTTP
       // marshalling infractructure used when constructing the Post below:
@@ -87,11 +84,13 @@ object WeatherHttpApi {
 
       Behaviors.receiveMessage[Data] {
         case data: Data =>
-          runRequest(Post(s"http://localhost:$port/temperatures", data)).onComplete {
-            case Success(response) =>
-              context.log.info(response.utf8String)
-            case Failure(e) => context.log.error("Something wrong.", e)
-          }
+          http.singleRequest(Post(s"http://localhost:$port/temperatures", data))
+            .flatMap(res => Unmarshal(res).to[String])
+            .onComplete {
+              case Success(response) =>
+                context.log.info(response)
+              case Failure(e) => context.log.error("Something wrong.", e)
+            }
 
           Behaviors.same
       }
