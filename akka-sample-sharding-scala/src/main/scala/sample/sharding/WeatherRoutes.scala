@@ -34,11 +34,19 @@ class WeatherRoutes(guardian: ActorRef[Guardian.Command])(implicit system: Actor
         }
       },
       pathPrefix("weather-stations") {
-        get {
-          onComplete((guardian ? GetWeatherStations).mapTo[WeatherStations]) {
-            case Success(value) => complete(s"The result was $value")
-            case Failure(e)     => complete((StatusCodes.InternalServerError, s"An error occurred: ${e.getMessage}"))
+        concat(
+          get {
+            onComplete((guardian ? GetWeatherStations).mapTo[WeatherStations]) {
+              case Success(value) => complete(s"The result was $value")
+              case Failure(e)     => complete((StatusCodes.InternalServerError, s"An error occurred: ${e.getMessage}"))
+            }
+          },
+          // REST-wise we should expect PUT here, but let's be lenient and also accept POST:
+          (path(IntNumber) & (put | post)) { sid =>
+            // This command is 'fire and forget'
+            guardian ! AddWeatherStation(sid)
+            complete(StatusCodes.Accepted)
           }
-        }
+        )
       })
 }
