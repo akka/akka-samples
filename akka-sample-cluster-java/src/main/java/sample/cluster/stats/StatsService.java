@@ -15,11 +15,12 @@ import java.util.List;
 
 public final class StatsService extends AbstractBehavior<StatsService.Command> {
 
-  interface Command extends CborSerializable {}
+  public interface Command extends CborSerializable {}
   public final static class ProcessText implements Command {
     public final String text;
     public final ActorRef<Response> replyTo;
-    public ProcessText(String text, ActorRef<Response> replyTo) {
+    @JsonCreator
+    public ProcessText(@JsonProperty("text") String text, @JsonProperty("replyTo") ActorRef<Response> replyTo) {
       this.text = text;
       this.replyTo = replyTo;
     }
@@ -32,7 +33,7 @@ public final class StatsService extends AbstractBehavior<StatsService.Command> {
   public static final class JobResult implements Response {
     public final double meanWordLength;
     @JsonCreator
-    public JobResult(double meanWordLength) {
+    public JobResult(@JsonProperty("meanWordLength") double meanWordLength) {
       this.meanWordLength = meanWordLength;
     }
     @Override
@@ -44,7 +45,8 @@ public final class StatsService extends AbstractBehavior<StatsService.Command> {
   }
   public static final class JobFailed implements Response {
     public final String reason;
-    public JobFailed(String reason) {
+    @JsonCreator
+    public JobFailed(@JsonProperty("reason") String reason) {
       this.reason = reason;
     }
     @Override

@@ -18,7 +18,7 @@ import java.util.Map;
 
 public class App {
 
-  private static final ServiceKey<StatsService.ProcessText> STATS_SERVICE_KEY =
+  static final ServiceKey<StatsService.ProcessText> STATS_SERVICE_KEY =
       ServiceKey.create(StatsService.ProcessText.class, "StatsService");
 
   private static class RootBehavior {
