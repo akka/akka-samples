@@ -1,34 +1,47 @@
 package sample.sharding
 
-import akka.actor.typed.{ ActorSystem, Behavior }
+import akka.actor.typed.{ ActorRef, ActorSystem, Behavior }
 import akka.actor.typed.scaladsl.Behaviors
 import akka.cluster.sharding.typed.scaladsl.{ ClusterSharding, Entity, EntityTypeKey }
 
+object Aggregator {
+
+  sealed trait Command
+  final case class Aggregate(stationId: Int, deviceId: Int, data: List[Double]) extends Command
+  final case class GetAverage(stationId: Int, deviceId: Int, replyTo: ActorRef[Guardian.AggregateData]) extends Command
+  final case class GetHiLow(stationId: Int, deviceId: Int, replyTo: ActorRef[Guardian.AggregateData]) extends Command
+
+  private def average(values: List[Double]): Double =
+    if (values.isEmpty) Double.NaN
+    else values.sum / values.size
+}
+
 /** Base aggregator behavior to compute any implementation of data aggregation. */
 trait Aggregator {
-  import Protocol._
 
-  protected def aggregating(id: String, values: Vector[Double]): Behavior[Command] =
+  import Aggregator._
+
+  protected def aggregating(id: String, values: List[Double]): Behavior[Aggregator.Command] =
     Behaviors.setup { context =>
       context.log.info("Starting sharded aggregator {}.", id)
 
       Behaviors.receiveMessage {
-        case UpdateDevice(sid, did, data) =>
-          val updated = values ++ data.toVector
+        case Aggregate(sid, did, data) =>
+          val updated = data ::: values
           context.log.info(
-            s"Recording latest $data for device $did from station $sid, average is ${Aggregate.average(updated)} after " +
+            s"Recording latest data points ${data.size} for device $did from station $sid, average is ${average(updated)} after " +
             s"${updated.size} readings.")
 
           aggregating(id, updated)
 
-        case GetAggregate(sid, did, replyTo) =>
+        case GetAverage(sid, did, replyTo) =>
           context.log.info("Sending aggregate for device {}.", id)
-          replyTo ! Aggregate(sid, did, values)
+          replyTo ! Guardian.Average(sid, did, average(values), values.size)
           Behaviors.same
 
         case GetHiLow(sid, did, replyTo) =>
           context.log.info("Sending HiLow for device {}.", id)
-          replyTo ! HighLow(sid, did, values.min, values.max, values.size)
+          replyTo ! Guardian.HighLow(sid, did, values.min, values.max, values.size)
           Behaviors.same
 
       }
@@ -41,15 +54,14 @@ trait Aggregator {
  * so you need to distribute them across several nodes.
  */
 object TemperatureDevice extends Aggregator {
-  import Protocol._
 
-  val TypeKey: EntityTypeKey[Command] =
-    EntityTypeKey[Command]("Temperature")
+  val TypeKey: EntityTypeKey[Aggregator.Command] =
+    EntityTypeKey[Aggregator.Command]("Temperature")
 
   def init(system: ActorSystem[_]): Unit = {
     ClusterSharding(system).init(Entity(TypeKey)(entityContext => TemperatureDevice(entityContext.entityId)))
   }
 
-  def apply(id: String): Behavior[Command] = aggregating(id, Vector.empty)
+  def apply(id: String): Behavior[Aggregator.Command] = aggregating(id, Nil)
 
 }

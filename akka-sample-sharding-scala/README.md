@@ -4,6 +4,8 @@ This tutorial contains a sample illustrating [Akka Cluster Sharding](http://doc.
 
 First make sure the correct settings in [application.conf](src/main/resources/application.conf) are set as described in the akka-sample-cluster tutorial.
 
+### KillrWeather
+
 Open [KillrWeather.scala](src/main/scala/sample/sharding/KillrWeather.scala).
 
 This small program starts an ActorSystem with Cluster Sharding enabled. It joins the cluster and starts a `Guardian` actor for the system,
@@ -12,9 +14,13 @@ and respond to queries against that data, for example high/low, average, etc.
 The `Guardian` starts the infrastructure to shard device `Aggregator` instances, which in this simple sample is temperature devices.
 Other types can easily be added.
 
-`EdgesApp` is the program simulating multiple weather stations and their devices which read and report weather data.
+### WeatherEdges
+
+Open [WeatherEdges.scala](src/main/scala/sample/sharding/WeatherEdges.scala).
+
+`WeatherEdges` is the program simulating many weather stations and their devices which read and report weather data to KillrWeather clusters.
 This example shows temperature, though in the wild would have other device data points such
-as pressure, wind speed, precipitation, etc. This program starts the infrastructure to shard `Device` instances
+as pressure, wind speed, precipitation, etc. This program starts the infrastructure to shard `WeatherDevice` instances
 and send data via HTTP to the cluster, using [Akka HTTP](https://doc.akka.io/docs/akka-http/current/index.html), for processing and analytics.
 
 ## Running the samples
@@ -49,11 +55,13 @@ Now you don't need to specify the port number, 0 means that it will use a random
 
 Start even more nodes in the same way, if you like.
 
-### EdgesApp - weather stations
+### WeatherEdges - weather stations
 
-In another terminal start the `EdgesApp` :
+In another terminal start the `WeatherEdges` :
 
-    sbt "runMain sample.sharding.EdgesApp 2552"
+    sbt "runMain sample.sharding.WeatherEdges"
+    
+This will eventually attempt to connect to port 8081, a port opened by KillrWeather.    
 
 ### Shutting down
 

@@ -3,7 +3,7 @@ val AkkaVersion = "2.6.0-RC2"
 
 lazy val buildSettings = Seq(
   organization := "com.lightbend.akka.samples",
-  scalaVersion := "2.12.10"
+  scalaVersion := "2.13.1"
 )
 
 lazy val commonScalacOptions = Seq(
@@ -38,7 +38,7 @@ lazy val `akka-sample-sharding-scala` = project
       "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
       "org.scalatest" %% "scalatest" % "3.0.7" % Test
     ),
-    mainClass in (Compile, run) := Some("sample.sharding.Main"),
+    mainClass in (Compile, run) := Some("sample.sharding.KillrWeather"),
     licenses := Seq(
       ("CC0", url("http://creativecommons.org/publicdomain/zero/1.0"))
     ),
