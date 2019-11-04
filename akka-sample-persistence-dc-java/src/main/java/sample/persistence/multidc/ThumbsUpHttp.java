@@ -12,24 +12,25 @@ import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.server.AllDirectives;
 import akka.http.javadsl.server.Route;
-import akka.stream.ActorMaterializer;
+import akka.stream.Materializer;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.Source;
 import akka.util.ByteString;
 import akka.util.Timeout;
 
+import java.time.Duration;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 
 import static akka.http.javadsl.server.PathMatchers.segment;
 import static akka.http.javadsl.server.PathMatchers.segments;
-import static akka.pattern.PatternsCS.ask;
+import static akka.pattern.Patterns.ask;
 
 public class ThumbsUpHttp extends AllDirectives {
 
   public static void startServer(ActorSystem system, String httpHost, int httpPort, ActorRef counterRegion) {
 
-    final ActorMaterializer materializer = ActorMaterializer.create(system);
+    final Materializer materializer = Materializer.createMaterializer(system);
 
     ThumbsUpHttp api = new ThumbsUpHttp();
 
@@ -44,10 +45,10 @@ public class ThumbsUpHttp extends AllDirectives {
   }
 
   private Route createRoute(ActorRef counterRegion) {
-    Timeout timeout = Timeout.apply(10, TimeUnit.SECONDS);
+    Duration timeout = Duration.ofSeconds(10);
     return
         pathPrefix("thumbs-up", () ->
-            route(
+            concat(
                 // example: curl http://0.0.0.0:22551/thumbs-up/a
                 get(() -> {
                   return path(segment(), resourceId -> {
@@ -55,7 +56,7 @@ public class ThumbsUpHttp extends AllDirectives {
                       Source<ByteString, NotUsed> s =
                           Source.fromIterator(() -> ((ThumbsUpCounter.State) state.get()).users.iterator())
                               .intersperse("\n")
-                              .map(line -> ByteString.fromString(line));
+                              .map(ByteString::fromString);
                       return complete(HttpEntities.create(ContentTypes.TEXT_PLAIN_UTF8, s));
                     });
                   });
