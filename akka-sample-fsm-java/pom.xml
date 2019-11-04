@@ -17,12 +17,17 @@
   <dependencies>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-actor-typed_2.12</artifactId>
+      <artifactId>akka-actor-typed_2.13</artifactId>
       <version>${akka.version}</version>
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-testkit_2.12</artifactId>
+      <artifactId>akka-slf4j_2.13</artifactId>
+      <version>${akka.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.typesafe.akka</groupId>
+      <artifactId>akka-testkit_2.13</artifactId>
       <version>${akka.version}</version>
     </dependency>
     <dependency>

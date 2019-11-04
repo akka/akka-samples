@@ -36,10 +36,6 @@ public class Chopstick {
         default boolean isBusy() {
             return false;
         }
-
-        default boolean isBusy(ActorRef<Command> chopstick) {
-            return false;
-        }
     }
 
     final static class Taken implements Answer {
@@ -77,10 +73,6 @@ public class Chopstick {
             return true;
         }
 
-        @Override
-        public boolean isBusy(ActorRef<Command> chopstick) {
-            return this.chopstick.equals(chopstick);
-        }
     }
 
     public static Behavior<Command> create() {
@@ -95,12 +87,12 @@ public class Chopstick {
 
     private Behavior<Command> takenBy(ActorRef<Answer> hakker) {
         return Behaviors.receive(Command.class)
-                .onMessage(Take.class, (msg) -> {
+                .onMessage(Take.class, msg -> {
                     msg.hakker.tell(new Busy(context.getSelf()));
                     return Behaviors.same();
                 })
                 .onMessage(Put.class, m -> m.hakker.equals(hakker), (msg) -> available())
-                .build();
+                .build()    ;
 
     }
 

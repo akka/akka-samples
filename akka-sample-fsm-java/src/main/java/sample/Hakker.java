@@ -100,7 +100,7 @@ class Hakker {
                name, left.path().name(), right.path().name());
             return startEating(ctx, Duration.ofSeconds(5));
          })
-         .onMessage(AdaptedAnswer.class, m -> m.msg.isBusy(chopstickToWaitFor), msg -> {
+         .onMessage(AdaptedAnswer.class, m -> m.msg.getChopstick().equals(chopstickToWaitFor), msg -> {
             takenChopstick.tell(new Chopstick.Put(adapter));
             return startThinking(Duration.ofMillis(10));
          })
