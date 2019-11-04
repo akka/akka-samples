@@ -25,54 +25,43 @@ public class Chopstick {
     }
 
 
-    interface Answer {
-
-        ActorRef<Command> getChopstick();
-
-        default boolean isTaken() {
-            return false;
-        }
-
-        default boolean isBusy() {
-            return false;
-        }
-    }
-
-    final static class Taken implements Answer {
+    abstract static class Answer {
         public final ActorRef<Command> chopstick;
 
-        public Taken(ActorRef<Command> chopstick) {
+        Answer(ActorRef<Command> chopstick) {
             this.chopstick = chopstick;
         }
 
-        @Override
-        public ActorRef<Command> getChopstick() {
-            return chopstick;
-        }
+        abstract boolean isTaken();
+        abstract boolean isBusy();
+    }
 
+    final static class Taken extends Answer {
+        public Taken(ActorRef<Command> chopstick) {
+            super(chopstick);
+        }
         @Override
         public boolean isTaken() {
             return true;
         }
+        @Override
+        public boolean isBusy() {
+            return false;
+        }
     }
 
-    final static class Busy implements Answer {
-        public final ActorRef<Command> chopstick;
-
+    final static class Busy extends Answer {
         public Busy(ActorRef<Command> chopstick) {
-            this.chopstick = chopstick;
+            super(chopstick);
         }
-
         @Override
-        public ActorRef<Command> getChopstick() {
-            return chopstick;
+        public boolean isTaken() {
+            return false;
         }
-
         @Override
         public boolean isBusy() {
             return true;
         }
-
     }
 
     public static Behavior<Command> create() {
