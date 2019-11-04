@@ -3,7 +3,7 @@ name := "akka-sample-persistence-dc-java"
 
 enablePlugins(ProtobufPlugin)
 
-scalaVersion := "2.12.8"
+scalaVersion := "2.13.1"
 
 val AkkaVersion = "2.6.0-RC2"
 val AkkaAddOnsVersion = "1.1.12"
