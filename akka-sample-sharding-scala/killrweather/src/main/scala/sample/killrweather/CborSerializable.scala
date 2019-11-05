@@ -1,4 +1,4 @@
-package sample.sharding
+package sample.killrweather
 
 /**
  * Marker trait for serialization with Jackson CBOR.
