@@ -1,12 +1,13 @@
 package sample.killrweather.fog
 
 import scala.util.{Failure, Success}
-import akka.actor.typed.Behavior
+
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.http.scaladsl.client.RequestBuilding.{Delete, Post, Put}
-import akka.http.scaladsl.model.HttpRequest
+import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.stream.SystemMaterializer
 
 /**
@@ -18,8 +19,10 @@ import akka.stream.SystemMaterializer
 private[fog] object WeatherApi {
 
   sealed trait Command
-  final case class Add(wsid: WeatherStation.WmoId) extends Command
-  final case class Remove(wsid: String) extends Command
+  final case class Add(wsid: WeatherStation.WmoId, replyTo: ActorRef[WeatherStation.Start.type]) extends Command
+  case object Remove extends Command
+  final case class ProcessSuccess(msg: String) extends Command
+  final case class ProcessFailure(e: Throwable) extends Command
 
   /** Actual weather data event comprises many more data points.
    *
@@ -36,11 +39,11 @@ private[fog] object WeatherApi {
     * }}}
     */
   def apply(host: String, port: Int, ws: WeatherStation.WmoId): Behavior[Command] =
-    Behaviors.setup[Command] { context =>
+    Behaviors.setup { context =>
 
       import akka.actor.typed.scaladsl.adapter._
       val http = Http(context.system.toClassic)
-      val baseUri = s"http://localhost:$port/weather"
+      val baseUri = s"http://$host:$port/weather"
 
       import context.executionContext
       implicit val mat =
@@ -52,25 +55,45 @@ private[fog] object WeatherApi {
       import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 
       def simpleSingleRequest(request: HttpRequest): Behavior[Command] = {
-        http
-          .singleRequest(request)
-          .flatMap(res => Unmarshal(res).to[String])
-          .onComplete {
-            case Success(response) => context.log.info(response)
-            case Failure(e)        => context.log.error("Something wrong.", e)
-          }
-        Behaviors.same // you could vary the return behavior based on success/fail
+        context.pipeToSelf(
+          http
+            .singleRequest(request)
+            .flatMap(res => Unmarshal(res).to[String])) {
+              case Success(s) => ProcessSuccess(s)
+              case Failure(e) => ProcessFailure(e)
+            }
+
+        Behaviors.same
       }
 
       Behaviors.receiveMessage {
-        case Add(ws) =>
-          simpleSingleRequest(Put(s"$baseUri/${ws.id}", ws))
+        case Add(ws, replyTo) =>
+          http
+            .singleRequest(Put(s"$baseUri/${ws.id}", ws.id))
+            .foreach(res => Unmarshal(res).to[String].onComplete {
+                case Success(v) =>
+                  if (res.status == StatusCodes.Created && v == ws.id)
+                    replyTo ! WeatherStation.Start
+                case Failure(e) => ProcessFailure(e)
+              })
+
+          Behaviors.same
 
         case data: Data =>
-          simpleSingleRequest(Post(s"$baseUri/weather/${data.wsid}", data))
+          simpleSingleRequest(Post(s"$baseUri/${ws.id}", data))
 
-        case Remove(id) =>
-          simpleSingleRequest(Delete(s"$baseUri/$id"))
+        case ProcessSuccess(msg) =>
+          context.log.debug(msg)
+          Behaviors.same
+
+        case ProcessFailure(e) =>
+          context.log.error("Useful failure context.", e)
+          Behaviors.same
+
+        case Remove =>
+          simpleSingleRequest(Delete(s"$baseUri/${ws.id}"))
+
       }
     }
 }
+

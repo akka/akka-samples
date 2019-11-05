@@ -8,6 +8,4 @@ private[fog] object JsonFormats {
 
   implicit val weatherStationFormat: RootJsonFormat[WeatherStation.WmoId] = jsonFormat7(WeatherStation.WmoId)
   implicit val dataFormat: RootJsonFormat[WeatherApi.Data] = jsonFormat3(WeatherApi.Data)
-  implicit val addFormat: RootJsonFormat[WeatherApi.Add] = jsonFormat1(WeatherApi.Add)
-  implicit val removeFormat: RootJsonFormat[WeatherApi.Remove] = jsonFormat1(WeatherApi.Remove)
 }

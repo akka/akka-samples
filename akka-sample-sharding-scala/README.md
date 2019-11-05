@@ -1,11 +1,8 @@
 # Cluster Sharding sample
 
-The KillrWeather sample illustrates how to use [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/scala/cluster-sharding.html).
-It also shows the basic usage of
-[Akka HTTP](https://doc.akka.io/docs/akka-http/current/index.html), and more coming soon, such as
-[Distributed Data](https://doc.akka.io/docs/akka/current/distributed-data.html) and 
-[Akka Persistence Cassandra](https://doc.akka.io/docs/akka-persistence-cassandra/current/index.html). It also shows how to interop Akka classic with the new Akka APIs.
-
+The KillrWeather sample illustrates how to use [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/scala/typed/cluster-sharding.html).
+It also shows the basic usage of [Akka HTTP](https://doc.akka.io/docs/akka-http/current/index.html).
+ 
 ## KillrWeather
 
 Open [KillrWeather.scala](killrweather/src/main/scala/sample/killrweather/KillrWeather.scala).
@@ -27,14 +24,15 @@ for a given time window queried, e.g. daily, monthly or annual such as:
 * high/low 
 * topK (e.g. the top N highest temperatures)
 
-Examples will be added soon. Thus far, only temperature data is received, sharded and processed. Other types can easily be added.
+Thus far, only temperature data is received, sharded and processed. Other types can easily be added.
 
 ### Receiving edge device data by data type
 
 A [WeatherServer](killrweather/src/main/scala/sample/killrweather/WeatherServer.scala) is started with
 HTTP [WeatherRoutes](killrweather/src/main/scala/sample/killrweather/WeatherRoutes.scala) 
 to receive and unmarshall data from remote devices by data type, by station ID, device ID and data type.
-The data types are sharded using [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/scala/cluster-sharding.html).
+The data types are sharded using [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/scala/typed/cluster-sharding.html
+).
 
 ### Configuration
 
@@ -54,12 +52,8 @@ pressure, precipitation, wind speed, wind direction, sky condition and dewpoint.
 
 ### Weather stations and devices
 
-Each [WeatherStation](killrweather-fog/src/main/scala/sample/killrweather/fog/WeatherStation.scala) starts a  
-
-Each [Device](killrweather-fog/src/main/scala/sample/killrweather/fog/Device.scala) is run on a task to trigger scheduled data sampling events.
-These samples are timestamped and buffered for a configurable max buffer size. When the buffer size is met,
-the device signals the station to send the window of raw data to the cluster, via each [WeatherStation](killrweather-fog/src/main/scala/sample/killrweather/fog/WeatherStation.scala)
-and its [WeatherApi](killrweather-fog/src/main/scala/sample/killrweather/fog/Fog.scala).
+Each [WeatherStation](killrweather-fog/src/main/scala/sample/killrweather/fog/WeatherStation.scala) is run on a task to trigger scheduled data sampling.
+These samples are timestamped and sent to the cluster, via the `WeatherStation` [WeatherApi](killrweather-fog/src/main/scala/sample/killrweather/fog/WeatherApi.scala).
 This is done over HTTP using [Akka HTTP](https://doc.akka.io/docs/akka-http/current/index.html). For simplicity, HTTP versus HTTPS is shown.
 
 ### Configuration

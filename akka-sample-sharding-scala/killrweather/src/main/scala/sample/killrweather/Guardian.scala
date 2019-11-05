@@ -10,35 +10,18 @@ private[killrweather] object Guardian {
   type WeatherStationId = String
 
   sealed trait Command extends CborSerializable
-  final case class AddWeatherStation(ws: WeatherStation) extends Command
-  final case class RemoveWeatherStation(wsid: WeatherStationId) extends Command
-  final case class GetWeatherStations(replyTo: ActorRef[Command]) extends Command
-  final case class AggregateCommand(wsid: WeatherStationId, dataType: Aggregator.DataType, func: Aggregator.Function) extends Command
-
-  /** Sent from device aggregators to act on. */
-  trait AggregateData extends Command {
-    def wsid: WeatherStationId
-    def readings: Int
-  }
-
-  final case class HighLow(wsid: WeatherStationId, dataType: Aggregator.DataType, high: Double, low: Double, readings: Int)
-      extends AggregateData
-
-  final case class Average(wsid: WeatherStationId, dataType: Aggregator.DataType, average: Double, readings: Int)
-      extends AggregateData
-
   /** Data received by the cluster from stations, read from their devices.
    * `wsid` maps to the Cluster Sharding `EntityTypeKey`.
    */
-  final case class Ingest(wsid: WeatherStationId, data: Aggregator.Data) extends Command
-  final case class WeatherStations(stations: Set[WeatherStationId]) extends Command
-  final case class WeatherStation(id: String,
-                                  name: String = "",
-                                  countryCode: String = "",
-                                  callSign: String = "",
-                                  lat: Double = 0.0,
-                                  long: Double = 0.0,
-                                  elevation: Double = 0.0)
+  final case class Ingest(wsid: WeatherStationId, data: Aggregator.Data, replyTo: ActorRef[WeatherRoutes.DataIngested]) extends Command
+  final case class AddWeatherStation(ws: WeatherStationId, replyTo: ActorRef[WeatherRoutes.WeatherStationAdded]) extends Command
+  final case class RemoveWeatherStation(wsid: WeatherStationId) extends Command
+  final case class GetWeatherStations(replyTo: ActorRef[WeatherRoutes.WeatherStations]) extends Command
+  final case class AggregateCommand(wsid: WeatherStationId,
+                                    dataType: Aggregator.DataType,
+                                    func: Aggregator.Function,
+                                    replyTo: ActorRef[WeatherRoutes.QueryStatus]) extends Command
+  final case class WeatherStation(id: WeatherStationId)
 
   def apply(): Behavior[Command] = {
     Behaviors.setup { context =>
@@ -59,31 +42,24 @@ private[killrweather] final class Guardian(system: ActorSystem[Nothing]) {
   def active(stations: Set[Guardian.WeatherStationId]): Behavior[Guardian.Command] = {
     Behaviors.setup { context =>
       Behaviors.receiveMessage {
-        case Guardian.Ingest(wsid, data) =>
-          // TODO after add station, check stations.contains(wsid)
+        case Guardian.Ingest(wsid, data, replyTo) =>
+          val processTimestamp = System.currentTimeMillis
           // default 100 shards, 50 geo-locations
-          val entityRef = sharded(wsid)
-          entityRef ! Aggregator.Aggregate(data, System.currentTimeMillis)
-          Behaviors.same
-
-        case Guardian.Average(wsid, dataType, average, readings) =>
-          if (readings > 0)
-            context.log.info(s"wsid=$wsid, average=$average for $dataType readings=$readings")
+          sharded(wsid) ! Aggregator.Aggregate(data, processTimestamp, replyTo)
 
           Behaviors.same
 
-        case Guardian.AggregateCommand(wsid, dataType, func) =>
-          if (stations.contains(wsid)) {
-            sharded(wsid) ! Aggregator.Get(wsid, dataType, func, context.self)
-          }
+        case Guardian.AggregateCommand(wsid, dataType, func, replyTo) =>
+          sharded(wsid) ! Aggregator.Query(wsid, dataType, func, replyTo)
           Behaviors.same
 
         case Guardian.GetWeatherStations(replyTo) =>
-          replyTo ! Guardian.WeatherStations(stations)
+          replyTo ! WeatherRoutes.WeatherStations(stations)
           Behaviors.same
 
-        case Guardian.AddWeatherStation(ws) =>
-          active(stations = stations + ws.id)
+        case Guardian.AddWeatherStation(wsid, replyTo) =>
+          active(stations = stations + wsid)
+          replyTo ! WeatherRoutes.WeatherStationAdded(wsid)
           Behaviors.same
 
         case Guardian.RemoveWeatherStation(wsid) =>

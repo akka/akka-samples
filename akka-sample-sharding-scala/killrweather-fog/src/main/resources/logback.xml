@@ -17,6 +17,8 @@
         <appender-ref ref="STDOUT" />
     </appender>
 
+    <logger name="sample.killrweather.fog" level="DEBUG"/>
+
     <root level="INFO">
         <appender-ref ref="ASYNC"/>
     </root>

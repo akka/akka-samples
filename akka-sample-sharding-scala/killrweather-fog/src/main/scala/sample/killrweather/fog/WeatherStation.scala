@@ -2,7 +2,7 @@ package sample.killrweather.fog
 
 import scala.util.Random
 
-import akka.actor.typed.Behavior
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 
 /**
@@ -44,26 +44,60 @@ private[fog] object WeatherStation {
                          elevation: Double = 0.0)
 
   sealed trait Command
+  case object Register extends Command
+  case object Start extends Command
   case object Sample extends Command
 
   val random = new Random()
 
   /** Starts a device and it's task to initiate reading data at a scheduled rate. */
-  def apply(ws: WmoId, settings: FogSettings, httpPort: Int): Behavior[Sample.type] =
+  def apply(ws: WmoId, settings: FogSettings, httpPort: Int): Behavior[Command] =
+    new WeatherStation(ws, settings).initializing(httpPort)
+}
+
+/** Starts a device and it's task to initiate reading data at a scheduled rate. */
+class WeatherStation(ws: WeatherStation.WmoId, settings: FogSettings) {
+
+  def initializing(httpPort: Int): Behavior[WeatherStation.Command] = {
+    import WeatherStation.{Register, Start}
+
     Behaviors.setup { context =>
-      val api = context.spawn(WeatherApi("localhost", httpPort, ws), s"api-${ws.id}")
+      val api = context.spawn(WeatherApi(settings.host, httpPort, ws), s"api-${ws.id}")
+
+      context.log.info(s"Started WeatherStation ${ws.id} of total ${settings.weatherStations} with weather port $httpPort")
+
+      Behaviors.withTimers { timers =>
+        timers.startSingleTimer(Register, Register, settings.staggerStartup)
+        Behaviors.receiveMessagePartial {
+          case Register =>
+            context.log.debug(s"Registering ${ws.id}.")
+            api ! WeatherApi.Add(ws, context.self)
+            Behaviors.same
+          case Start => active(ws, api)
+        }
+      }
+    }
+  }
+
+  def active(ws: WeatherStation.WmoId, api: ActorRef[WeatherApi.Data]): Behavior[WeatherStation.Command] = {
+    import WeatherStation.Sample
+
+    Behaviors.setup[WeatherStation.Command] { context =>
+      context.log.debug(s"Started ${ws.id} data sampling.")
 
       Behaviors.withTimers { timers =>
         timers.startTimerWithFixedDelay(Sample, Sample, settings.sampleInterval)
 
-        Behaviors.receiveMessage[Sample.type] { _ =>
+        Behaviors.receiveMessage { _ =>
           val value = 5 + 30 * WeatherStation.random.nextDouble
           val eventTime = System.currentTimeMillis
-          context.log.info("Sending weather station {} data.", ws.id)
-          api ! WeatherApi.Data(ws.id, eventTime, value)
-          Behaviors.same
+          val data =  WeatherApi.Data(ws.id, eventTime, value)
+          context.log.debug("Sending data {}.", data)
+          api ! data
 
+          Behaviors.same
         }
       }
     }
+  }
 }

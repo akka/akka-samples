@@ -11,7 +11,12 @@ object JsonFormats {
   import spray.json.DefaultJsonProtocol._
 
   implicit val dataFormat: RootJsonFormat[Aggregator.Data] = jsonFormat3(Aggregator.Data)
-  implicit val stationsFormat: RootJsonFormat[Guardian.WeatherStations] = jsonFormat1(Guardian.WeatherStations)
-  implicit val stationFormat: RootJsonFormat[Guardian.WeatherStation] = jsonFormat7(Guardian.WeatherStation)
+  implicit val dataIngestedFormat: RootJsonFormat[WeatherRoutes.DataIngested] = jsonFormat1(WeatherRoutes.DataIngested)
+
+  implicit val queryStatusFormat: RootJsonFormat[WeatherRoutes.QueryStatus] = jsonFormat4(WeatherRoutes.QueryStatus)
+
+  implicit val stationAddedFormat: RootJsonFormat[WeatherRoutes.WeatherStationAdded] = jsonFormat1(WeatherRoutes.WeatherStationAdded)
+  implicit val stationsFormat: RootJsonFormat[WeatherRoutes.WeatherStations] = jsonFormat1(WeatherRoutes.WeatherStations)
+  implicit val stationFormat: RootJsonFormat[Guardian.WeatherStation] = jsonFormat1(Guardian.WeatherStation)
 
 }

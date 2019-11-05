@@ -7,7 +7,9 @@ import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityType
 private[killrweather] object Aggregator {
   sealed trait Command extends CborSerializable
 
-  sealed trait DataType
+  sealed trait DataType {
+    def tag: String = getClass.getSimpleName
+  }
   object DataType {
     case object Temperature extends DataType
     case object Dewpoint extends DataType
@@ -18,7 +20,9 @@ private[killrweather] object Aggregator {
     case object SkyCondition extends DataType
   }
 
-  sealed trait Function
+  sealed trait Function {
+    def tag: String = getClass.getSimpleName
+  }
   object Function {
     case object HighLow extends Function
     case object Average extends Function
@@ -31,9 +35,9 @@ private[killrweather] object Aggregator {
    * @param temperature Air temperature (degrees Celsius)
    */
   final case class Data(wsid: String, eventTime: Long, temperature: Double)
-  final case class Aggregate(data: Data, processingTimestamp: Long) extends Command
-  // TODO time window option
-  final case class Get(wsid: String, `type`: Aggregator.DataType, func: Aggregator.Function, replyTo: ActorRef[Guardian.AggregateData]) extends Command
+  final case class Aggregate(data: Data, processingTimestamp: Long, replyTo: ActorRef[WeatherRoutes.DataIngested]) extends Command
+  // TODO time window
+  final case class Query(wsid: String, dataType: Aggregator.DataType, func: Aggregator.Function, replyTo: ActorRef[WeatherRoutes.QueryStatus]) extends Command
 
   private def average(values: Vector[Double]): Double =
     if (values.isEmpty) Double.NaN
@@ -59,22 +63,28 @@ private[killrweather] trait Aggregator {
       context.log.info("Starting sharded aggregator {}.", entityId)
 
       Behaviors.receiveMessage {
-        case Aggregate(data, received) =>
+        case Aggregate(data, received, replyTo) =>
           val updated = values :+ data
-          context.log.info(
-            s"Recorded latest ${updated.size} data from station ${entityId}, received at $received, " +
-              s"average is ${average(updated.map(_.temperature))} after ${updated.size} readings.")
+          context.log.debug(
+            s"Recorded ${updated.size} readings from station ${entityId}, " +
+              s"average ${average(updated.map(_.temperature))}, diff: processingTime - eventTime: ${received - data.eventTime}ms")
+          replyTo ! WeatherRoutes.DataIngested(data.wsid)
 
           aggregating(entityId, updated) // TODO store
 
-        case Get(wsid, dataType, func, replyTo) =>
+        case Query(wsid, dataType, func, replyTo) =>
           dataType match {
             case DataType.Temperature =>
               func match {
                 case Function.Average =>
-                  replyTo ! Guardian.Average(wsid, dataType, average(values.map(_.temperature)), values.size)
+                  val value = Vector((func.tag, average(values.map(_.temperature))))
+                  replyTo ! WeatherRoutes.QueryStatus(wsid, dataType.tag, values.size, value)
+
                 case Function.HighLow =>
-                  replyTo ! Guardian.HighLow(wsid, dataType, values.map(_.temperature).min, values.map(_.temperature).max, values.size)
+                  val value = Vector(
+                    (func.tag, (values.map(_.temperature).max)),
+                    (func.tag, (values.map(_.temperature).min)))
+                  replyTo ! WeatherRoutes.QueryStatus(wsid, dataType.tag, values.size, value)
                 case _ => ???
               }
 
