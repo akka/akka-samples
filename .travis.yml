@@ -45,8 +45,6 @@ env:
     - CMD="cd akka-sample-persistence-java && sbt test"
     - CMD="cd akka-sample-persistence-java && mvn test"
     - CMD="cd akka-sample-persistence-scala && sbt test"
-    - CMD="cd akka-sample-supervision-java && sbt test"
-    - CMD="cd akka-sample-supervision-java && mvn test"
     - CMD="cd akka-sample-vavr && mvn test"
 
 script:
