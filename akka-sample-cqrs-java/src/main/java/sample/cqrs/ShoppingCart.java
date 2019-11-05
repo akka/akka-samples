@@ -92,7 +92,7 @@ public class ShoppingCart
   /**
    * This interface defines all the commands that the ShoppingCart persistent actor supports.
    */
-  public interface Command<ReplyType> extends CborSerializable {
+  public interface Command extends CborSerializable {
   }
 
   /**
@@ -147,7 +147,7 @@ public class ShoppingCart
    *
    * The reply type is the {@link Summary}
    */
-  public static class Get implements Command<Summary> {
+  public static class Get implements Command {
     public final ActorRef<Summary> replyTo;
 
     @JsonCreator
@@ -162,7 +162,7 @@ public class ShoppingCart
    * The reply type is the {@link Confirmation}, which will be returned when the events have been
    * emitted.
    */
-  public static class Checkout implements Command<Confirmation> {
+  public static class Checkout implements Command {
     public final ActorRef<Confirmation> replyTo;
 
     @JsonCreator
