@@ -4,11 +4,11 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.SupervisorStrategy;
 import akka.persistence.typed.PersistenceId;
-import akka.persistence.typed.javadsl.CommandHandlerWithReply;
-import akka.persistence.typed.javadsl.CommandHandlerWithReplyBuilder;
+import akka.persistence.typed.javadsl.CommandHandler;
+import akka.persistence.typed.javadsl.CommandHandlerBuilder;
+import akka.persistence.typed.javadsl.Effect;
 import akka.persistence.typed.javadsl.EventHandler;
-import akka.persistence.typed.javadsl.EventSourcedBehaviorWithEnforcedReplies;
-import akka.persistence.typed.javadsl.ReplyEffect;
+import akka.persistence.typed.javadsl.EventSourcedBehavior;
 import akka.persistence.typed.javadsl.RetentionCriteria;
 import com.fasterxml.jackson.annotation.JsonCreator;
 
@@ -34,7 +34,7 @@ import java.util.Optional;
  * of the entity.
  */
 public class ShoppingCart
-  extends EventSourcedBehaviorWithEnforcedReplies<ShoppingCart.Command, ShoppingCart.Event, ShoppingCart.State> {
+  extends EventSourcedBehavior<ShoppingCart.Command, ShoppingCart.Event, ShoppingCart.State> {
 
   /**
    * The state for the {@link ShoppingCart} entity.
@@ -87,7 +87,7 @@ public class ShoppingCart
   /**
    * This interface defines all the commands that the ShoppingCart persistent actor supports.
    */
-  public interface Command<ReplyType> extends CborSerializable {
+  public interface Command extends CborSerializable {
   }
 
   /**
@@ -142,7 +142,7 @@ public class ShoppingCart
    *
    * The reply type is the {@link Summary}
    */
-  public static class Get implements Command<Summary> {
+  public static class Get implements Command {
     public final ActorRef<Summary> replyTo;
 
     @JsonCreator
@@ -157,7 +157,7 @@ public class ShoppingCart
    * The reply type is the {@link Confirmation}, which will be returned when the events have been
    * emitted.
    */
-  public static class Checkout implements Command<Confirmation> {
+  public static class Checkout implements Command {
     public final ActorRef<Confirmation> replyTo;
 
     @JsonCreator
@@ -289,9 +289,9 @@ public class ShoppingCart
   private final OpenShoppingCartCommandHandlers openShoppingCartCommandHandlers = new OpenShoppingCartCommandHandlers();
 
   @Override
-  public CommandHandlerWithReply<Command, Event, State> commandHandler() {
-    CommandHandlerWithReplyBuilder<Command, Event, State> b =
-      newCommandHandlerWithReplyBuilder();
+  public CommandHandler<Command, Event, State> commandHandler() {
+    CommandHandlerBuilder<Command, Event, State> b =
+      newCommandHandlerBuilder();
 
     b.forState(state -> !state.isCheckedOut())
       .onCommand(AddItem.class, openShoppingCartCommandHandlers::onAddItem)
@@ -311,70 +311,81 @@ public class ShoppingCart
     return b.build();
   }
 
-  private ReplyEffect<Event, State> onGet(State state, Get cmd) {
-    return Effect().reply(cmd.replyTo, state.toSummary());
+  private Effect<Event, State> onGet(State state, Get cmd) {
+    cmd.replyTo.tell(state.toSummary());
+    return Effect().none();
   }
 
   private class OpenShoppingCartCommandHandlers {
 
-    public ReplyEffect<Event, State> onAddItem(State state, AddItem cmd) {
+    Effect<Event, State> onAddItem(State state, AddItem cmd) {
       if (state.hasItem(cmd.itemId)) {
-        return Effect().reply(cmd.replyTo, new Rejected(
+        cmd.replyTo.tell(new Rejected(
           "Item '" + cmd.itemId + "' was already added to this shopping cart"));
+        return Effect().none();
       } else if (cmd.quantity <= 0) {
-        return Effect().reply(cmd.replyTo, new Rejected("Quantity must be greater than zero"));
+        cmd.replyTo.tell(new Rejected("Quantity must be greater than zero"));
+        return Effect().none();
       } else {
         return Effect().persist(new ItemAdded(cartId, cmd.itemId, cmd.quantity))
-          .thenReply(cmd.replyTo, updatedCart -> new Accepted(updatedCart.toSummary()));
+          .thenRun(updatedCart -> cmd.replyTo.tell(new Accepted(updatedCart.toSummary())));
       }
     }
 
-    public ReplyEffect<Event, State> onRemoveItem(State state, RemoveItem cmd) {
+    Effect<Event, State> onRemoveItem(State state, RemoveItem cmd) {
       if (state.hasItem(cmd.itemId)) {
         return Effect().persist(new ItemRemoved(cartId, cmd.itemId))
-          .thenReply(cmd.replyTo, updatedCart -> new Accepted(updatedCart.toSummary()));
+          .thenRun(updatedCart -> cmd.replyTo.tell(new Accepted(updatedCart.toSummary())));
       } else {
-        return Effect().reply(cmd.replyTo, new Accepted(state.toSummary()));
+        cmd.replyTo.tell(new Accepted(state.toSummary()));
+        return Effect().none();
       }
     }
 
-    public ReplyEffect<Event, State> onAdjustItemQuantity(State state, AdjustItemQuantity cmd) {
+    Effect<Event, State> onAdjustItemQuantity(State state, AdjustItemQuantity cmd) {
       if (cmd.quantity <= 0) {
-        return Effect().reply(cmd.replyTo, new Rejected("Quantity must be greater than zero"));
+        cmd.replyTo.tell(new Rejected("Quantity must be greater than zero"));
+        return Effect().none();
       } else if (state.hasItem(cmd.itemId)) {
         return Effect().persist(new ItemQuantityAdjusted(cartId, cmd.itemId, cmd.quantity))
-          .thenReply(cmd.replyTo, updatedCart -> new Accepted(updatedCart.toSummary()));
+          .thenRun(updatedCart -> cmd.replyTo.tell(new Accepted(updatedCart.toSummary())));
       } else {
-        return Effect().reply(cmd.replyTo, new Rejected(
+        cmd.replyTo.tell(new Rejected(
           "Cannot adjust quantity for item '" + cmd.itemId + "'. Item not present on cart"));
+        return Effect().none();
       }
     }
 
-    public ReplyEffect<Event, State> onCheckout(State state, Checkout cmd) {
+    Effect<Event, State> onCheckout(State state, Checkout cmd) {
       if (state.isEmpty()) {
-        return Effect().reply(cmd.replyTo, new Rejected("Cannot checkout an empty shopping cart"));
+        cmd.replyTo.tell(new Rejected("Cannot checkout an empty shopping cart"));
+        return Effect().none();
       } else {
         return Effect().persist(new CheckedOut(cartId, Instant.now()))
-          .thenReply(cmd.replyTo, updatedCart -> new Accepted(updatedCart.toSummary()));
+          .thenRun(updatedCart -> cmd.replyTo.tell(new Accepted(updatedCart.toSummary())));
       }
     }
   }
 
   private class CheckedOutCommandHandlers {
-    ReplyEffect<Event, State> onAddItem(AddItem cmd) {
-      return Effect().reply(cmd.replyTo, new Rejected("Can't add an item to an already checked out shopping cart"));
+    Effect<Event, State> onAddItem(AddItem cmd) {
+      cmd.replyTo.tell(new Rejected("Can't add an item to an already checked out shopping cart"));
+      return Effect().none();
     }
 
-    ReplyEffect<Event, State> onRemoveItem(RemoveItem cmd) {
-      return Effect().reply(cmd.replyTo, new Rejected("Can't remove an item from an already checked out shopping cart"));
+    Effect<Event, State> onRemoveItem(RemoveItem cmd) {
+      cmd.replyTo.tell(new Rejected("Can't remove an item from an already checked out shopping cart"));
+      return Effect().none();
     }
 
-    ReplyEffect<Event, State> onAdjustItemQuantity(AdjustItemQuantity cmd) {
-      return Effect().reply(cmd.replyTo, new Rejected("Can't adjust item on an already checked out shopping cart"));
+    Effect<Event, State> onAdjustItemQuantity(AdjustItemQuantity cmd) {
+      cmd.replyTo.tell(new Rejected("Can't adjust item on an already checked out shopping cart"));
+      return Effect().none();
     }
 
-    ReplyEffect<Event, State> onCheckout(Checkout cmd) {
-      return Effect().reply(cmd.replyTo, new Rejected("Can't checkout already checked out shopping cart"));
+    Effect<Event, State> onCheckout(Checkout cmd) {
+      cmd.replyTo.tell(new Rejected("Can't checkout already checked out shopping cart"));
+      return Effect().none();
     }
   }
 
