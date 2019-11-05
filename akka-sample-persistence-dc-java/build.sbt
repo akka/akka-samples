@@ -30,10 +30,12 @@ libraryDependencies ++= Seq(
   "com.lightbend.akka.management" %% "akka-management" % AkkaClusterManagementVersion,
   "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaClusterManagementVersion,
   "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % AkkaPersistenceCassandraVersion % "test",
-  "org.scalatest" %% "scalatest" % "3.0.7" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.8" % "test"
 )
 
 // transitive dependency of akka 2.5x that is brought in by addons but evicted
 dependencyOverrides += "com.typesafe.akka" %% "akka-protobuf" % AkkaVersion
+// The default is src/main/protobuf, but the maven plugin expects them here:
+sourceDirectory in ProtobufConfig := (sourceDirectory in Compile).value / "proto"
 
 licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
