@@ -1,16 +1,21 @@
 organization := "com.typesafe.akka.samples"
 name := "akka-sample-persistence-scala"
 
-scalaVersion := "2.12.8"
-def akkaVersion = "2.6.0-M2"
+scalaVersion := "2.13.1"
+def akkaVersion = "2.6.0"
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
+  "com.typesafe.akka" %% "akka-persistence-typed" % akkaVersion,
   "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
-  "org.iq80.leveldb" % "leveldb" % "0.7",
-  "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8"
+  "ch.qos.logback" % "logback-classic" % "1.2.3",
+  "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
+  "org.scalatest" %% "scalatest" % "3.0.8" % Test
 )
 
-licenses := Seq(
-  ("CC0", url("http://creativecommons.org/publicdomain/zero/1.0"))
-)
+scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint")
+
+// show full stack traces and test case durations
+testOptions in Test += Tests.Argument("-oDF")
+logBuffered in Test := false
+
+licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
