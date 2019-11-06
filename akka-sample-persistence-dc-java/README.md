@@ -5,9 +5,9 @@ akka-sample-persistence-dc-java
 
 1. In terminal 1: `mvn exec:java -Dexec.mainClass="sample.persistence.multidc.ThumbsUpApp" -Dexec.args="cassandra"`
 
-1. In terminal 2: `mvn exec:java -Dexec.mainClass="sample.persistence.multidc.ThumbsUpApp" -Dexec.args="22551 eu-west"`
+1. In terminal 2: `mvn exec:java -Dexec.mainClass="sample.persistence.multidc.ThumbsUpApp" -Dexec.args="2551 eu-west"`
 
-1. In terminal 3: `mvn exec:java -Dexec.mainClass="sample.persistence.multidc.ThumbsUpApp" -Dexec.args="22552 eu-central"`
+1. In terminal 3: `mvn exec:java -Dexec.mainClass="sample.persistence.multidc.ThumbsUpApp" -Dexec.args="2552 eu-central"`
 
 1. In terminal 4:
     * To add a thumbs-up for resource `akka` from user `u1` in DC `eu-west`: `curl -X POST http://127.0.0.1:22551/thumbs-up/akka/u1`
