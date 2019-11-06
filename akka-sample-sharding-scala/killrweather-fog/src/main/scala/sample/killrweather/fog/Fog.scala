@@ -8,7 +8,7 @@ import scala.util.control.NonFatal
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorSystem, Behavior}
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.Config
 
 /**
   * In another terminal start the `Fog` (see Fog computing https://en.wikipedia.org/wiki/Fog_computing).
@@ -46,14 +46,11 @@ object Guardian {
 object FogSettings {
 
   def apply(system: ActorSystem[_]): FogSettings = {
-    apply(system.settings.config.getConfig("killrweather"))
+    apply(system.settings.config.getConfig("killrweather.fog"))
   }
 
   def apply(config: Config): FogSettings = {
     import akka.util.Helpers.Requiring
-
-    val config =
-      ConfigFactory.load("application.conf").getConfig("killrweather")
 
     val millis = (durationKey: String) =>
       config.getDuration(durationKey).toMillis.millis
