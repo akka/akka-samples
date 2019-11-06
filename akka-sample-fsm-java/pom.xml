@@ -6,7 +6,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <akka.version>2.6.0-RC1</akka.version>
+    <akka.version>2.6.0</akka.version>
   </properties>
 
   <groupId>com.typesafe.akka.samples</groupId>
@@ -18,11 +18,6 @@
     <dependency>
       <groupId>com.typesafe.akka</groupId>
       <artifactId>akka-actor-typed_2.13</artifactId>
-      <version>${akka.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-slf4j_2.13</artifactId>
       <version>${akka.version}</version>
     </dependency>
     <dependency>
