@@ -1,69 +1,39 @@
 package sample.cluster.stats
 
-import language.postfixOps
-import scala.concurrent.duration._
-import com.typesafe.config.ConfigFactory
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.WordSpecLike
-import org.scalatest.Matchers
-import akka.actor.PoisonPill
-import akka.actor.Props
-import akka.actor.RootActorPath
+import akka.actor.testkit.typed.scaladsl.TestProbe
+import akka.actor.typed.scaladsl.adapter._
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.scaladsl.Routers
+import akka.actor.typed.ActorRef
 import akka.cluster.Cluster
-import akka.cluster.Member
-import akka.cluster.MemberStatus
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.ClusterEvent.MemberUp
-import akka.cluster.singleton.ClusterSingletonManager
-import akka.cluster.singleton.ClusterSingletonManagerSettings
-import akka.cluster.singleton.ClusterSingletonProxy
+import akka.cluster.typed.ClusterSingleton
+import akka.cluster.typed.ClusterSingletonSettings
+import akka.cluster.typed.SingletonActor
 import akka.remote.testkit.MultiNodeConfig
 import akka.remote.testkit.MultiNodeSpec
-import akka.testkit.ImplicitSender
-import sample.cluster.stats.StatsMessages._
-import akka.cluster.singleton.ClusterSingletonProxySettings
+import com.typesafe.config.ConfigFactory
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.Matchers
+import org.scalatest.WordSpecLike
+
+import scala.concurrent.duration._
 
 object StatsSampleSingleMasterSpecConfig extends MultiNodeConfig {
   // register the named roles (nodes) of the test
+  // note that this is not the same thing as cluster node roles
   val first = role("first")
   val second = role("second")
-  val third = role("thrid")
-
-  def nodeList = Seq(first, second, third)
-
-  // Extract individual sigar library for every node.
-  nodeList foreach { role =>
-    nodeConfig(role) {
-      ConfigFactory.parseString(s"""
-      # Enable metrics extension in akka-cluster-metrics.
-      akka.extensions=["akka.cluster.metrics.ClusterMetricsExtension"]
-      # Sigar native library extract location during tests.
-      akka.cluster.metrics.native-library-extract-folder=target/native/${role.name}
-      """)
-    }
-  }
+  val third = role("third")
 
   // this configuration will be used for all nodes
   // note that no fixed host names and ports are used
   commonConfig(ConfigFactory.parseString("""
     akka.loglevel = INFO
     akka.actor.provider = cluster
-    akka.remote.enabled-transports = [akka.remote.netty.tcp]
     akka.cluster.roles = [compute]
-    #//#router-deploy-config
-    akka.actor.deployment {
-      /statsService/singleton/workerRouter {
-          router = consistent-hashing-pool
-          cluster {
-            enabled = on
-            max-nr-of-instances-per-node = 3
-            allow-local-routees = on
-            use-role = compute
-          }
-        }
-    }
-    #//#router-deploy-config
-    """))
+    """).withFallback(ConfigFactory.load()))
 
 }
 
@@ -73,7 +43,7 @@ class StatsSampleSingleMasterSpecMultiJvmNode2 extends StatsSampleSingleMasterSp
 class StatsSampleSingleMasterSpecMultiJvmNode3 extends StatsSampleSingleMasterSpec
 
 abstract class StatsSampleSingleMasterSpec extends MultiNodeSpec(StatsSampleSingleMasterSpecConfig)
-  with WordSpecLike with Matchers with BeforeAndAfterAll with ImplicitSender {
+  with WordSpecLike with Matchers with BeforeAndAfterAll {
 
   import StatsSampleSingleMasterSpecConfig._
 
@@ -83,8 +53,12 @@ abstract class StatsSampleSingleMasterSpec extends MultiNodeSpec(StatsSampleSing
 
   override def afterAll() = multiNodeSpecAfterAll()
 
-  "The japi stats sample with single master" must {
-    "illustrate how to startup cluster" in within(15 seconds) {
+  implicit val typedSystem = system.toTyped
+
+  var singletonProxy: ActorRef[StatsService.Command] = _
+
+  "The stats sample with single master" must {
+    "illustrate how to startup cluster" in within(15.seconds) {
       Cluster(system).subscribe(testActor, classOf[MemberUp])
       expectMsgClass(classOf[CurrentClusterState])
 
@@ -99,26 +73,30 @@ abstract class StatsSampleSingleMasterSpec extends MultiNodeSpec(StatsSampleSing
 
       Cluster(system).unsubscribe(testActor)
 
-      system.actorOf(ClusterSingletonManager.props(
-        Props[StatsService],
-        terminationMessage = PoisonPill,
-        settings = ClusterSingletonManagerSettings(system)),
-        name = "statsService")
-
-      system.actorOf(ClusterSingletonProxy.props("/user/statsService",
-        ClusterSingletonProxySettings(system).withRole("compute")), "statsServiceProxy")
+      val singletonSettings = ClusterSingletonSettings(typedSystem).withRole("compute")
+      singletonProxy = ClusterSingleton(typedSystem).init(
+        SingletonActor(
+          Behaviors.setup[StatsService.Command] { ctx =>
+            // just run some local workers for this test
+            val workersRouter = ctx.spawn(Routers.pool(2)(StatsWorker.create()), "WorkersRouter")
+            StatsService.create(workersRouter)
+          },
+          "StatsService",
+        ).withSettings(singletonSettings)
+      )
 
       testConductor.enter("all-up")
     }
 
-    "show usage of the statsServiceProxy" in within(40 seconds) {
-      val proxy = system.actorSelection(RootActorPath(node(third).address) / "user" / "statsServiceProxy")
-
+    "show usage of the statsServiceProxy" in within(20.seconds) {
       // eventually the service should be ok,
       // service and worker nodes might not be up yet
       awaitAssert {
-        proxy ! new StatsJob("this is the text that will be analyzed")
-        expectMsgType[StatsResult](1.second).getMeanWordLength should be(3.875 +- 0.001)
+        system.log.info("Trying a request")
+        val probe = TestProbe[StatsService.Response]()
+        singletonProxy ! new StatsService.ProcessText("this is the text that will be analyzed", probe.ref)
+        val response = probe.expectMessageType[StatsService.JobResult](3.seconds)
+        response.meanWordLength should be(3.875 +- 0.001)
       }
 
       testConductor.enter("done")

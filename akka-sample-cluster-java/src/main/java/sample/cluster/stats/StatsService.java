@@ -1,38 +1,88 @@
 package sample.cluster.stats;
 
-import sample.cluster.stats.StatsMessages.StatsJob;
-import akka.actor.ActorRef;
-import akka.actor.Props;
-import akka.actor.AbstractActor;
-import akka.routing.ConsistentHashingRouter.ConsistentHashableEnvelope;
-import akka.routing.FromConfig;
+import akka.actor.typed.ActorRef;
+import akka.actor.typed.Behavior;
+import akka.actor.typed.javadsl.AbstractBehavior;
+import akka.actor.typed.javadsl.ActorContext;
+import akka.actor.typed.javadsl.Behaviors;
+import akka.actor.typed.javadsl.Receive;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import sample.cluster.CborSerializable;
 
-public class StatsService extends AbstractActor {
+import java.util.Arrays;
+import java.util.List;
 
-  // This router is used both with lookup and deploy of routees. If you
-  // have a router with only lookup of routees you can use Props.empty()
-  // instead of Props.create(StatsWorker.class).
-  ActorRef workerRouter = getContext().actorOf(
-      FromConfig.getInstance().props(Props.create(StatsWorker.class)),
-      "workerRouter");
+public final class StatsService extends AbstractBehavior<StatsService.Command> {
+
+  public interface Command extends CborSerializable {}
+  public final static class ProcessText implements Command {
+    public final String text;
+    public final ActorRef<Response> replyTo;
+    @JsonCreator
+    public ProcessText(@JsonProperty("text") String text, @JsonProperty("replyTo") ActorRef<Response> replyTo) {
+      this.text = text;
+      this.replyTo = replyTo;
+    }
+  }
+  public enum Stop implements Command {
+    INSTANCE
+  }
+
+  interface Response extends CborSerializable { }
+  public static final class JobResult implements Response {
+    public final double meanWordLength;
+    @JsonCreator
+    public JobResult(@JsonProperty("meanWordLength") double meanWordLength) {
+      this.meanWordLength = meanWordLength;
+    }
+    @Override
+    public String toString() {
+      return "JobResult{" +
+          "meanWordLength=" + meanWordLength +
+          '}';
+    }
+  }
+  public static final class JobFailed implements Response {
+    public final String reason;
+    @JsonCreator
+    public JobFailed(@JsonProperty("reason") String reason) {
+      this.reason = reason;
+    }
+    @Override
+    public String toString() {
+      return "JobFailed{" +
+          "reason='" + reason + '\'' +
+          '}';
+    }
+  }
+
+  public static Behavior<Command> create(ActorRef<StatsWorker.Process> workers) {
+    return Behaviors.setup(context ->
+        new StatsService(context, workers)
+    );
+  }
+
+  private final ActorRef<StatsWorker.Process> workers;
+
+  private StatsService(ActorContext<Command> context, ActorRef<StatsWorker.Process> workers) {
+    super(context);
+    this.workers = workers;
+  }
 
   @Override
-  public Receive createReceive() {
-    return receiveBuilder()
-      .match(StatsJob.class, job -> !job.getText().isEmpty(), job -> {
-        String[] words = job.getText().split(" ");
-        ActorRef replyTo = sender();
-
-        // create actor that collects replies from workers
-        ActorRef aggregator = getContext().actorOf(
-          Props.create(StatsAggregator.class, words.length, replyTo));
-
-        // send each word to a worker
-        for (String word : words) {
-          workerRouter.tell(new ConsistentHashableEnvelope(word, word),
-            aggregator);
-        }
-      })
-      .build();
+  public Receive<Command> createReceive() {
+    return newReceiveBuilder()
+        .onMessage(ProcessText.class, this::process)
+        .onMessageEquals(Stop.INSTANCE, () -> Behaviors.stopped())
+        .build();
   }
+
+  private Behavior<Command> process(ProcessText command) {
+    getContext().getLog().info("Delegating request");
+    List<String> words = Arrays.asList(command.text.split(" "));
+    getContext().spawnAnonymous(StatsAggregator.create(words, workers, command.replyTo));
+    return this;
+  }
+
 }
