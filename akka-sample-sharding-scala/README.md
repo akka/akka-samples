@@ -83,9 +83,9 @@ There are two ways to run the cluster, the first is a convenience quick start.
 
 The simplest way to run this sample is to run this in a terminal, if not already started:
    
-    sbt "killrweather/runMain sample.killrweather.KillrWeather"
+    sbt killrweather/run
    
-By default `KillrWeather` starts three actor systems (a three node cluster) in the same JVM process. 
+This command starts three (the default) `KillrWeather` actor systems (a three node cluster) in the same JVM process. 
 
 #### Dynamic WeatherServer ports
 

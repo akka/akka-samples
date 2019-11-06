@@ -36,7 +36,7 @@ lazy val killrweather = project
   .in(file("killrweather"))
   .settings(commonSettings)
   .settings(
-    mainClass in (Compile, run) := Some("sample.sharding.KillrWeather"),
+    mainClass in (Compile, run) := Some("sample.killrweather.KillrWeather"),
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-sharding-typed" % AkkaVersion,
       "com.typesafe.akka" %% "akka-serialization-jackson" % AkkaVersion,
