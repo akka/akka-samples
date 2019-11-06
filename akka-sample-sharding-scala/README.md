@@ -83,7 +83,7 @@ There are two ways to run the cluster, the first is a convenience quick start.
 
 The simplest way to run this sample is to run this in a terminal, if not already started:
    
-    sbt "runMain sample.sharding.KillrWeather"
+    sbt "killrweather/runMain sample.killrweather.KillrWeather"
    
 By default `KillrWeather` starts three actor systems (a three node cluster) in the same JVM process. 
 
@@ -102,7 +102,7 @@ The number of ports are by default three, for the minimum three node cluster. Yo
 It is more interesting to run them in separate processes. Stop the application and then open three terminal windows.
 In the first terminal window, start the first seed node with the following command:
 
-    sbt "runMain sample.killrweather.KillrWeather 2553"
+    sbt "killrweather/runMain sample.killrweather.KillrWeather 2553"
 
 2553 corresponds to the port of the first seed-nodes element in the configuration. In the log output you see that the cluster node has been started and changed status to 'Up'.
 
@@ -110,7 +110,7 @@ You'll see a log message when a `WeatherStation` sends a message to record the c
 
 In the second terminal window, start the second seed node with the following command:
 
-    sbt "runMain sample.killrweather.KillrWeather 2554"
+    sbt "killrweather/runMain sample.killrweather.KillrWeather 2554"
 
 2554 corresponds to the port of the second seed-nodes element in the configuration. In the log output you see that the cluster node has been started and joins the other seed node and becomes a member of the cluster. Its status changed to 'Up'. Switch over to the first terminal window and see in the log output that the member joined.
 
@@ -118,7 +118,7 @@ Some of the temperature aggregators that were originally on the `ActorSystem` on
 
 Start another node in the third terminal window with the following command:
 
-    sbt "runMain sample.killrweather.KillrWeather 0"
+    sbt "killrweather/runMain sample.killrweather.KillrWeather 0"
 
 Now you don't need to specify the port number, 0 means that it will use a random available port. It joins one of the configured seed nodes.
 Look at the log output in the different terminal windows.
@@ -139,8 +139,8 @@ In a new terminal start the `Fog`, (see [Fog computing](https://en.wikipedia.org
 Each simulated remote weather station will attempt to connect to one of the round-robin assigned ports for Fog networking over HTTP.   
 Similar to the dynamic WeatherServer ports **8081 8033 8056**  [in the log snippet above](#dynamic-weatherserver-ports),  
 pass in the ports you see (8081 is always first), for example:
-
-    sbt "runMain sample.killrweather.fog.Fog 8081 8033 8056"
+ 
+    sbt "killrweather-fog/runMain sample.killrweather.fog.Fog 8081 8033 8056"
      
 ### Shutting down
 

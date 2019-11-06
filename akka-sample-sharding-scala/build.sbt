@@ -32,12 +32,6 @@ lazy val commonSettings = Seq(
   )
 )
 
-lazy val `akka-sample-sharding-scala` = project
-  .in(file("."))
-  .settings(commonSettings)
-  .dependsOn(killrweather, `killrweather-fog`)
-
-
 lazy val killrweather = project
   .in(file("killrweather"))
   .settings(commonSettings)
