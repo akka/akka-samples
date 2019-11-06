@@ -1,52 +1,66 @@
 package sample.distributeddata
 
-import akka.actor.Actor
-import akka.actor.ActorRef
-import akka.actor.Props
-import akka.cluster.Cluster
-import akka.cluster.ddata.DistributedData
+import akka.actor.typed.ActorRef
+import akka.actor.typed.Behavior
+import akka.actor.typed.scaladsl.Behaviors
 import akka.cluster.ddata.LWWMap
 import akka.cluster.ddata.LWWMapKey
+import akka.cluster.ddata.Replicator._
+import akka.cluster.ddata.SelfUniqueAddress
+import akka.cluster.ddata.typed.scaladsl.DistributedData
+import akka.cluster.ddata.typed.scaladsl.Replicator.{ Update, Get }
 
 object ReplicatedCache {
-
-  def props: Props = Props[ReplicatedCache]
-
-  private final case class Request(key: String, replyTo: ActorRef)
-
-  final case class PutInCache(key: String, value: Any)
-  final case class GetFromCache(key: String)
+  sealed trait Command
+  final case class PutInCache(key: String, value: Any) extends Command
+  final case class GetFromCache(key: String, replyTo: ActorRef[Cached]) extends Command
   final case class Cached(key: String, value: Option[Any])
-  final case class Evict(key: String)
-}
+  final case class Evict(key: String) extends Command
+  private sealed trait InternalCommand extends Command
+  private case class InternalGetResponse(key: String, replyTo: ActorRef[Cached], rsp: GetResponse[LWWMap[String, Any]])
+      extends InternalCommand
+  private case class InternalUpdateResponse(rsp: UpdateResponse[LWWMap[String, Any]]) extends InternalCommand
 
-class ReplicatedCache extends Actor {
-  import akka.cluster.ddata.Replicator._
-  import ReplicatedCache._
+  def apply(): Behavior[Command] = Behaviors.setup { context =>
+    DistributedData.withReplicatorMessageAdapter[Command, LWWMap[String, Any]] { replicator =>
+      implicit val node: SelfUniqueAddress = DistributedData(context.system).selfUniqueAddress
 
-  val replicator = DistributedData(context.system).replicator
-  implicit val cluster = Cluster(context.system)
+      def dataKey(entryKey: String): LWWMapKey[String, Any] =
+        LWWMapKey("cache-" + math.abs(entryKey.hashCode % 100))
 
-  def dataKey(entryKey: String): LWWMapKey[String, Any] =
-    LWWMapKey("cache-" + math.abs(entryKey.hashCode) % 100)
+      Behaviors.receiveMessage[Command] {
+        case PutInCache(key, value) =>
+          replicator.askUpdate(
+            askReplyTo => Update(dataKey(key), LWWMap.empty[String, Any], WriteLocal, askReplyTo)(_ :+ (key -> value)),
+            InternalUpdateResponse.apply)
 
-  def receive = {
-    case PutInCache(key, value) =>
-      replicator ! Update(dataKey(key), LWWMap(), WriteLocal)(_ + (key -> value))
-    case Evict(key) =>
-      replicator ! Update(dataKey(key), LWWMap(), WriteLocal)(_ - key)
-    case GetFromCache(key) =>
-      replicator ! Get(dataKey(key), ReadLocal, Some(Request(key, sender())))
-    case g @ GetSuccess(LWWMapKey(_), Some(Request(key, replyTo))) =>
-      g.dataValue match {
-        case data: LWWMap[_, _] => data.asInstanceOf[LWWMap[String, Any]].get(key) match {
-          case Some(value) => replyTo ! Cached(key, Some(value))
-          case None        => replyTo ! Cached(key, None)
-        }
+          Behaviors.same
+
+        case Evict(key) =>
+          replicator.askUpdate(
+            askReplyTo => Update(dataKey(key), LWWMap.empty[String, Any], WriteLocal, askReplyTo)(_.remove(node, key)),
+            InternalUpdateResponse.apply)
+
+          Behaviors.same
+
+        case GetFromCache(key, replyTo) =>
+          replicator.askGet(
+            askReplyTo => Get(dataKey(key), ReadLocal, askReplyTo),
+            rsp => InternalGetResponse(key, replyTo, rsp))
+
+          Behaviors.same
+
+        case InternalGetResponse(key, replyTo, g @ GetSuccess(_, _)) =>
+          replyTo ! Cached(key, g.dataValue.get(key))
+          Behaviors.same
+
+        case InternalGetResponse(key, replyTo, _: NotFound[_]) =>
+          replyTo ! Cached(key, None)
+          Behaviors.same
+
+        case _: InternalGetResponse    => Behaviors.same // ok
+        case _: InternalUpdateResponse => Behaviors.same // ok
       }
-    case NotFound(_, Some(Request(key, replyTo))) =>
-      replyTo ! Cached(key, None)
-    case _: UpdateResponse[_] => // ok
+    }
   }
-
 }
