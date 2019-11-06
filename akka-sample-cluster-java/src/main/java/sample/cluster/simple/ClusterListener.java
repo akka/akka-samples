@@ -17,13 +17,13 @@ public final class ClusterListener extends AbstractBehavior<ClusterListener.Even
   // internal adapted cluster events only
   private static final class ReachabilityChange implements Event {
     final ClusterEvent.ReachabilityEvent reachabilityEvent;
-    public ReachabilityChange(ClusterEvent.ReachabilityEvent reachabilityEvent) {
+    ReachabilityChange(ClusterEvent.ReachabilityEvent reachabilityEvent) {
       this.reachabilityEvent = reachabilityEvent;
     }
   }
   private static final class MemberChange implements Event {
     final ClusterEvent.MemberEvent memberEvent;
-    public MemberChange(ClusterEvent.MemberEvent memberEvent) {
+    MemberChange(ClusterEvent.MemberEvent memberEvent) {
       this.memberEvent = memberEvent;
     }
   }

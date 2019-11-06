@@ -17,7 +17,7 @@ public class StatsAggregator extends AbstractBehavior<StatsAggregator.Event> {
   private enum Timeout implements Event {
     INSTANCE
   }
-  private class CalculationComplete implements Event {
+  private static class CalculationComplete implements Event {
     public final int length;
     public CalculationComplete(int length) {
       this.length = length;
@@ -34,7 +34,7 @@ public class StatsAggregator extends AbstractBehavior<StatsAggregator.Event> {
   private final ActorRef<StatsService.Response> replyTo;
   private final List<Integer> results = new ArrayList<>();
 
-  public StatsAggregator(ActorContext<Event> context, List<String> words, ActorRef<StatsWorker.Process> workers, ActorRef<StatsService.Response> replyTo) {
+  private StatsAggregator(ActorContext<Event> context, List<String> words, ActorRef<StatsWorker.Process> workers, ActorRef<StatsService.Response> replyTo) {
     super(context);
     this.expectedResponses = words.size();
     this.replyTo = replyTo;

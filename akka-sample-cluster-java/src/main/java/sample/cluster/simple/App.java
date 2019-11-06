@@ -18,7 +18,7 @@ public class App {
       startup(25252);
       startup(0);
     } else
-      Arrays.asList(args).stream().map(Integer::parseInt).forEach(App::startup);
+      Arrays.stream(args).map(Integer::parseInt).forEach(App::startup);
   }
 
   private static Behavior<Void> rootBehavior() {
