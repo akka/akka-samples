@@ -3,45 +3,36 @@ package sample.cqrs
 import scala.concurrent.Future
 
 import akka.Done
-import akka.actor.ActorSystem
-import akka.actor.ExtendedActorSystem
-import akka.actor.Extension
-import akka.actor.ExtensionId
-import akka.actor.ExtensionIdProvider
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.Extension
+import akka.actor.typed.ExtensionId
+import akka.actor.typed.scaladsl.adapter._
 import akka.event.Logging
 import akka.persistence.cassandra.ConfigSessionProvider
 import akka.persistence.cassandra.session.CassandraSessionSettings
 import akka.persistence.cassandra.session.scaladsl.CassandraSession
-import akka.stream.ActorMaterializer
-import akka.stream.Materializer
 
-object CassandraSessionExtension extends ExtensionId[CassandraSessionExtension] with ExtensionIdProvider {
+object CassandraSessionExtension extends ExtensionId[CassandraSessionExtension] {
 
-  override def get(system: ActorSystem): CassandraSessionExtension = super.get(system)
+  def get(system: ActorSystem[_]): CassandraSessionExtension = apply(system)
 
-  override def lookup = CassandraSessionExtension
-
-  override def createExtension(system: ExtendedActorSystem): CassandraSessionExtension =
+  override def createExtension(system: ActorSystem[_]): CassandraSessionExtension =
     new CassandraSessionExtension(system)
 
 }
 
-class CassandraSessionExtension(system: ActorSystem) extends Extension {
-
-  private val log = Logging(system, getClass)
+class CassandraSessionExtension(system: ActorSystem[_]) extends Extension {
 
   val session: CassandraSession = {
     val sessionConfig = system.settings.config.getConfig("cassandra-journal")
-    new CassandraSession(system,
-      new ConfigSessionProvider(system, sessionConfig),
+    new CassandraSession(
+      system.toClassic,
+      new ConfigSessionProvider(system.toClassic, sessionConfig),
       CassandraSessionSettings(sessionConfig),
-      system.dispatcher,
-      log,
+      system.executionContext,
+      Logging(system.toClassic, getClass),
       metricsCategory = "sample",
-      init = _ => Future.successful(Done)
-    )
+      init = _ => Future.successful(Done))
   }
-
-  val materializer: Materializer = ActorMaterializer()(system)
 
 }
