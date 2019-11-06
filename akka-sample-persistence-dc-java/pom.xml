@@ -6,7 +6,7 @@
    <modelVersion>4.0.0</modelVersion>
   <artifactId>akka-sample-persistence-dc-java</artifactId>
   <groupId>com.lightbend.akka.samples</groupId>
-  <name>Akka CQRS sample</name>
+  <name>Akka persistence multi dc sample</name>
   <version>1.0</version>
 
    <licenses>
@@ -26,7 +26,7 @@
 
    <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <akka.version>2.6.0-RC2</akka.version>
+    <akka.version>2.6.0</akka.version>
     <akka-addons.version>1.1.12</akka-addons.version>
     <akka-persistence-cassandra.version>0.100</akka-persistence-cassandra.version>
     <akka-http.version>10.1.10</akka-http.version>
