@@ -1,5 +1,5 @@
 
-val AkkaVersion = "2.6.0-RC2"
+val AkkaVersion = "2.6.0"
 val AkkaHttpVersion = "10.1.10"
 
 lazy val buildSettings = Seq(
