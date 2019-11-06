@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.6.0-M4"
+val akkaVersion = "2.6.0"
 
 lazy val `akka-sample-sharding-scala` = project
   .in(file("."))
@@ -21,7 +21,7 @@ lazy val `akka-sample-sharding-scala` = project
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
       "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
-      "org.scalatest" %% "scalatest" % "3.0.7" % Test
+      "org.scalatest" %% "scalatest" % "3.0.8" % Test
     ),
     mainClass in (Compile, run) := Some("sample.sharding.ShardingApp"),
     // disable parallel tests
