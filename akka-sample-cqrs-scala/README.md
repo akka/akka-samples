@@ -1,31 +1,48 @@
-This tutorial contains a sample illustrating an CQRS design with [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/scala/cluster-sharding.html), [Akka Cluster Singleton](http://doc.akka.io/docs/akka/current/cluster-singleton.html), [Akka Persistence](http://doc.akka.io/docs/akka/current/scala/persistence.html) and [Akka Persistence Query](http://doc.akka.io/docs/akka/current/scala/persistence-query.html).
+This tutorial contains a sample illustrating an CQRS design with [Akka Cluster Sharding](https://doc.akka.io/docs/akka/2.6/typed/cluster-sharding.html), [Akka Cluster Singleton](https://doc.akka.io/docs/akka/2.6/typed/cluster-singleton.html), [Akka Persistence](https://doc.akka.io/docs/akka/2.6/typed/persistence.html) and [Akka Persistence Query](https://doc.akka.io/docs/akka/2.6/persistence-query.html).
 
 ## Overview
 
-This sample application implements a CQRS-ES design that will side-effect in the read model on selected events persisted to Cassandra by the write model. In this sample, the side-effect is logging a line. A more practical example would be to send a message to a Kafka topic.
+This sample application implements a CQRS-ES design that will side-effect in the read model on selected events persisted to Cassandra by the write model. In this sample, the side-effect is logging a line. A more practical example would be to send a message to a Kafka topic or update a relational database.
 
-## A sample write model
+## Write model
 
-A very simple write model is defined that models a simple [network] *switch*.
+The write model is a shopping cart.
 
-The following commands are defined on this model:
+The implementation is based on a sharded actor: each `ShoppingCart` is an [Akka Cluster Sharding](https://doc.akka.io/docs/akka/2.6/typed/cluster-sharding.html) entity. The entity actor `ShoppingCart` is an [EventSourcedBehavior](https://doc.akka.io/docs/akka/2.6/typed/persistence.html).
 
-- Creation of a new *switch* with a given number of ports and in disabled state. The *entity ID* is the name of the switch. 
-- Changing the state of a *port* on a *switch*
-- Posting the state of the *switch:* the resulting event will be tagged for processing by the sharded read model. The actual tag is computed from the *entity ID*: it has a prefix (configurable by setting `event-processor.tag-prefix`) followed by a number from zero to `event-processor.parallelism`)
+Events from the shopping carts are tagged and consumed by the read model.
 
-The implementation is based on a sharded actor: each *switch* is an [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/scala/cluster-sharding.html) entity. The entity actor [`Switch`] actually is a [Persistent Actor](http://doc.akka.io/docs/akka/current/scala/persistence.html).
-
-## A sample read model
+## Read model
 
 The read model is implemented in such a way that 'load' is sharded over a number of processors. This number is `event-processor.parallelism`.
 
-The implementation is resilient: it uses an *Akka Cluster Singleton* in combination with *Akka Cluster Sharding*.
+The implementation is resilient: it uses an *Akka Cluster Singleton* in combination with *Akka Cluster Sharding* to always keep the event processors alive.
 
 ## Running the sample code
 
-1. Start a Cassandra server by running `sbt "run cassandra"`
-2. Start a node that runs the write-model: `sbt wmodel`
-3. Start one or more nodes that will run the read model: `sbt rmodel1`, `sbt rmodel2`, `sbt rmodel3`
+1. Start a Cassandra server by running:
 
-> Note: When starting-up the application when all nodes are down, cluster formation will not take place before the node running the write model is started as this node is the first Akka Cluster seed-node  
+```
+sbt "runMain sample.cqrs.Main cassandra"
+```
+
+2. Start a node that runs the write model:
+
+```
+sbt -Dakka.cluster.roles.0=write-model "runMain sample.cqrs.Main 2551"
+```
+
+3. Start a node that runs the read model:
+
+```
+sbt -Dakka.cluster.roles.0=read-model "runMain sample.cqrs.Main 2552"
+```
+
+4. More write or read nodes can be started started by defining roles and port:
+
+```
+sbt -Dakka.cluster.roles.0=write-model "runMain sample.cqrs.Main 2553"
+sbt -Dakka.cluster.roles.0=read-model "runMain sample.cqrs.Main 2554"
+```
+
+TODO: how to enter or simulate updates
