@@ -2,6 +2,7 @@ package sample.sharding;
 
 import java.time.Duration;
 import java.util.Random;
+import java.util.concurrent.CompletionStage;
 
 import akka.actor.AbstractActorWithTimers;
 
@@ -13,6 +14,8 @@ import akka.event.LoggingAdapter;
 import akka.cluster.sharding.ClusterSharding;
 import akka.cluster.sharding.ClusterShardingSettings;
 import akka.cluster.sharding.ShardRegion;
+import akka.cluster.sharding.typed.ShardingEnvelope;
+import akka.pattern.Patterns;
 
 public class Devices extends AbstractActorWithTimers {
 
@@ -31,7 +34,13 @@ public class Devices extends AbstractActorWithTimers {
         return String.valueOf(((Device.RecordTemperature) message).deviceId);
       else if (message instanceof Device.GetTemperature)
         return String.valueOf(((Device.GetTemperature) message).deviceId);
-      else
+      else if (message instanceof ShardingEnvelope) {
+        ShardingEnvelope envelope = (ShardingEnvelope) message;
+        if (envelope.message() instanceof Device.RecordTemperature)
+          return String.valueOf(((Device.RecordTemperature) envelope.message()).deviceId);
+        else
+          return null;
+      } else
         return null;
     }
   };
@@ -84,8 +93,15 @@ public class Devices extends AbstractActorWithTimers {
   }
 
   private void receiveReadTemperatures() {
-    for (int id = 0; id < numberOfDevices; id++) {
-      deviceRegion.tell(new Device.GetTemperature(id), getSelf());
+    for (int deviceId = 0; deviceId < numberOfDevices; deviceId++) {
+      if (deviceId >= 40) {
+        final int id = deviceId;
+        CompletionStage<Object> reply = Patterns.askWithReplyTo(deviceRegion, replyTo ->
+          new Device.GetTemperature(id, replyTo), Duration.ofSeconds(3));
+        Patterns.pipe(reply, getContext().getDispatcher()).to(getSelf());
+      } else {
+        deviceRegion.tell(new Device.GetTemperature(deviceId, getSelf()), getSelf());
+      }
     }
   }
 

@@ -1,7 +1,11 @@
+import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
+import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
+
 val akkaVersion = "2.6.0-M4"
 
-val `akka-sample-sharding-java` = project
+lazy val `akka-sample-sharding-typed-scala` = project
   .in(file("."))
+  .settings(multiJvmSettings: _*)
   .settings(
     organization := "com.typesafe.akka.samples",
     scalaVersion := "2.12.8",
@@ -12,14 +16,9 @@ val `akka-sample-sharding-java` = project
       "-Xlog-reflective-calls",
       "-Xlint"
     ),
-    javacOptions in Compile ++= Seq(
-      "-parameters",
-      "-Xlint:unchecked",
-      "-Xlint:deprecation"
-    ),
-    javacOptions in doc in Compile := Seq("-parameters", "-Xdoclint:none"),
+    javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
+    javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m"),
     libraryDependencies ++= Seq(
-      "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
       "com.typesafe.akka" %% "akka-cluster-sharding-typed" % akkaVersion,
       "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
       "org.scalatest" %% "scalatest" % "3.0.7" % Test
@@ -31,3 +30,4 @@ val `akka-sample-sharding-java` = project
       ("CC0", url("http://creativecommons.org/publicdomain/zero/1.0"))
     )
   )
+  .configs(MultiJvm)

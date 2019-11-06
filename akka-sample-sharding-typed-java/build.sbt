@@ -1,6 +1,6 @@
 val akkaVersion = "2.6.0-M4"
 
-val `akka-sample-sharding-java` = project
+val `akka-sample-sharding-typed-java` = project
   .in(file("."))
   .settings(
     organization := "com.typesafe.akka.samples",
@@ -19,7 +19,6 @@ val `akka-sample-sharding-java` = project
     ),
     javacOptions in doc in Compile := Seq("-parameters", "-Xdoclint:none"),
     libraryDependencies ++= Seq(
-      "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
       "com.typesafe.akka" %% "akka-cluster-sharding-typed" % akkaVersion,
       "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
       "org.scalatest" %% "scalatest" % "3.0.7" % Test
