@@ -19,7 +19,6 @@ import akka.cluster.ddata.typed.scaladsl.DistributedData
 import akka.cluster.ddata.typed.scaladsl.Replicator.Update
 import akka.cluster.typed.Cluster
 import akka.cluster.typed.Subscribe
-import akka.cluster.typed.Unsubscribe
 
 object ReplicatedMetrics {
   sealed trait Command
