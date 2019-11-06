@@ -3,13 +3,13 @@ name := "akka-sample-persistence-dc-java"
 
 enablePlugins(ProtobufPlugin)
 
-scalaVersion := "2.12.8"
+scalaVersion := "2.13.1"
 
-val AkkaVersion = "2.6.0-M1"
-val AkkaAddOnsVersion = "1.1.9"
-val AkkaPersistenceCassandraVersion = "0.93"
-val AkkaHttpVersion = "10.1.8"
-val AkkaClusterManagementVersion = "1.0.0"
+val AkkaVersion = "2.6.0"
+val AkkaAddOnsVersion = "1.1.12"
+val AkkaPersistenceCassandraVersion = "0.100"
+val AkkaHttpVersion = "10.1.10"
+val AkkaClusterManagementVersion = "1.0.3"
 
 credentials += Credentials(Path.userHome / ".lightbend" / "commercial.credentials")
 resolvers += "com-mvn" at "https://repo.lightbend.com/commercial-releases/"
@@ -30,7 +30,12 @@ libraryDependencies ++= Seq(
   "com.lightbend.akka.management" %% "akka-management" % AkkaClusterManagementVersion,
   "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaClusterManagementVersion,
   "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % AkkaPersistenceCassandraVersion % "test",
-  "org.scalatest" %% "scalatest" % "3.0.7" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.8" % "test"
 )
+
+// transitive dependency of akka 2.5x that is brought in by addons but evicted
+dependencyOverrides += "com.typesafe.akka" %% "akka-protobuf" % AkkaVersion
+// The default is src/main/protobuf, but the maven plugin expects them here:
+sourceDirectory in ProtobufConfig := (sourceDirectory in Compile).value / "proto"
 
 licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
