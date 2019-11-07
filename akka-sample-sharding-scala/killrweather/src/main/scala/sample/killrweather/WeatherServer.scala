@@ -22,16 +22,11 @@ private[killrweather] final class WeatherServer(routes: Route, port: Int, system
        val address = binding.localAddress
        system.log.info("WeatherServer online at http://{}:{}/", address.getHostString, address.getPort)
 
-       shutdown.addTask(CoordinatedShutdown.PhaseServiceUnbind, "http-unbind") { () =>
-         binding.unbind().map(_ => Done)
-       }
-
        shutdown.addTask(CoordinatedShutdown.PhaseServiceRequestsDone, "http-graceful-terminate") { () =>
-         binding.terminate(10.seconds).map(_ => Done)
-       }
-
-       shutdown.addTask(CoordinatedShutdown.PhaseServiceStop, "http-shutdown") { () =>
-         Http().shutdownAllConnectionPools().map(_ => Done)
+         binding.terminate(10.seconds).map { _ =>
+           system.log.info("WeatherServer http://{}:{}/ graceful shutdown completed", address.getHostString, address.getPort)
+           Done
+         }
        }
      case Failure(ex) =>
        system.log.error("Failed to bind HTTP endpoint, terminating system", ex)
