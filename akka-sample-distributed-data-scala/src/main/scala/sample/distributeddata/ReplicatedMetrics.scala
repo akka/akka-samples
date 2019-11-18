@@ -61,10 +61,10 @@ object ReplicatedMetrics {
           replicator.subscribe(UsedHeapKey, InternalSubscribeResponse.apply)
           replicator.subscribe(MaxHeapKey, InternalSubscribeResponse.apply)
 
-          val memberUpRef   = context.messageAdapter(InternalClusterMemberUp.apply)
-          val memberDownRef = context.messageAdapter(InternalClusterMemberRemoved.apply)
+          val memberUpRef      = context.messageAdapter(InternalClusterMemberUp.apply)
+          val memberRemovedRef = context.messageAdapter(InternalClusterMemberRemoved.apply)
           cluster.subscriptions ! Subscribe(memberUpRef, classOf[ClusterEvent.MemberUp])
-          cluster.subscriptions ! Subscribe(memberDownRef, classOf[ClusterEvent.MemberRemoved])
+          cluster.subscriptions ! Subscribe(memberRemovedRef, classOf[ClusterEvent.MemberRemoved])
 
           var maxHeap = Map.empty[String, Long]
           var nodesInCluster = Set.empty[String]

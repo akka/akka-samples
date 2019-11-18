@@ -1,61 +1,57 @@
 package sample.distributeddata;
 
-import static akka.cluster.ddata.Replicator.readLocal;
-import static akka.cluster.ddata.Replicator.writeLocal;
+import static akka.cluster.ddata.typed.javadsl.Replicator.readLocal;
+import static akka.cluster.ddata.typed.javadsl.Replicator.writeLocal;
 
 import java.util.Optional;
 import scala.Option;
 
-import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.Props;
-import akka.cluster.Cluster;
-import akka.cluster.ddata.DistributedData;
+import akka.actor.typed.ActorRef;
+import akka.actor.typed.Behavior;
+import akka.actor.typed.javadsl.ActorContext;
+import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.ddata.Key;
 import akka.cluster.ddata.LWWMap;
 import akka.cluster.ddata.LWWMapKey;
-import akka.cluster.ddata.Replicator.Get;
-import akka.cluster.ddata.Replicator.GetSuccess;
-import akka.cluster.ddata.Replicator.NotFound;
-import akka.cluster.ddata.Replicator.Update;
-import akka.cluster.ddata.Replicator.UpdateResponse;
+import akka.cluster.ddata.SelfUniqueAddress;
+import akka.cluster.ddata.typed.javadsl.DistributedData;
+import akka.cluster.ddata.typed.javadsl.Replicator.Get;
+import akka.cluster.ddata.typed.javadsl.Replicator.GetResponse;
+import akka.cluster.ddata.typed.javadsl.Replicator.GetSuccess;
+import akka.cluster.ddata.typed.javadsl.Replicator.NotFound;
+import akka.cluster.ddata.typed.javadsl.Replicator.Update;
+import akka.cluster.ddata.typed.javadsl.Replicator.UpdateResponse;
+import akka.cluster.ddata.typed.javadsl.ReplicatorMessageAdapter;
 
-@SuppressWarnings("unchecked")
-public class ReplicatedCache extends AbstractActor {
+public class ReplicatedCache {
 
-  static class Request {
+  public interface Command {}
+
+  public static class PutInCache implements Command {
     public final String key;
-    public final ActorRef replyTo;
+    public final String value;
 
-    public Request(String key, ActorRef replyTo) {
-      this.key = key;
-      this.replyTo = replyTo;
-    }
-  }
-
-  public static class PutInCache {
-    public final String key;
-    public final Object value;
-
-    public PutInCache(String key, Object value) {
+    public PutInCache(String key, String value) {
       this.key = key;
       this.value = value;
     }
   }
 
-  public static class GetFromCache {
+  public static class GetFromCache implements Command {
     public final String key;
+    public final ActorRef<Cached> replyTo;
 
-    public GetFromCache(String key) {
+    public GetFromCache(String key, ActorRef<Cached> replyTo) {
       this.key = key;
+      this.replyTo = replyTo;
     }
   }
 
   public static class Cached {
     public final String key;
-    public final Optional<Object> value;
+    public final Optional<String> value;
 
-    public Cached(String key, Optional<Object> value) {
+    public Cached(String key, Optional<String> value) {
       this.key = key;
       this.value = value;
     }
@@ -98,7 +94,7 @@ public class ReplicatedCache extends AbstractActor {
 
   }
 
-  public static class Evict {
+  public static class Evict implements Command {
     public final String key;
 
     public Evict(String key) {
@@ -106,58 +102,110 @@ public class ReplicatedCache extends AbstractActor {
     }
   }
 
-  public static Props props() {
-    return Props.create(ReplicatedCache.class);
+  private interface InternalCommand extends Command {}
+
+  private static class InternalGetResponse implements InternalCommand {
+    public final String key;
+    public final ActorRef<Cached> replyTo;
+    public final GetResponse<LWWMap<String, String>> rsp;
+
+    private InternalGetResponse(
+        String key, ActorRef<Cached> replyTo, GetResponse<LWWMap<String, String>> rsp
+    ) {
+      this.key = key;
+      this.replyTo = replyTo;
+      this.rsp = rsp;
+    }
   }
 
-  private final ActorRef replicator = DistributedData.get(context().system()).replicator();
-  private final Cluster node = Cluster.get(context().system());
+  private static class InternalUpdateResponse implements InternalCommand {
+    public final UpdateResponse<LWWMap<String, String>> rsp;
 
-  @Override
-  public Receive createReceive() {
-    return receiveBuilder()
-      .match(PutInCache.class, cmd -> receivePutInCache(cmd.key, cmd.value))
-      .match(Evict.class, cmd -> receiveEvict(cmd.key))
-      .match(GetFromCache.class, cmd -> receiveGetFromCache(cmd.key))
-      .match(GetSuccess.class, g -> receiveGetSuccess((GetSuccess<LWWMap<String, Object>>) g))
-      .match(NotFound.class, n -> receiveNotFound((NotFound<LWWMap<String, Object>>) n))
-      .match(UpdateResponse.class, u -> {})
-      .build();
+    private InternalUpdateResponse(UpdateResponse<LWWMap<String, String>> rsp) {
+      this.rsp = rsp;
+    }
   }
 
-  private void receivePutInCache(String key, Object value) {
-    Update<LWWMap<String, Object>> update = new Update<>(dataKey(key), LWWMap.create(), writeLocal(),
-        curr -> curr.put(node, key, value));
-    replicator.tell(update, self());
+  public static Behavior<Command> create() {
+    return Behaviors.setup(context ->
+        DistributedData.withReplicatorMessageAdapter(
+            (ReplicatorMessageAdapter<Command, LWWMap<String, String>> replicator) ->
+                new ReplicatedCache(context, replicator).createBehavior()));
   }
 
-  private void receiveEvict(String key) {
-    Update<LWWMap<String, Object>> update = new Update<>(dataKey(key), LWWMap.create(), writeLocal(),
-        curr -> curr.remove(node, key));
-    replicator.tell(update, self());
+  private final ReplicatorMessageAdapter<Command, LWWMap<String, String>> replicator;
+  private final SelfUniqueAddress node;
+
+  public ReplicatedCache(
+      ActorContext<Command> context,
+      ReplicatorMessageAdapter<Command, LWWMap<String, String>> replicator
+  ) {
+    this.replicator = replicator;
+    node = DistributedData.get(context.getSystem()).selfUniqueAddress();
   }
 
-  private void receiveGetFromCache(String key) {
-    Optional<Object> ctx = Optional.of(new Request(key, sender()));
-    Get<LWWMap<String, Object>> get = new Get<>(dataKey(key), readLocal(), ctx);
-    replicator.tell(get, self());
+  public Behavior<Command> createBehavior() {
+    return Behaviors
+        .receive(Command.class)
+        .onMessage(PutInCache.class, cmd -> receivePutInCache(cmd.key, cmd.value))
+        .onMessage(Evict.class, cmd -> receiveEvict(cmd.key))
+        .onMessage(GetFromCache.class, cmd -> receiveGetFromCache(cmd.key, cmd.replyTo))
+        .onMessage(InternalGetResponse.class, this::onInternalGetResponse)
+        .onMessage(InternalUpdateResponse.class, notUsed -> Behaviors.same())
+        .build();
   }
 
-  private void receiveGetSuccess(GetSuccess<LWWMap<String, Object>> g) {
-    Request req = (Request) g.getRequest().get();
-    Option<Object> valueOption = g.dataValue().get(req.key);
-    Optional<Object> valueOptional = Optional.ofNullable(valueOption.isDefined() ? valueOption.get() : null);
-    req.replyTo.tell(new Cached(req.key, valueOptional), self());
+  private Behavior<Command> receivePutInCache(String key, String value) {
+    replicator.askUpdate(
+        askReplyTo ->
+            new Update<>(
+                dataKey(key),
+                LWWMap.empty(),
+                writeLocal(),
+                askReplyTo,
+                curr -> curr.put(node, key, value)
+            ),
+        InternalUpdateResponse::new);
+
+    return Behaviors.same();
   }
 
-  private void receiveNotFound(NotFound<LWWMap<String, Object>> n) {
-    Request req = (Request) n.getRequest().get();
-    req.replyTo.tell(new Cached(req.key, Optional.empty()), self());
+  private Behavior<Command> receiveEvict(String key) {
+    replicator.askUpdate(
+        askReplyTo ->
+            new Update<>(
+                dataKey(key),
+                LWWMap.empty(),
+                writeLocal(),
+                askReplyTo,
+                curr -> curr.remove(node, key)
+            ),
+        InternalUpdateResponse::new);
+
+    return Behaviors.same();
   }
 
-  private Key<LWWMap<String, Object>> dataKey(String entryKey) {
+  private Behavior<Command> receiveGetFromCache(String key, ActorRef<Cached> replyTo) {
+    replicator.askGet(
+        askReplyTo -> new Get<>(dataKey(key), readLocal(), askReplyTo),
+        rsp -> new InternalGetResponse(key, replyTo, rsp));
+
+    return Behaviors.same();
+  }
+
+  private Behavior<Command> onInternalGetResponse(InternalGetResponse msg) {
+    if (msg.rsp instanceof GetSuccess) {
+      Option<String> valueOption = ((GetSuccess<LWWMap<String, String>>) msg.rsp).get(dataKey(msg.key)).get(msg.key);
+      Optional<String> valueOptional = Optional.ofNullable(valueOption.isDefined() ? valueOption.get() : null);
+      msg.replyTo.tell(new Cached(msg.key, valueOptional));
+    } else if (msg.rsp instanceof NotFound) {
+      msg.replyTo.tell(new Cached(msg.key, Optional.empty()));
+    }
+    return Behaviors.same();
+  }
+
+  private Key<LWWMap<String, String>> dataKey(String entryKey) {
     return LWWMapKey.create("cache-" + Math.abs(entryKey.hashCode() % 100));
   }
-
 
 }
