@@ -6,7 +6,6 @@ import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import sample.cluster.CborSerializable;
 
 //#worker
@@ -19,8 +18,7 @@ public class Worker {
 
   public static final class TransformText implements Command {
     public final String text;
-    @JsonCreator
-    public TransformText(@JsonProperty("text") String text, @JsonProperty("replyTo") ActorRef<TextTransformed> replyTo) {
+    public TransformText(String text, ActorRef<TextTransformed> replyTo) {
       this.text = text;
       this.replyTo = replyTo;
     }
@@ -29,7 +27,7 @@ public class Worker {
   public static final class TextTransformed implements CborSerializable {
     public final String text;
     @JsonCreator
-    public TextTransformed(@JsonProperty("text") String text) {
+    public TextTransformed(String text) {
       this.text = text;
     }
   }

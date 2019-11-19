@@ -55,6 +55,7 @@
           <fork>true</fork>
           <compilerArgs>
             <arg>-Xlint</arg>
+            <arg>-parameters</arg>
           </compilerArgs>
         </configuration>
       </plugin>
