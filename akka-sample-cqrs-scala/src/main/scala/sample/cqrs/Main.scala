@@ -21,7 +21,8 @@ object Main {
 
       case Some(portString) if portString.matches("""\d+""") =>
         val port = portString.toInt
-        startNode(port)
+        val httpPort = ("80" + portString.takeRight(2)).toInt
+        startNode(port, httpPort)
 
       case Some("cassandra") =>
         startCassandraDatabase()
@@ -33,16 +34,17 @@ object Main {
     }
   }
 
-  def startNode(port: Int): Unit = {
-    val system = ActorSystem[Nothing](Guardian(), "Shopping", config(port))
+  def startNode(port: Int, httpPort: Int): Unit = {
+    val system = ActorSystem[Nothing](Guardian(), "Shopping", config(port, httpPort))
 
     if (Cluster(system).selfMember.hasRole("read-model"))
       createTables(system)
   }
 
-  def config(port: Int): Config =
+  def config(port: Int, httpPort: Int): Config =
     ConfigFactory.parseString(s"""
       akka.remote.artery.canonical.port = $port
+      shopping.http.port = $httpPort
        """).withFallback(ConfigFactory.load())
 
   /**
@@ -85,12 +87,10 @@ object Guardian {
   def apply(): Behavior[Nothing] = {
     Behaviors.setup[Nothing] { context =>
       val system = context.system
-      val selfRoles = Cluster(system).selfMember.roles
       val settings = EventProcessorSettings(system)
+      val httpPort = context.system.settings.config.getInt("shopping.http.port")
 
-      if (Cluster(system).selfMember.hasRole("write-model")) {
-        ShoppingCart.init(system, settings)
-      }
+      ShoppingCart.init(system, settings)
 
       if (Cluster(system).selfMember.hasRole("read-model")) {
         EventProcessor.init(
@@ -98,6 +98,9 @@ object Guardian {
           settings,
           tag => new ShoppingCartEventProcessorStream(system, system.executionContext, settings.id, tag))
       }
+
+      val routes = new ShoppingCartRoutes()(context.system)
+      new ShoppingCartServer(routes.shopping, httpPort, context.system).start()
 
       Behaviors.empty
     }

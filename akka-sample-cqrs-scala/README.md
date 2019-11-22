@@ -45,4 +45,20 @@ sbt -Dakka.cluster.roles.0=write-model "runMain sample.cqrs.Main 2553"
 sbt -Dakka.cluster.roles.0=read-model "runMain sample.cqrs.Main 2554"
 ```
 
-TODO: how to enter or simulate updates
+Try it with curl:
+
+```
+# add item to cart
+curl -X POST -H "Content-Type: application/json" -d '{"cartId":"cart1", "itemId":"socks", "quantity":3}' http://127.0.0.1:8051/shopping-carts
+
+# get cart
+curl http://127.0.0.1:8051/shopping-carts/cart1
+
+# update quantity of item
+curl -X PUT -H "Content-Type: application/json" -d '{"cartId":"cart1", "itemId":"socks", "quantity":5}' http://127.0.0.1:8051/shopping-carts
+
+# check out cart
+curl -X PUT -H "Content-Type: application/json" -d '{"cartId":"cart1"}' http://127.0.0.1:8051/shopping-carts
+```
+
+or same `curl` commands to port 8052.
