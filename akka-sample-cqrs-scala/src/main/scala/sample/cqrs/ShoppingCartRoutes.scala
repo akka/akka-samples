@@ -13,12 +13,12 @@ import akka.util.Timeout
 object ShoppingCartRoutes {
   final case class AddItem(cartId: String, itemId: String, quantity: Int)
   final case class UpdateItem(cartId: String, itemId: String, quantity: Int)
-  final case class Checkout(cartId: String)
 }
 
 class ShoppingCartRoutes()(implicit system: ActorSystem[_]) {
 
-  implicit private val timeout: Timeout = 5.seconds
+  implicit private val timeout: Timeout =
+    Timeout.create(system.settings.config.getDuration("shopping.askTimeout"))
   private val sharding = ClusterSharding(system)
 
   import ShoppingCartRoutes._
@@ -27,60 +27,61 @@ class ShoppingCartRoutes()(implicit system: ActorSystem[_]) {
   import JsonFormats._
 
   val shopping: Route =
-    pathPrefix("shopping-carts") {
-      concat(
-        post {
-          entity(as[AddItem]) {
-            data =>
+    pathPrefix("shopping") {
+      pathPrefix("carts") {
+        concat(
+          post {
+            entity(as[AddItem]) { data =>
               val entityRef = sharding.entityRefFor(ShoppingCart.EntityKey, data.cartId)
               val reply: Future[ShoppingCart.Confirmation] =
                 entityRef.ask(ShoppingCart.AddItem(data.itemId, data.quantity, _))
               onSuccess(reply) {
-                case ShoppingCart.Accepted(_) =>
-                  complete(
-                    StatusCodes.Accepted -> s"added item ${data.itemId}: ${data.quantity} to cart ${data.cartId}")
+                case ShoppingCart.Accepted(summary) =>
+                  complete(StatusCodes.OK -> summary)
                 case ShoppingCart.Rejected(reason) =>
                   complete(StatusCodes.BadRequest, reason)
               }
-          }
-        },
-        put {
-          entity(as[UpdateItem]) {
-            data =>
-              val entityRef = sharding.entityRefFor(ShoppingCart.EntityKey, data.cartId)
-              def command(replyTo: ActorRef[ShoppingCart.Confirmation]) =
-                if (data.quantity == 0) ShoppingCart.RemoveItem(data.itemId, replyTo)
-                else ShoppingCart.AdjustItemQuantity(data.itemId, data.quantity, replyTo)
-              val reply: Future[ShoppingCart.Confirmation] = entityRef.ask(command(_))
-              onSuccess(reply) {
-                case ShoppingCart.Accepted(_) =>
-                  complete(StatusCodes.Accepted -> s"updated cart ${data.cartId}")
-                case ShoppingCart.Rejected(reason) =>
-                  complete(StatusCodes.BadRequest, reason)
+            }
+          },
+          put {
+            entity(as[UpdateItem]) {
+              data =>
+                val entityRef = sharding.entityRefFor(ShoppingCart.EntityKey, data.cartId)
+
+                def command(replyTo: ActorRef[ShoppingCart.Confirmation]) =
+                  if (data.quantity == 0) ShoppingCart.RemoveItem(data.itemId, replyTo)
+                  else ShoppingCart.AdjustItemQuantity(data.itemId, data.quantity, replyTo)
+
+                val reply: Future[ShoppingCart.Confirmation] = entityRef.ask(command(_))
+                onSuccess(reply) {
+                  case ShoppingCart.Accepted(summary) =>
+                    complete(StatusCodes.OK -> summary)
+                  case ShoppingCart.Rejected(reason) =>
+                    complete(StatusCodes.BadRequest, reason)
+                }
+            }
+          },
+          pathPrefix(Segment) { cartId =>
+            concat(get {
+              val entityRef = sharding.entityRefFor(ShoppingCart.EntityKey, cartId)
+              onSuccess(entityRef.ask(ShoppingCart.Get)) { summary =>
+                if (summary.items.isEmpty) complete(StatusCodes.NotFound)
+                else complete(summary)
               }
-          }
-        },
-        put {
-          entity(as[Checkout]) { data =>
-            val entityRef = sharding.entityRefFor(ShoppingCart.EntityKey, data.cartId)
-            val reply: Future[ShoppingCart.Confirmation] = entityRef.ask(ShoppingCart.Checkout(_))
-            onSuccess(reply) {
-              case ShoppingCart.Accepted(_) =>
-                complete(StatusCodes.Accepted -> s"Checked out cart ${data.cartId}")
-              case ShoppingCart.Rejected(reason) =>
-                complete(StatusCodes.BadRequest, reason)
-            }
-          }
-        },
-        path(Segment) { cartId =>
-          get {
-            val entityRef = sharding.entityRefFor(ShoppingCart.EntityKey, cartId)
-            onSuccess(entityRef.ask(ShoppingCart.Get)) { summary =>
-              if (summary.items.isEmpty) complete(StatusCodes.NotFound)
-              else complete(summary)
-            }
-          }
-        })
+            }, path("checkout") {
+              post {
+                val entityRef = sharding.entityRefFor(ShoppingCart.EntityKey, cartId)
+                val reply: Future[ShoppingCart.Confirmation] = entityRef.ask(ShoppingCart.Checkout(_))
+                onSuccess(reply) {
+                  case ShoppingCart.Accepted(summary) =>
+                    complete(StatusCodes.OK -> summary)
+                  case ShoppingCart.Rejected(reason) =>
+                    complete(StatusCodes.BadRequest, reason)
+                }
+              }
+            })
+          })
+      }
     }
 
 }
@@ -95,6 +96,5 @@ object JsonFormats {
   implicit val addItemFormat: RootJsonFormat[ShoppingCartRoutes.AddItem] = jsonFormat3(ShoppingCartRoutes.AddItem)
   implicit val updateItemFormat: RootJsonFormat[ShoppingCartRoutes.UpdateItem] = jsonFormat3(
     ShoppingCartRoutes.UpdateItem)
-  implicit val checkoutFormat: RootJsonFormat[ShoppingCartRoutes.Checkout] = jsonFormat1(ShoppingCartRoutes.Checkout)
 
 }
