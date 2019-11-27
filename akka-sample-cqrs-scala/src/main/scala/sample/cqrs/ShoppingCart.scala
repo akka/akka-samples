@@ -36,7 +36,7 @@ object ShoppingCart {
   /**
    * The current state held by the persistent entity.
    */
-  final case class State(items: Map[String, Int], checkoutDate: Option[Instant]) {
+  final case class State(items: Map[String, Int], checkoutDate: Option[Instant]) extends CborSerializable {
 
     def isCheckedOut: Boolean =
       checkoutDate.isDefined
