@@ -6,6 +6,8 @@ which is available as a commercial feature as part of the [Lightbend Subscriptio
 
 ## How to run
 
+You will need to have the `protobuf` compiler installed to convert `proto` definitions to object code.
+
 1. In terminal 1: `sbt "runMain sample.persistence.multidc.ThumbsUpApp cassandra"`
 
 1. In terminal 2: `sbt "runMain sample.persistence.multidc.ThumbsUpApp 2551 eu-west"`
