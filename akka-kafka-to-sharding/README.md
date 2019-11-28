@@ -44,7 +44,7 @@ The sample demonstrates how the dynamic shard allocation strategy can used so me
 * As there is a single consumer, all partitions will initially be assigned to this node.
 
 ```
- sbt procesor / "run 2551 8551"
+ sbt procesor / "run 2551 8551 8081"
 ```
 
 If there are existing messages on the topic they will all be processed locally as there is a single node.
@@ -83,13 +83,19 @@ As there is only one node we get 100% locallity, each forwarded message is proce
 Now let's see that remain true once we add more nodes to the Akka Cluster, add another with different ports:
 
 ```
- sbt procesor / "run 2552 8552"
+ sbt procesor / "run 2552 8552 8082"
 ```
 
 When this starts up we'll see Kafka assign partitions to the new node (it is in the same consumer group):
 
 ```
 Partition [29] assigned to current node. Updating shard allocation
+```
+
+Followed by the rebalance that moves the shards:
+
+```
+ Starting rebalance for shards [45,34,12,51,8,19,23,62,4,40,15,11,9,44,33,22,56,55,26,50,37,61,13,46,24,35,16,5,10,59,48,21,54,43,57,32,49,6,36,1,39,17,25,60,14,47,31,58,53,42,0,20,27,2,38,18,30,7,29,41,63,3,52,28]. Current shards rebalancing: []
 ```
 
 Both nodes now have roughly 64 shards / partitions, all co-located.
@@ -115,4 +121,39 @@ curl -v localhost:8551/cluster/shards/user-processing  | jq -r "." | grep shardI
 ```
 
 This should return 64 on each node.
+
+
+We now have a 2 node Akka Cluster with a Kafka Consumer running on each where the kafka partitions allign
+with Cluster shards.
+
+A use case for sending the processing to sharding is it allows each entity to be queried from any where in the cluster
+e.g. from a HTTP or gRPC front end.
+
+The sample includes a gRPC front end that gets the running total of number of purchases and total money spent
+by each customer. Requests can come via gRPC on any node for any entity but sharding will route them to
+the correct node even if that moves due to a kafka rebalance.
+
+A gRPC client is included which can be started with...
+
+```
+ sbt client/ run
+```
+
+It assumes there is one of the nodes running its front end port on 8081
+
+```
+Enter user id
+1
+UserStatsResponse(1,0,0)
+Enter user id
+9
+UserStatsResponse(9,0,0)
+Enter user id
+8
+```
+
+TODO update the producer to produce messages that update the running totals
+
+Type in `:q` to exit.
+
 

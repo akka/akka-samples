@@ -1,7 +1,9 @@
 package sample.sharding.kafka
 
 import akka.Done
+import akka.pattern.retry
 import akka.actor.ActorSystem
+import akka.actor.Scheduler
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.scaladsl.Behaviors
@@ -32,8 +34,9 @@ object UserEventsKafkaProcessor {
         val processorSettings = ProcessorConfig(ctx.system.settings.config.getConfig("kafka-to-sharding-processor"))
         implicit val classic: ActorSystem = ctx.system.toClassic
         implicit val ec: ExecutionContextExecutor = ctx.executionContext
+        implicit val scheduler: Scheduler = classic.scheduler
         // TODO config
-        val timeout = Timeout(12.seconds)
+        val timeout = Timeout(3.seconds)
         val rebalancerRef = ctx.spawn(TopicListener(UserEvents.TypeKey), "rebalancerRef")
         val shardRegion = UserEvents.init(ctx.system)
         val consumerSettings = ConsumerSettings(ctx.system.toClassic, new StringDeserializer, new StringDeserializer)
@@ -55,10 +58,14 @@ object UserEventsKafkaProcessor {
             // alternatively the user id could be in the message rather than use the kafka key
             ctx.log.info(s"entityId->partition ${record.key()}->${record.partition()}")
             ctx.log.info("Forwarding message for entity {} to cluster sharding", record.key())
-            shardRegion.ask[Done](replyTo =>
-              KafkaMessage(record.key(), UserEvents.UserAction(record.key(), record.value(), replyTo)))(
-              timeout,
-              ctx.system.scheduler)
+            // idempotency?
+            retry(
+              () =>
+                shardRegion.ask[Done](replyTo => UserEvents.UserAction(record.key(), record.value(), replyTo))(
+                  timeout,
+                  ctx.system.scheduler),
+              3,
+              1.second)
           }
           .runWith(Sink.ignore)
 

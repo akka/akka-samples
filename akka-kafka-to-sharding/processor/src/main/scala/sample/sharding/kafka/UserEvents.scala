@@ -9,6 +9,7 @@ import akka.actor.typed.scaladsl.adapter._
 import akka.cluster.sharding.ShardRegion.ShardId
 import akka.cluster.sharding.dynamic.DynamicShardAllocationStrategy
 import akka.cluster.sharding.typed.ClusterShardingSettings
+import akka.cluster.sharding.typed.ShardingEnvelope
 import akka.cluster.sharding.typed.ShardingMessageExtractor
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.sharding.typed.scaladsl.Entity
@@ -26,6 +27,7 @@ object UserEvents {
   }
   sealed trait UserEvent extends Message
   case class UserAction(userId: String, description: String, replyTo: ActorRef[Done]) extends UserEvent
+  // TODO actually send this message so that running totals are updated, add serializer etc
   case class UserPurchase(userId: String, product: String, quantity: Int, priceInPence: Int) extends UserEvent
 
   sealed trait UserQuery extends Message
@@ -47,6 +49,9 @@ object UserEvents {
             runningTotal.copy(
               totalPurchases = runningTotal.totalPurchases + 1,
               amountSpent = runningTotal.amountSpent + (quantity * price)))
+        case GetRunningTotal(_, replyTo) =>
+          replyTo ! runningTotal
+          Behaviors.same
       }
     }
   }
@@ -56,14 +61,13 @@ object UserEvents {
    * but then care must be taken that the all messages for the same entity id end up in the
    * same partition and that mapping is replicated in the [[shardId]] function.
    */
-  class UserIdMessageExtractor(nrKafkaPartitions: Int)
-      extends ShardingMessageExtractor[KafkaMessage[Message], Message] {
+  class UserIdMessageExtractor(nrKafkaPartitions: Int) extends ShardingMessageExtractor[Message, Message] {
 
     private val log = LoggerFactory.getLogger(classOf[UserIdMessageExtractor])
 
     private val key = new StringSerializer
 
-    override def entityId(message: KafkaMessage[Message]): String = message.key
+    override def entityId(message: Message): String = message.userId
 
     /**
      * The default partitioning strategy in Kafka is:
@@ -82,15 +86,19 @@ object UserEvents {
       shard
     }
 
-    override def unwrapMessage(message: KafkaMessage[Message]): Message = message.message
+    override def unwrapMessage(message: Message): Message = message
   }
 
-  def init(system: ActorSystem[_]): ActorRef[KafkaMessage[Message]] = {
+  def init(system: ActorSystem[_]): ActorRef[Message] = {
     val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
     ClusterSharding(system).init(
       Entity(TypeKey)(createBehavior = entityContext => UserEvents(entityContext.entityId))
         .withAllocationStrategy(() => new DynamicShardAllocationStrategy(system.toClassic, TypeKey.name))
         .withMessageExtractor(new UserIdMessageExtractor(processorConfig.nrPartitions))
         .withSettings(ClusterShardingSettings(system)))
+  }
+
+  def querySide(system: ActorSystem[_]): ActorRef[UserQuery] = {
+    init(system).narrow[UserQuery]
   }
 }
