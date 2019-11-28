@@ -2,17 +2,16 @@
 <configuration>
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
-        </filter>
         <encoder>
             <pattern>[%date{ISO8601}] [%level] [%logger] [%thread] [%X{akkaSource}] - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <logger name="org.apache.kafka.clients.consumer.internals" level="WARN" />
+    <logger name="org.apache.kafka" level="WARN" />
 
-    <root level="DEBUG">
+    <logger name="akka.cluster.sharding" level="DEBUG" />
+
+    <root level="INFO">
         <appender-ref ref="STDOUT"/>
     </root>
 </configuration>
