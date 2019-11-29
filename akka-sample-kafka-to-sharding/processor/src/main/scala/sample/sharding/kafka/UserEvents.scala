@@ -1,5 +1,7 @@
 package sample.sharding.kafka
 
+import java.nio.charset.StandardCharsets
+
 import akka.Done
 import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
@@ -80,8 +82,11 @@ object UserEvents {
      * Kafka
      */
     override def shardId(entityId: String): ShardId = {
-      // topic is not used in
-      val keyBytes = key.serialize("not used", entityId)
+      // topic is not used. If you do not have control of the producer you can
+      // use the same key serializer to match up, otherwise just replicate the explicit partition
+      // assignment in the producer
+      // val keyBytes = key.serialize("not used", entityId)
+      val keyBytes = entityId.getBytes(StandardCharsets.US_ASCII)
       val shard = (Utils.toPositive(Utils.murmur2(keyBytes)) % nrKafkaPartitions).toString
       log.debug(s"entityId->shardId ${entityId}->${shard}")
       shard

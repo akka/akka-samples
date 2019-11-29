@@ -1,5 +1,7 @@
 package sharding.kafka.producer
 
+import java.nio.charset.StandardCharsets
+
 import akka.Done
 import akka.actor.ActorSystem
 import akka.event.Logging
@@ -63,7 +65,7 @@ object UserEventProducer extends App {
         new ProducerRecord[String, Array[Byte]](producerConfig.topic, entityId, message)
       case Explicit =>
         // this logic MUST be replicated in the MessageExtractor entityId -> shardId function!
-        val shardAndPartition = (Utils.toPositive(Utils.murmur2(entityId.getBytes())) % producerConfig.nrPartitions)
+        val shardAndPartition = (Utils.toPositive(Utils.murmur2(entityId.getBytes(StandardCharsets.US_ASCII))) % producerConfig.nrPartitions)
         new ProducerRecord[String, Array[Byte]](producerConfig.topic, shardAndPartition, entityId, message)
     }
   }
