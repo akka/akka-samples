@@ -8,8 +8,10 @@ import akka.kafka.scaladsl.Producer
 import akka.stream.scaladsl.Source
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.apache.kafka.common.utils.Utils
+import sample.sharding.kafka.serialization.user_events.UserPurchaseProto
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -29,31 +31,40 @@ object UserEventProducer extends App {
 
   val producerConfig = ProducerConfig(system.settings.config.getConfig("kafka-to-sharding-producer"))
 
-  val producerSettings: ProducerSettings[String, String] =
-    ProducerSettings(config, new StringSerializer, new StringSerializer)
+  val producerSettings: ProducerSettings[String, Array[Byte]] =
+    ProducerSettings(config, new StringSerializer, new ByteArraySerializer)
       .withBootstrapServers(producerConfig.bootstrapServers)
+
+  val nrUsers = 100
+  val maxPrice = 10000
+  val maxQuatity = 5
+  val products = List("cat t-shirt", "akka t-shirt", "skis", "climbing shoes", "rope")
 
   val done: Future[Done] =
     Source
       .tick(1000.millis, 1000.millis, "tick")
-      .map(value => {
-        val randomEntityId = Random.nextInt().toString
+      .map(_ => {
+        val randomEntityId = Random.nextInt(nrUsers).toString
+        val price = Random.nextInt(maxPrice)
+        val quantity = Random.nextInt(maxQuatity)
+        val product = products(Random.nextInt(products.size))
+        val message = UserPurchaseProto(randomEntityId, product, quantity, price).toByteArray
         log.info("Sending message to user {}", randomEntityId)
-        producerRecord(randomEntityId, s"message for user id ${randomEntityId}")
+        producerRecord(randomEntityId, message)
 
       })
       .runWith(Producer.plainSink(producerSettings))
 
-  def producerRecord(entityId: String, message: String): ProducerRecord[String, String] = {
+  def producerRecord(entityId: String, message: Array[Byte]): ProducerRecord[String, Array[Byte]] = {
     producerConfig.partitioning match {
       case Default =>
         // rely on the default kafka partitioner to hash the key and distribute among shards
         // the logic of the default partitionor must be replicated in MessageExtractor entityId -> shardId function
-        new ProducerRecord[String, String](producerConfig.topic, entityId, message)
+        new ProducerRecord[String, Array[Byte]](producerConfig.topic, entityId, message)
       case Explicit =>
         // this logic MUST be replicated in the MessageExtractor entityId -> shardId function!
         val shardAndPartition = (Utils.toPositive(Utils.murmur2(entityId.getBytes())) % producerConfig.nrPartitions)
-        new ProducerRecord[String, String](producerConfig.topic, shardAndPartition, entityId, message)
+        new ProducerRecord[String, Array[Byte]](producerConfig.topic, shardAndPartition, entityId, message)
     }
   }
 

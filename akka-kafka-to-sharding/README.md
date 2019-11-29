@@ -67,10 +67,10 @@ Sending message to user -1059178536
 In the single processor node the messages will start flowing:
 
 ```
-Forwarding message for entity -131145138 to cluster sharding
-user event message for user id -131145138
-Forwarding message for entity -1608152385 to cluster sharding
-user event message -1608152385
+Forwarding message for entity 25 to cluster sharding
+user 25 purchase cat t-shirt, quantity 3, price 2080
+Forwarding message for entity 13 to cluster sharding
+user 13 purchase cat t-shirt, quantity 2, price 898 
 ```
 
 THe first log line is just after the message has been taken from Kafka.
@@ -139,21 +139,28 @@ A gRPC client is included which can be started with...
  sbt client/ run
 ```
 
-It assumes there is one of the nodes running its front end port on 8081
+It assumes there is one of the nodes running its front end port on 8081. The users are `0-99`
 
 ```
-Enter user id
+7
+User 7 has made 2 for a total of 3096p
+Enter user id or :q to quit
+3
+User 3 has made 1 for a total of 12060p
+Enter user id or :q to quit
+4
+User 4 has made 1 for a total of 7876p
+Enter user id or :q to quit
+5
+User 5 has made 0 for a total of 0p
+Enter user id or :q to quit
 1
-UserStatsResponse(1,0,0)
-Enter user id
-9
-UserStatsResponse(9,0,0)
-Enter user id
-8
+User 1 has made 0 for a total of 0p
+Enter user id or :q to quit
 ```
 
-TODO update the producer to produce messages that update the running totals
+We've now demonstrated two things:
 
-Type in `:q` to exit.
-
+* Keeping the processing local, where ever the Kafka partition is consumed the shard will be moved to that location
+* The state for each entity is globally accessible from all nodes 
 

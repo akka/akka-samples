@@ -20,10 +20,14 @@ object ClientApp extends App {
 
   var userId = ""
   while (userId != ":q") {
-    println("Enter user id")
+    println("Enter user id or :q to quit")
     userId = StdIn.readLine()
-    if (userId != ":q")
-      println(Await.result(client.userStats(UserStatsRequest(userId)), Duration.Inf))
+    if (userId != ":q") {
+      val runningTotal = Await.result(client.userStats(UserStatsRequest(userId)), Duration.Inf)
+      println(
+        s"User ${userId} has made ${runningTotal.totalPurchases} purchases for a total of ${runningTotal.amountSpent}p")
+    }
+
   }
   println("Exiting")
   system.terminate()

@@ -16,7 +16,9 @@ import akka.stream.scaladsl.Source
 import akka.util.Timeout
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
+import sample.sharding.kafka.serialization.UserPurchaseProto
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.Future
@@ -39,15 +41,16 @@ object UserEventsKafkaProcessor {
         val timeout = Timeout(3.seconds)
         val rebalancerRef = ctx.spawn(TopicListener(UserEvents.TypeKey), "rebalancerRef")
         val shardRegion = UserEvents.init(ctx.system)
-        val consumerSettings = ConsumerSettings(ctx.system.toClassic, new StringDeserializer, new StringDeserializer)
-          .withBootstrapServers(processorSettings.bootstrapServers)
-          .withGroupId(processorSettings.groupId)
-          .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-          .withStopTimeout(0.seconds)
+        val consumerSettings =
+          ConsumerSettings(ctx.system.toClassic, new StringDeserializer, new ByteArrayDeserializer)
+            .withBootstrapServers(processorSettings.bootstrapServers)
+            .withGroupId(processorSettings.groupId)
+            .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+            .withStopTimeout(0.seconds)
 
         val subscription = Subscriptions.topics(processorSettings.topic).withRebalanceListener(rebalancerRef.toClassic)
 
-        val kafkaConsumer: Source[ConsumerRecord[String, String], Consumer.Control] =
+        val kafkaConsumer: Source[ConsumerRecord[String, Array[Byte]], Consumer.Control] =
           Consumer.plainSource(consumerSettings, subscription)
 
         // TODO deal with failures/restarts etc
@@ -61,9 +64,15 @@ object UserEventsKafkaProcessor {
             // idempotency?
             retry(
               () =>
-                shardRegion.ask[Done](replyTo => UserEvents.UserAction(record.key(), record.value(), replyTo))(
-                  timeout,
-                  ctx.system.scheduler),
+                shardRegion.ask[Done](replyTo => {
+                  val purchaseProto = UserPurchaseProto.parseFrom(record.value())
+                  UserEvents.UserPurchase(
+                    purchaseProto.userId,
+                    purchaseProto.product,
+                    purchaseProto.quantity,
+                    purchaseProto.price,
+                    replyTo)
+                })(timeout, ctx.system.scheduler),
               3,
               1.second)
           }

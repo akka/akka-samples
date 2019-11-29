@@ -9,7 +9,6 @@ import akka.actor.typed.scaladsl.adapter._
 import akka.cluster.sharding.ShardRegion.ShardId
 import akka.cluster.sharding.dynamic.DynamicShardAllocationStrategy
 import akka.cluster.sharding.typed.ClusterShardingSettings
-import akka.cluster.sharding.typed.ShardingEnvelope
 import akka.cluster.sharding.typed.ShardingMessageExtractor
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.sharding.typed.scaladsl.Entity
@@ -27,8 +26,8 @@ object UserEvents {
   }
   sealed trait UserEvent extends Message
   case class UserAction(userId: String, description: String, replyTo: ActorRef[Done]) extends UserEvent
-  // TODO actually send this message so that running totals are updated, add serializer etc
-  case class UserPurchase(userId: String, product: String, quantity: Int, priceInPence: Int) extends UserEvent
+  case class UserPurchase(userId: String, product: String, quantity: Long, priceInPence: Long, replyTo: ActorRef[Done])
+      extends UserEvent
 
   sealed trait UserQuery extends Message
   case class GetRunningTotal(userId: String, replyTo: ActorRef[RunningTotal]) extends UserQuery
@@ -44,7 +43,9 @@ object UserEvents {
           ctx.log.info("user event {}", desc)
           ack.tell(Done)
           Behaviors.same
-        case UserPurchase(_, product, quantity, price) =>
+        case UserPurchase(id, product, quantity, price, ack) =>
+          ctx.log.info("user {} purchase {}, quantity {}, price {}", id, product, quantity, price)
+          ack.tell(Done)
           running(
             runningTotal.copy(
               totalPurchases = runningTotal.totalPurchases + 1,

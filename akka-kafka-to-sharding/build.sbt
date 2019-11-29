@@ -3,7 +3,7 @@ val AlpakkaKafkaVersion = "1.1.0"
 val AkkaManagementVersion = "1.0.5"
 val LogbackVersion = "1.2.3"
 
-ThisBuild / scalaVersion := "2.12.8"
+ThisBuild / scalaVersion := "2.13.0"
 ThisBuild / organization := "com.lightbend.akka.samples"
 ThisBuild / scalacOptions in Compile ++= Seq(
   "-deprecation",
@@ -17,7 +17,7 @@ ThisBuild / licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain
 
 Global / cancelable := false // ctrl-c
 
-lazy val `akka-sample-kafka-to-sharding` = project.in(file(".")).aggregate(producer, processor)
+lazy val `akka-sample-kafka-to-sharding` = project.in(file(".")).aggregate(producer, processor, client)
 
 lazy val client = project
   .in(file("client"))
@@ -25,8 +25,7 @@ lazy val client = project
   .settings(
     libraryDependencies ++= Seq(
         "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
-        "com.typesafe.akka" %% "akka-discovery" % AkkaVersion
-      ))
+        "com.typesafe.akka" %% "akka-discovery" % AkkaVersion))
 
 lazy val processor = project
   .in(file("processor"))
@@ -47,9 +46,10 @@ lazy val processor = project
 
 lazy val producer = project
   .in(file("producer"))
-  .settings(
-    libraryDependencies ++= Seq(
-        "com.typesafe.akka" %% "akka-stream-kafka" % AlpakkaKafkaVersion,
-        "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
-        "ch.qos.logback" % "logback-classic" % "1.2.3",
-        "org.scalatest" %% "scalatest" % "3.0.8" % Test))
+  .settings(PB.targets in Compile := Seq(scalapb.gen() -> (sourceManaged in Compile).value))
+  .settings(libraryDependencies ++= Seq(
+      "com.typesafe.akka" %% "akka-stream-kafka" % AlpakkaKafkaVersion,
+      "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
+      "ch.qos.logback" % "logback-classic" % "1.2.3",
+      "com.typesafe.akka" %% "akka-serialization-jackson" % AkkaVersion,
+      "org.scalatest" %% "scalatest" % "3.0.8" % Test))
