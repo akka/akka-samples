@@ -20,7 +20,7 @@ private[killrweather] object Guardian {
   final case class AggregateCommand(wsid: WeatherStationId,
                                     dataType: Aggregator.DataType,
                                     func: Aggregator.Function,
-                                    replyTo: ActorRef[WeatherRoutes.QueryStatus]) extends Command
+                                    replyTo: ActorRef[WeatherRoutes.QueryResult]) extends Command
   final case class WeatherStation(id: WeatherStationId)
 
   def apply(): Behavior[Command] = {
@@ -35,22 +35,17 @@ private[killrweather] final class Guardian(system: ActorSystem[Nothing]) {
 
   private val sharding = ClusterSharding(system)
 
-  private def sharded(entityId: String) = {
-    sharding.entityRefFor(WeatherAggregator.TypeKey, entityId)
-  }
-
   def active(stations: Set[Guardian.WeatherStationId]): Behavior[Guardian.Command] = {
     Behaviors.setup { context =>
       Behaviors.receiveMessage {
         case Guardian.Ingest(wsid, data, replyTo) =>
           val processTimestamp = System.currentTimeMillis
           // default 100 shards, 50 geo-locations
-          sharded(wsid) ! Aggregator.Aggregate(data, processTimestamp, replyTo)
-
+          sharding.entityRefFor(WeatherAggregator.TypeKey, wsid) ! Aggregator.Aggregate(data, processTimestamp, replyTo)
           Behaviors.same
 
         case Guardian.AggregateCommand(wsid, dataType, func, replyTo) =>
-          sharded(wsid) ! Aggregator.Query(wsid, dataType, func, replyTo)
+          sharding.entityRefFor(WeatherAggregator.TypeKey, wsid)  ! Aggregator.Query(wsid, dataType, func, replyTo)
           Behaviors.same
 
         case Guardian.GetWeatherStations(replyTo) =>

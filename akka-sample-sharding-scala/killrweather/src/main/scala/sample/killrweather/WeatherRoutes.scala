@@ -15,7 +15,8 @@ object WeatherRoutes {
   final case class DataIngested(wsid: String) extends Status
   final case class WeatherStationAdded(wsid: String) extends Status
   final case class WeatherStations(ids: Set[String]) extends Status
-  final case class QueryStatus(wsid: String, dataType: String, readings: Int, values: Vector[(String, Double)]) extends Status
+  final case class TimeWindow(start: Long, end: Long, value: Double)
+  final case class QueryResult(wsid: String, dataType: String, funcTag: String, readings: Int, value: Vector[TimeWindow]) extends Status
 }
 
 /** HTTP API for
