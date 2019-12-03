@@ -12,33 +12,33 @@ import akka.cluster.ddata.typed.scaladsl.Replicator.{ Update, Get }
 
 object ReplicatedCache {
   sealed trait Command
-  final case class PutInCache(key: String, value: Any) extends Command
+  final case class PutInCache(key: String, value: String) extends Command
   final case class GetFromCache(key: String, replyTo: ActorRef[Cached]) extends Command
-  final case class Cached(key: String, value: Option[Any])
+  final case class Cached(key: String, value: Option[String])
   final case class Evict(key: String) extends Command
   private sealed trait InternalCommand extends Command
-  private case class InternalGetResponse(key: String, replyTo: ActorRef[Cached], rsp: GetResponse[LWWMap[String, Any]])
+  private case class InternalGetResponse(key: String, replyTo: ActorRef[Cached], rsp: GetResponse[LWWMap[String, String]])
       extends InternalCommand
-  private case class InternalUpdateResponse(rsp: UpdateResponse[LWWMap[String, Any]]) extends InternalCommand
+  private case class InternalUpdateResponse(rsp: UpdateResponse[LWWMap[String, String]]) extends InternalCommand
 
   def apply(): Behavior[Command] = Behaviors.setup { context =>
-    DistributedData.withReplicatorMessageAdapter[Command, LWWMap[String, Any]] { replicator =>
+    DistributedData.withReplicatorMessageAdapter[Command, LWWMap[String, String]] { replicator =>
       implicit val node: SelfUniqueAddress = DistributedData(context.system).selfUniqueAddress
 
-      def dataKey(entryKey: String): LWWMapKey[String, Any] =
+      def dataKey(entryKey: String): LWWMapKey[String, String] =
         LWWMapKey("cache-" + math.abs(entryKey.hashCode % 100))
 
       Behaviors.receiveMessage[Command] {
         case PutInCache(key, value) =>
           replicator.askUpdate(
-            askReplyTo => Update(dataKey(key), LWWMap.empty[String, Any], WriteLocal, askReplyTo)(_ :+ (key -> value)),
+            askReplyTo => Update(dataKey(key), LWWMap.empty[String, String], WriteLocal, askReplyTo)(_ :+ (key -> value)),
             InternalUpdateResponse.apply)
 
           Behaviors.same
 
         case Evict(key) =>
           replicator.askUpdate(
-            askReplyTo => Update(dataKey(key), LWWMap.empty[String, Any], WriteLocal, askReplyTo)(_.remove(node, key)),
+            askReplyTo => Update(dataKey(key), LWWMap.empty[String, String], WriteLocal, askReplyTo)(_.remove(node, key)),
             InternalUpdateResponse.apply)
 
           Behaviors.same

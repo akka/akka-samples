@@ -1,47 +1,56 @@
 package sample.distributeddata;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-import java.io.Serializable;
+import java.time.Duration;
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.Set;
-import scala.concurrent.duration.Duration;
 
-import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.Props;
-import akka.cluster.Cluster;
-import akka.cluster.ddata.DistributedData;
+import akka.actor.typed.ActorRef;
+import akka.actor.typed.Behavior;
+import akka.actor.typed.javadsl.ActorContext;
+import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.ddata.Key;
 import akka.cluster.ddata.LWWMap;
 import akka.cluster.ddata.LWWMapKey;
-import akka.cluster.ddata.Replicator;
-import akka.cluster.ddata.Replicator.GetFailure;
-import akka.cluster.ddata.Replicator.GetResponse;
-import akka.cluster.ddata.Replicator.GetSuccess;
-import akka.cluster.ddata.Replicator.NotFound;
-import akka.cluster.ddata.Replicator.ReadConsistency;
-import akka.cluster.ddata.Replicator.ReadMajority;
-import akka.cluster.ddata.Replicator.Update;
-import akka.cluster.ddata.Replicator.UpdateFailure;
-import akka.cluster.ddata.Replicator.UpdateSuccess;
-import akka.cluster.ddata.Replicator.UpdateTimeout;
-import akka.cluster.ddata.Replicator.WriteConsistency;
-import akka.cluster.ddata.Replicator.WriteMajority;
+import akka.cluster.ddata.ReplicatedData;
+import akka.cluster.ddata.SelfUniqueAddress;
+import akka.cluster.ddata.typed.javadsl.DistributedData;
+import akka.cluster.ddata.typed.javadsl.Replicator.GetFailure;
+import akka.cluster.ddata.typed.javadsl.Replicator.GetResponse;
+import akka.cluster.ddata.typed.javadsl.Replicator.GetSuccess;
+import akka.cluster.ddata.typed.javadsl.Replicator.NotFound;
+import akka.cluster.ddata.typed.javadsl.Replicator.ReadConsistency;
+import akka.cluster.ddata.typed.javadsl.Replicator.ReadMajority;
+import akka.cluster.ddata.typed.javadsl.Replicator.Update;
+import akka.cluster.ddata.typed.javadsl.Replicator.UpdateFailure;
+import akka.cluster.ddata.typed.javadsl.Replicator.UpdateResponse;
+import akka.cluster.ddata.typed.javadsl.Replicator.UpdateSuccess;
+import akka.cluster.ddata.typed.javadsl.Replicator.UpdateTimeout;
+import akka.cluster.ddata.typed.javadsl.Replicator.WriteConsistency;
+import akka.cluster.ddata.typed.javadsl.Replicator.WriteMajority;
+import akka.cluster.ddata.typed.javadsl.Replicator.Get;
+import akka.cluster.ddata.typed.javadsl.Replicator;
+import akka.cluster.ddata.typed.javadsl.ReplicatorMessageAdapter;
 
-@SuppressWarnings("unchecked")
-public class ShoppingCart extends AbstractActor {
+public class ShoppingCart {
 
   //#read-write-majority
   private final WriteConsistency writeMajority = 
-      new WriteMajority(Duration.create(3, SECONDS));
+      new WriteMajority(Duration.ofSeconds(3));
   private final static ReadConsistency readMajority = 
-      new ReadMajority(Duration.create(3, SECONDS));
+      new ReadMajority(Duration.ofSeconds(3));
   //#read-write-majority
 
-  public static final String GET_CART = "getCart";
+  public interface Command {}
 
-  public static class AddItem {
+  public static final class GetCart implements Command {
+    public final ActorRef<Cart> replyTo;
+
+    public GetCart(ActorRef<Cart> replyTo) {
+      this.replyTo = replyTo;
+    }
+  }
+
+  public static class AddItem implements Command {
     public final LineItem item;
 
     public AddItem(LineItem item) {
@@ -49,7 +58,7 @@ public class ShoppingCart extends AbstractActor {
     }
   }
 
-  public static class RemoveItem {
+  public static class RemoveItem implements Command {
     public final String productId;
 
     public RemoveItem(String productId) {
@@ -65,8 +74,7 @@ public class ShoppingCart extends AbstractActor {
     }
   }
 
-  public static class LineItem implements Serializable {
-    private static final long serialVersionUID = 1L;
+  public static class LineItem {
     public final String productId;
     public final String title;
     public final int quantity;
@@ -118,86 +126,109 @@ public class ShoppingCart extends AbstractActor {
 
   }
 
-  public static Props props(String userId) {
-    return Props.create(ShoppingCart.class, userId);
+  private interface InternalCommand extends Command {}
+
+  private static class InternalGetResponse implements InternalCommand {
+    public final GetResponse<LWWMap<String, LineItem>> rsp;
+    public final ActorRef<Cart> replyTo;
+
+    private InternalGetResponse(GetResponse<LWWMap<String, LineItem>> rsp, ActorRef<Cart> replyTo) {
+      this.rsp = rsp;
+      this.replyTo = replyTo;
+    }
   }
 
-  private final ActorRef replicator = DistributedData.get(context().system()).replicator();
-  private final Cluster node = Cluster.get(context().system());
+  private static class InternalUpdateResponse<A extends ReplicatedData> implements InternalCommand {
+    public final UpdateResponse<A> rsp;
 
-  @SuppressWarnings("unused")
-  private final String userId;
+    private InternalUpdateResponse(UpdateResponse<A> rsp) {
+      this.rsp = rsp;
+    }
+  }
+
+  private static class InternalRemoveItem implements InternalCommand {
+    public final String productId;
+    public final GetResponse<LWWMap<String, LineItem>> rsp;
+
+    private InternalRemoveItem(String productId, GetResponse<LWWMap<String, LineItem>> rsp) {
+      this.productId = productId;
+      this.rsp = rsp;
+    }
+  }
+
+  public static Behavior<Command> create(String userId) {
+    return Behaviors.setup(context ->
+        DistributedData.withReplicatorMessageAdapter(
+            (ReplicatorMessageAdapter<Command, LWWMap<String, LineItem>> replicator) ->
+                new ShoppingCart(context, replicator, userId).createBehavior()));
+  }
+
+  private final ReplicatorMessageAdapter<Command, LWWMap<String, LineItem>> replicator;
   private final Key<LWWMap<String, LineItem>> dataKey;
+  private final SelfUniqueAddress node;
 
-  public ShoppingCart(String userId) {
-    this.userId = userId;
+  public ShoppingCart(
+      ActorContext<Command> context,
+      ReplicatorMessageAdapter<Command, LWWMap<String, LineItem>> replicator,
+      String userId
+  ) {
+    this.replicator = replicator;
     this.dataKey = LWWMapKey.create("cart-" + userId);
+    node = DistributedData.get(context.getSystem()).selfUniqueAddress();
   }
 
-
-  @Override
-  public Receive createReceive() {
-    return matchGetCart()
-      .orElse(matchAddItem())
-      .orElse(matchRemoveItem())
-      .orElse(matchOther());
+  public Behavior<Command> createBehavior() {
+    return Behaviors
+        .receive(Command.class)
+        .onMessage(GetCart.class, this::onGetCart)
+        .onMessage(InternalGetResponse.class, this::onInternalGetResponse)
+        .onMessage(AddItem.class, this::onAddItem)
+        .onMessage(RemoveItem.class, this::onRemoveItem)
+        .onMessage(InternalRemoveItem.class, this::onInternalRemoveItem)
+        .onMessage(InternalUpdateResponse.class, this::onInternalUpdateResponse)
+        .build();
   }
 
   //#get-cart
-  private Receive matchGetCart() {
-    return receiveBuilder()
-      .matchEquals((GET_CART), s -> receiveGetCart())
-      .match(GetSuccess.class, this::isResponseToGetCart,
-          g -> receiveGetSuccess((GetSuccess<LWWMap<String, LineItem>>) g))
-        .match(NotFound.class, this::isResponseToGetCart,
-          n -> receiveNotFound((NotFound<LWWMap<String, LineItem>>) n))
-        .match(GetFailure.class, this::isResponseToGetCart,
-          f -> receiveGetFailure((GetFailure<LWWMap<String, LineItem>>) f))
-      .build();
+  private Behavior<Command> onGetCart(GetCart command) {
+    replicator.askGet(
+        askReplyTo -> new Get<>(dataKey, readMajority, askReplyTo),
+        rsp -> new InternalGetResponse(rsp, command.replyTo));
+
+    return Behaviors.same();
   }
 
-
-  private void receiveGetCart() {
-    Optional<Object> ctx = Optional.of(sender());
-    replicator.tell(new Replicator.Get<>(dataKey, readMajority, ctx),
-        self());
-  }
-
-  private boolean isResponseToGetCart(GetResponse<?> response) {
-    return response.key().equals(dataKey) && 
-        (response.getRequest().orElse(null) instanceof ActorRef);
-  }
-
-  private void receiveGetSuccess(GetSuccess<LWWMap<String, LineItem>> g) {
-    Set<LineItem> items = new HashSet<>(g.dataValue().getEntries().values());
-    ActorRef replyTo = (ActorRef) g.getRequest().get();
-    replyTo.tell(new Cart(items), self());
-  }
-
-  private void receiveNotFound(NotFound<LWWMap<String, LineItem>> n) {
-    ActorRef replyTo = (ActorRef) n.getRequest().get();
-    replyTo.tell(new Cart(new HashSet<>()), self());
-  }
-
-  private void receiveGetFailure(GetFailure<LWWMap<String, LineItem>> f) {
-    // ReadMajority failure, try again with local read
-    Optional<Object> ctx = Optional.of(sender());
-    replicator.tell(new Replicator.Get<>(dataKey, Replicator.readLocal(),
-      ctx), self());
+  private Behavior<Command> onInternalGetResponse(InternalGetResponse msg) {
+    if (msg.rsp instanceof GetSuccess) {
+      LWWMap<String, LineItem> data = ((GetSuccess<LWWMap<String, LineItem>>) msg.rsp).get(dataKey);
+      msg.replyTo.tell(new Cart(new HashSet<>(data.getEntries().values())));
+    } else if (msg.rsp instanceof NotFound) {
+      msg.replyTo.tell(new Cart(new HashSet<>()));
+    } else if (msg.rsp instanceof GetFailure) {
+      // ReadMajority failure, try again with local read
+      replicator.askGet(
+          askReplyTo -> new Get<>(dataKey, Replicator.readLocal(), askReplyTo),
+          rsp -> new InternalGetResponse(rsp, msg.replyTo)
+      );
+    }
+    return Behaviors.same();
   }
   //#get-cart
 
   //#add-item
-  private Receive matchAddItem() {
-    return receiveBuilder()
-      .match(AddItem.class, this::receiveAddItem)
-      .build();
-  }
+  private Behavior<Command> onAddItem(AddItem command) {
+    replicator.askUpdate(
+        askReplyTo ->
+            new Update<>(
+                dataKey,
+                LWWMap.empty(),
+                writeMajority,
+                askReplyTo,
+                cart -> updateCart(cart, command.item)
+            ),
+        InternalUpdateResponse::new);
 
-  private void receiveAddItem(AddItem add) {
-    Update<LWWMap<String, LineItem>> update = new Update<>(dataKey, LWWMap.create(), writeMajority,
-        cart -> updateCart(cart, add.item));
-    replicator.tell(update, self());
+    return Behaviors.same();
   }
 
   //#add-item
@@ -213,64 +244,51 @@ public class ShoppingCart extends AbstractActor {
     }
   }
 
-  private Receive matchRemoveItem() {
-    return receiveBuilder()
-      .match(RemoveItem.class, this::receiveRemoveItem)
-      .match(GetSuccess.class, this::isResponseToRemoveItem,
-          g -> receiveRemoveItemGetSuccess((GetSuccess<LWWMap<String, LineItem>>) g))
-      .match(GetFailure.class, this::isResponseToRemoveItem,
-          f -> receiveRemoveItemGetFailure((GetFailure<LWWMap<String, LineItem>>) f))
-      .match(NotFound.class, this::isResponseToRemoveItem, n -> {/* nothing to remove */})
-      .build();
-  }
-
   //#remove-item
-  private void receiveRemoveItem(RemoveItem rm) {
+  private Behavior<Command> onRemoveItem(RemoveItem command) {
     // Try to fetch latest from a majority of nodes first, since ORMap
     // remove must have seen the item to be able to remove it.
-    Optional<Object> ctx = Optional.of(rm);
-    replicator.tell(new Replicator.Get<>(dataKey, readMajority, ctx),
-        self());
+    replicator.askGet(
+        askReplyTo -> new Get<>(dataKey, readMajority, askReplyTo),
+        rsp -> new InternalRemoveItem(command.productId, rsp));
+
+    return Behaviors.same();
   }
 
-  private void receiveRemoveItemGetSuccess(GetSuccess<LWWMap<String, LineItem>> g) {
-    RemoveItem rm = (RemoveItem) g.getRequest().get();
-    removeItem(rm.productId);
-  }
-
-
-  private void receiveRemoveItemGetFailure(GetFailure<LWWMap<String, LineItem>> f) {
-    // ReadMajority failed, fall back to best effort local value
-    RemoveItem rm = (RemoveItem) f.getRequest().get();
-    removeItem(rm.productId);
+  private Behavior<Command> onInternalRemoveItem(InternalRemoveItem msg) {
+    if (msg.rsp instanceof GetSuccess) {
+      removeItem(msg.productId);
+    } else if (msg.rsp instanceof NotFound) {
+      /* nothing to remove */
+    } else if (msg.rsp instanceof GetFailure) {
+      // ReadMajority failed, fall back to best effort local value
+      removeItem(msg.productId);
+    }
+    return Behaviors.same();
   }
 
   private void removeItem(String productId) {
-    Update<LWWMap<String, LineItem>> update = new Update<>(dataKey, LWWMap.create(), writeMajority,
-        cart -> cart.remove(node, productId));
-    replicator.tell(update, self());
-  }
-
-  private boolean isResponseToRemoveItem(GetResponse<?> response) {
-    return response.key().equals(dataKey) && 
-        (response.getRequest().orElse(null) instanceof RemoveItem);
+    replicator.askUpdate(
+        askReplyTo ->
+            new Update<>(
+                dataKey,
+                LWWMap.empty(),
+                writeMajority,
+                askReplyTo,
+                cart -> cart.remove(node, productId)
+            ),
+        InternalUpdateResponse::new);
   }
   //#remove-item
 
-  private Receive matchOther() {
-    return receiveBuilder()
-      .match(UpdateSuccess.class, u -> {
-        // ok
-      })
-      .match(UpdateTimeout.class, t -> {
-        // will eventually be replicated
-      })
-      .match(UpdateFailure.class, f -> {
-        throw new IllegalStateException("Unexpected failure: " + f);
-      })
-      .build();
+  private Behavior<Command> onInternalUpdateResponse(InternalUpdateResponse<?> msg) {
+    if (msg.rsp instanceof UpdateSuccess) {
+      // ok
+    } else if (msg.rsp instanceof UpdateTimeout) {
+      // will eventually be replicated
+    } else if (msg.rsp instanceof UpdateFailure) {
+      throw new IllegalStateException("Unexpected failure: " + msg.rsp);
+    }
+    return Behaviors.same();
   }
-
-
-
 }

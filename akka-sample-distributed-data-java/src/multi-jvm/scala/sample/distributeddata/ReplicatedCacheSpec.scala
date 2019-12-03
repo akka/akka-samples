@@ -1,15 +1,17 @@
 package sample.distributeddata
 
-import java.util.Optional;
+import java.util.Optional
 import scala.concurrent.duration._
-import akka.cluster.Cluster
-import akka.cluster.ddata.DistributedData
-import akka.cluster.ddata.Replicator.GetReplicaCount
-import akka.cluster.ddata.Replicator.ReplicaCount
+import akka.actor.testkit.typed.scaladsl.TestProbe
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.scaladsl.adapter._
+import akka.cluster.ddata.Replicator
+import akka.cluster.ddata.typed.scaladsl.DistributedData
+import akka.cluster.ddata.typed.scaladsl.Replicator.{ GetReplicaCount, ReplicaCount }
+import akka.cluster.typed.{ Cluster, Join }
 import akka.remote.testconductor.RoleName
 import akka.remote.testkit.MultiNodeConfig
 import akka.remote.testkit.MultiNodeSpec
-import akka.testkit._
 import com.typesafe.config.ConfigFactory
 
 object ReplicatedCacheSpec extends MultiNodeConfig {
@@ -29,18 +31,19 @@ class ReplicatedCacheSpecMultiJvmNode1 extends ReplicatedCacheSpec
 class ReplicatedCacheSpecMultiJvmNode2 extends ReplicatedCacheSpec
 class ReplicatedCacheSpecMultiJvmNode3 extends ReplicatedCacheSpec
 
-class ReplicatedCacheSpec extends MultiNodeSpec(ReplicatedCacheSpec) with STMultiNodeSpec with ImplicitSender {
+class ReplicatedCacheSpec extends MultiNodeSpec(ReplicatedCacheSpec) with STMultiNodeSpec {
   import ReplicatedCacheSpec._
   import ReplicatedCache._
 
   override def initialParticipants = roles.size
 
-  val cluster = Cluster(system)
-  val replicatedCache = system.actorOf(ReplicatedCache.props)
+  implicit val typedSystem: ActorSystem[Nothing] = system.toTyped
+  val cluster = Cluster(typedSystem)
+  val replicatedCache = system.spawnAnonymous(ReplicatedCache.create())
 
   def join(from: RoleName, to: RoleName): Unit = {
     runOn(from) {
-      cluster join node(to).address
+      cluster.manager ! Join(node(to).address)
     }
     enterBarrier(from.name + "-joined")
   }
@@ -52,8 +55,9 @@ class ReplicatedCacheSpec extends MultiNodeSpec(ReplicatedCacheSpec) with STMult
       join(node3, node1)
 
       awaitAssert {
-        DistributedData(system).replicator ! GetReplicaCount
-        expectMsg(ReplicaCount(roles.size))
+        val probe = TestProbe[ReplicaCount]()
+        DistributedData(typedSystem).replicator ! GetReplicaCount(probe.ref)
+        probe.expectMessage(Replicator.ReplicaCount(roles.size))
       }
       enterBarrier("after-1")
     }
@@ -64,9 +68,9 @@ class ReplicatedCacheSpec extends MultiNodeSpec(ReplicatedCacheSpec) with STMult
       }
 
       awaitAssert {
-        val probe = TestProbe()
-        replicatedCache.tell(new GetFromCache("key1"), probe.ref)
-        probe.expectMsg(new Cached("key1", Optional.of("A")))
+        val probe = TestProbe[Cached]()
+        replicatedCache.tell(new GetFromCache("key1", probe.ref))
+        probe.expectMessage(new Cached("key1", Optional.of("A")))
       }
 
       enterBarrier("after-2")
@@ -75,14 +79,14 @@ class ReplicatedCacheSpec extends MultiNodeSpec(ReplicatedCacheSpec) with STMult
     "replicate many cached entries" in within(10.seconds) {
       runOn(node1) {
         for (i ← 100 to 200)
-          replicatedCache ! new PutInCache("key" + i, i)
+          replicatedCache ! new PutInCache("key" + i, "entry-" + i)
       }
 
       awaitAssert {
-        val probe = TestProbe()
+        val probe = TestProbe[Cached]()
         for (i ← 100 to 200) {
-          replicatedCache.tell(new GetFromCache("key" + i), probe.ref)
-          probe.expectMsg(new Cached("key" + i, Optional.of(Integer.valueOf(i))))
+          replicatedCache.tell(new GetFromCache("key" + i, probe.ref))
+          probe.expectMessage(new Cached("key" + i, Optional.of("entry-" + i)))
         }
       }
 
@@ -95,9 +99,9 @@ class ReplicatedCacheSpec extends MultiNodeSpec(ReplicatedCacheSpec) with STMult
       }
 
       awaitAssert {
-        val probe = TestProbe()
-        replicatedCache.tell(new GetFromCache("key2"), probe.ref)
-        probe.expectMsg(new Cached("key2", Optional.of("B")))
+        val probe = TestProbe[Cached]()
+        replicatedCache.tell(new GetFromCache("key2", probe.ref))
+        probe.expectMessage(new Cached("key2", Optional.of("B")))
       }
       enterBarrier("key2-replicated")
 
@@ -106,9 +110,9 @@ class ReplicatedCacheSpec extends MultiNodeSpec(ReplicatedCacheSpec) with STMult
       }
 
       awaitAssert {
-        val probe = TestProbe()
-        replicatedCache.tell(new GetFromCache("key2"), probe.ref)
-        probe.expectMsg(new Cached("key2", Optional.empty()))
+        val probe = TestProbe[Cached]()
+        replicatedCache.tell(new GetFromCache("key2", probe.ref))
+        probe.expectMessage(new Cached("key2", Optional.empty()))
       }
 
       enterBarrier("after-4")
@@ -121,9 +125,9 @@ class ReplicatedCacheSpec extends MultiNodeSpec(ReplicatedCacheSpec) with STMult
       }
 
       awaitAssert {
-        val probe = TestProbe()
-        replicatedCache.tell(new GetFromCache("key1"), probe.ref)
-        probe.expectMsg(new Cached("key1", Optional.of("A3")))
+        val probe = TestProbe[Cached]()
+        replicatedCache.tell(new GetFromCache("key1", probe.ref))
+        probe.expectMessage(new Cached("key1", Optional.of("A3")))
       }
 
       enterBarrier("after-5")

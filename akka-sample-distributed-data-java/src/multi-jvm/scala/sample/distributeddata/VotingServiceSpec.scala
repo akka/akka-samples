@@ -2,15 +2,16 @@ package sample.distributeddata
 
 import java.math.BigInteger
 import scala.concurrent.duration._
-import akka.actor.Props
-import akka.cluster.Cluster
-import akka.cluster.ddata.DistributedData
-import akka.cluster.ddata.Replicator.GetReplicaCount
-import akka.cluster.ddata.Replicator.ReplicaCount
+import akka.actor.testkit.typed.scaladsl.TestProbe
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.scaladsl.adapter._
+import akka.cluster.ddata.typed.javadsl.DistributedData
+import akka.cluster.ddata.typed.javadsl.Replicator.GetReplicaCount
+import akka.cluster.ddata.typed.javadsl.Replicator.ReplicaCount
+import akka.cluster.typed.{ Cluster, Join }
 import akka.remote.testconductor.RoleName
 import akka.remote.testkit.MultiNodeConfig
 import akka.remote.testkit.MultiNodeSpec
-import akka.testkit._
 import com.typesafe.config.ConfigFactory
 
 object VotingServiceSpec extends MultiNodeConfig {
@@ -30,16 +31,17 @@ class VotingServiceSpecMultiJvmNode1 extends VotingServiceSpec
 class VotingServiceSpecMultiJvmNode2 extends VotingServiceSpec
 class VotingServiceSpecMultiJvmNode3 extends VotingServiceSpec
 
-class VotingServiceSpec extends MultiNodeSpec(VotingServiceSpec) with STMultiNodeSpec with ImplicitSender {
+class VotingServiceSpec extends MultiNodeSpec(VotingServiceSpec) with STMultiNodeSpec {
   import VotingServiceSpec._
 
   override def initialParticipants = roles.size
 
-  val cluster = Cluster(system)
+  implicit val typedSystem: ActorSystem[Nothing] = system.toTyped
+  val cluster = Cluster(typedSystem)
 
   def join(from: RoleName, to: RoleName): Unit = {
     runOn(from) {
-      cluster join node(to).address
+      cluster.manager ! Join(node(to).address)
     }
     enterBarrier(from.name + "-joined")
   }
@@ -52,28 +54,29 @@ class VotingServiceSpec extends MultiNodeSpec(VotingServiceSpec) with STMultiNod
       join(node3, node1)
 
       awaitAssert {
-        DistributedData(system).replicator ! GetReplicaCount
-        expectMsg(ReplicaCount(roles.size))
+        val probe = TestProbe[ReplicaCount]()
+        DistributedData(typedSystem).replicator ! GetReplicaCount(probe.ref)
+        probe.expectMessage(ReplicaCount(roles.size))
       }
       enterBarrier("after-1")
     }
 
     "count votes correctly" in within(15.seconds) {
       import VotingService._
-      val votingService = system.actorOf(Props[VotingService], "votingService")
+      val votingService = system.spawn(VotingService.create(), "votingService")
       val N = 1000
       runOn(node1) {
-        votingService ! VotingService.OPEN
+        votingService ! VotingService.Open.INSTANCE
         for (n ← 1 to N) {
           votingService ! new Vote("#" + ((n % 20) + 1))
         }
       }
       runOn(node2, node3) {
         // wait for it to open
-        val p = TestProbe()
+        val p = TestProbe[Votes]()
         awaitAssert {
-          votingService.tell(VotingService.GET_VOTES, p.ref)
-          p.expectMsgType[Votes](3.seconds).open should be(true)
+          votingService.tell(new GetVotes(p.ref))
+          p.expectMessageType[Votes](3.seconds).open should be(true)
         }
         for (n ← 1 to N) {
           votingService ! new Vote("#" + ((n % 20) + 1))
@@ -81,13 +84,14 @@ class VotingServiceSpec extends MultiNodeSpec(VotingServiceSpec) with STMultiNod
       }
       enterBarrier("voting-done")
       runOn(node3) {
-        votingService ! VotingService.CLOSE
+        votingService ! VotingService.Close.INSTANCE
       }
 
       val expected = (1 to 20).map(n => "#" + n -> BigInteger.valueOf(3L * N / 20)).toMap
       awaitAssert {
-        votingService ! VotingService.GET_VOTES
-        val votes = expectMsgType[Votes](3.seconds)
+        val p = TestProbe[Votes]()
+        votingService ! new GetVotes(p.ref)
+        val votes = p.expectMessageType[Votes](3.seconds)
         votes.open should be (false)
         import scala.collection.JavaConverters._
         votes.result.asScala.toMap should be (expected)
