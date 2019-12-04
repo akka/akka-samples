@@ -1,16 +1,18 @@
 package sample.cqrs;
 
 import akka.actor.typed.ActorSystem;
+import akka.actor.typed.javadsl.Adapter;
 import akka.cluster.sharding.typed.javadsl.ClusterSharding;
 import akka.cluster.sharding.typed.javadsl.EntityRef;
 import akka.http.javadsl.marshallers.jackson.Jackson;
 import akka.http.javadsl.model.StatusCodes;
 import akka.http.javadsl.server.PathMatchers;
 import akka.http.javadsl.server.Route;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import akka.serialization.jackson.JacksonObjectMapperProvider;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
 import static akka.http.javadsl.server.Directives.*;
@@ -22,8 +24,7 @@ public class ShoppingCartRoutes {
     public final String itemId;
     public final int quantity;
 
-    @JsonCreator
-    public AddItem(@JsonProperty("cartId") String cartId, @JsonProperty("itemId") String itemId, @JsonProperty("quantity") int quantity) {
+    public AddItem(String cartId, String itemId, int quantity) {
       this.cartId = cartId;
       this.itemId = itemId;
       this.quantity = quantity;
@@ -35,8 +36,7 @@ public class ShoppingCartRoutes {
     public final String itemId;
     public final int quantity;
 
-    @JsonCreator
-    public UpdateItem(@JsonProperty("cartId") String cartId, @JsonProperty("itemId") String itemId, @JsonProperty("quantity") int quantity) {
+    public UpdateItem(String cartId, String itemId, int quantity) {
       this.cartId = cartId;
       this.itemId = itemId;
       this.quantity = quantity;
@@ -46,11 +46,15 @@ public class ShoppingCartRoutes {
   private final ActorSystem<?> system;
   private final ClusterSharding sharding;
   private final Duration timeout;
+  private final ObjectMapper objectMapper;
 
   public ShoppingCartRoutes(ActorSystem<?> system) {
     this.system = system;
     sharding = ClusterSharding.get(system);
     timeout = system.settings().config().getDuration("shopping.askTimeout");
+    // Use Jackson ObjectMapper from Akka Jackson serialization
+    objectMapper = JacksonObjectMapperProvider.get(Adapter.toClassic(system))
+      .getOrCreate("jackson-json", Optional.empty());
   }
 
 
@@ -68,11 +72,11 @@ public class ShoppingCartRoutes {
           ),
           post(() ->
               entity(
-                Jackson.unmarshaller(AddItem.class),
+                Jackson.unmarshaller(objectMapper, AddItem.class),
                 this::handleAddItem)),
           put(() ->
             entity(
-              Jackson.unmarshaller(UpdateItem.class),
+              Jackson.unmarshaller(objectMapper, UpdateItem.class),
               this::handleUpdateItem))
         )
       )
@@ -102,7 +106,7 @@ public class ShoppingCartRoutes {
   private Route onConfirmationReply(CompletionStage<ShoppingCart.Confirmation> reply) {
     return onSuccess(reply, confirmation -> {
       if (confirmation instanceof ShoppingCart.Accepted)
-        return complete(StatusCodes.OK, ((ShoppingCart.Accepted) confirmation).summary, Jackson.marshaller());
+        return complete(StatusCodes.OK, ((ShoppingCart.Accepted) confirmation).summary, Jackson.marshaller(objectMapper));
       else
         return complete(StatusCodes.BAD_REQUEST, ((ShoppingCart.Rejected) confirmation).reason);
     });
@@ -117,7 +121,7 @@ public class ShoppingCartRoutes {
       if (summary.items.isEmpty())
         return complete(StatusCodes.NOT_FOUND);
       else
-        return complete(StatusCodes.OK, summary, Jackson.marshaller());
+        return complete(StatusCodes.OK, summary, Jackson.marshaller(objectMapper));
     });
   }
 
