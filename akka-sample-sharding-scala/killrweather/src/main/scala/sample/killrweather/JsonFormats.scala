@@ -13,7 +13,8 @@ object JsonFormats {
   implicit val dataFormat: RootJsonFormat[Aggregator.Data] = jsonFormat3(Aggregator.Data)
   implicit val dataIngestedFormat: RootJsonFormat[WeatherRoutes.DataIngested] = jsonFormat1(WeatherRoutes.DataIngested)
 
-  implicit val queryStatusFormat: RootJsonFormat[WeatherRoutes.QueryStatus] = jsonFormat4(WeatherRoutes.QueryStatus)
+  implicit val queryWindowFormat: RootJsonFormat[WeatherRoutes.TimeWindow] = jsonFormat3(WeatherRoutes.TimeWindow)
+  implicit val queryStatusFormat: RootJsonFormat[WeatherRoutes.QueryResult] = jsonFormat5(WeatherRoutes.QueryResult)
 
   implicit val stationAddedFormat: RootJsonFormat[WeatherRoutes.WeatherStationAdded] = jsonFormat1(WeatherRoutes.WeatherStationAdded)
   implicit val stationsFormat: RootJsonFormat[WeatherRoutes.WeatherStations] = jsonFormat1(WeatherRoutes.WeatherStations)

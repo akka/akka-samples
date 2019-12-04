@@ -1,7 +1,7 @@
 package sample.killrweather
 
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityTypeKey}
 
 private[killrweather] object Aggregator {
@@ -26,6 +26,7 @@ private[killrweather] object Aggregator {
   object Function {
     case object HighLow extends Function
     case object Average extends Function
+    case object Current extends Function
   }
 
   /** Actual weather data event comprises many more data points.
@@ -36,8 +37,7 @@ private[killrweather] object Aggregator {
    */
   final case class Data(wsid: String, eventTime: Long, temperature: Double)
   final case class Aggregate(data: Data, processingTimestamp: Long, replyTo: ActorRef[WeatherRoutes.DataIngested]) extends Command
-  // TODO time window
-  final case class Query(wsid: String, dataType: Aggregator.DataType, func: Aggregator.Function, replyTo: ActorRef[WeatherRoutes.QueryStatus]) extends Command
+  final case class Query(wsid: String, dataType: Aggregator.DataType, func: Aggregator.Function, replyTo: ActorRef[WeatherRoutes.QueryResult]) extends Command
 
   private def average(values: Vector[Double]): Double =
     if (values.isEmpty) Double.NaN
@@ -55,41 +55,48 @@ private[killrweather] object Aggregator {
 private[killrweather] trait Aggregator {
 
   import Aggregator._
+  import WeatherRoutes.{QueryResult, TimeWindow}
 
   def TypeKey: EntityTypeKey[Aggregator.Command]
 
   protected def aggregating(entityId: String, values: Vector[Data]): Behavior[Aggregator.Command] =
     Behaviors.setup { context =>
-      context.log.info("Starting sharded aggregator {}.", entityId)
-
       Behaviors.receiveMessage {
         case Aggregate(data, received, replyTo) =>
           val updated = values :+ data
           context.log.debug(
-            s"Recorded ${updated.size} readings from station ${entityId}, " +
+            s"${updated.size} total readings from station ${entityId}, " +
               s"average ${average(updated.map(_.temperature))}, diff: processingTime - eventTime: ${received - data.eventTime}ms")
+
           replyTo ! WeatherRoutes.DataIngested(data.wsid)
 
-          aggregating(entityId, updated) // TODO store
+          aggregating(entityId, updated) // store
 
         case Query(wsid, dataType, func, replyTo) =>
-          dataType match {
+          // typically you would separate read/write, here for simplicity we show both
+          val value = dataType match {
             case DataType.Temperature =>
               func match {
                 case Function.Average =>
-                  val value = Vector((func.tag, average(values.map(_.temperature))))
-                  replyTo ! WeatherRoutes.QueryStatus(wsid, dataType.tag, values.size, value)
+                  val start: Long = values.headOption.map(_.eventTime).getOrElse(0)
+                  val end: Long = values.lastOption.map(_.eventTime).getOrElse(0)
+                  Vector(TimeWindow(start, end, average(values.map(_.temperature))))
 
                 case Function.HighLow =>
-                  val value = Vector(
-                    (func.tag, (values.map(_.temperature).max)),
-                    (func.tag, (values.map(_.temperature).min)))
-                  replyTo ! WeatherRoutes.QueryStatus(wsid, dataType.tag, values.size, value)
-                case _ => ???
+                  val (start, min) = values.map(e => e.eventTime -> e.temperature).min
+                  val (end, max) = values.map(e => e.eventTime -> e.temperature).max
+                  Vector(TimeWindow(start, end, min), TimeWindow(start, end, max))
+
+                case Function.Current =>
+                  Vector(values.lastOption
+                    .map(e => TimeWindow(e.eventTime, e.eventTime, e.temperature))
+                    .getOrElse(TimeWindow(0, 0, 0.0)))
               }
 
             case _ => ???
           }
+
+          replyTo ! QueryResult(wsid, dataType.tag, func.tag, values.size, value)
 
           Behaviors.same
       }
