@@ -59,6 +59,16 @@
       <artifactId>akka-persistence-cassandra-launcher_2.13</artifactId>
       <version>${akka-persistence-cassandra.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.typesafe.akka</groupId>
+      <artifactId>akka-http_2.13</artifactId>
+      <version>${akka-http.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.typesafe.akka</groupId>
+      <artifactId>akka-http-jackson_2.13</artifactId>
+      <version>${akka-http.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>ch.qos.logback</groupId>
