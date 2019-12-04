@@ -7,7 +7,7 @@ lazy val `akka-sample-cluster-java` = project
   .in(file("."))
   .settings(multiJvmSettings: _*)
   .settings(
-    organization := "com.typesafe.akka.samples",
+    organization := "com.lightbend.akka.samples",
     scalaVersion := "2.13.1",
     Compile / scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     Compile / javacOptions ++= Seq("-parameters", "-Xlint:unchecked", "-Xlint:deprecation"),

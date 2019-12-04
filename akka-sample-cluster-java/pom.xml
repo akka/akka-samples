@@ -5,7 +5,7 @@
 
   <modelVersion>4.0.0</modelVersion>
   <artifactId>akka-sample-cluster-java</artifactId>
-  <groupId>com.typesafe.akka.samples</groupId>
+  <groupId>com.lightbend.akka.samples</groupId>
   <name>Akka Cluster in Java</name>
   <version>empty</version>
 
