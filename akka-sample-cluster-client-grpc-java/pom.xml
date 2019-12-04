@@ -6,8 +6,8 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <akka.version>2.6.0-M8</akka.version>
-    <akka.grpc.version>0.7.1</akka.grpc.version>
+    <akka.version>2.6.0</akka.version>
+    <akka.grpc.version>0.7.2</akka.grpc.version>
   </properties>
 
   <groupId>com.typesafe.akka.samples</groupId>
