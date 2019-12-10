@@ -1,0 +1,24 @@
+<configuration>
+    <appender name="STDOUT" target="System.out" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%logger{36}] [%X{sourceThread}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="STDOUT" />
+    </appender>
+
+    <logger name="com.datastax.driver.core.QueryLogger.NORMAL" level="INFO"/>
+    <logger name="com.datastax.driver.core.QueryLogger.ERROR" level="DEBUG"/>
+    <logger name="com.datastax.driver.core.QueryLogger.SLOW" level="DEBUG"/>
+    <logger name="com.datastax.driver.core.Connection" level="INFO"/>
+    <logger name="com.codahale.metrics" level="INFO"/>
+
+    <root level="INFO">
+        <appender-ref ref="ASYNC"/>
+    </root>
+
+</configuration>
