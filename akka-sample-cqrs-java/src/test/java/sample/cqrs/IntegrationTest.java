@@ -160,8 +160,13 @@ public class IntegrationTest {
   }
 
   @Test
-  public void step03_shouldContinueEventProcessingFromOffset() {
+  public void step03_shouldContinueEventProcessingFromOffset() throws Exception {
+    // give it time to write the offset before shutting down
+    Thread.sleep(1000);
     ActorTestKit.shutdown(testKit3.system());
+
+    TestProbe<ShoppingCart.Event> eventProbe4 = testKit4.createTestProbe();
+    testKit4.system().eventStream().tell(new EventStream.Subscribe<>(ShoppingCart.Event.class, eventProbe4.getRef()));
 
     testKit4.spawn(Guardian.create(), "guardian");
 
@@ -176,9 +181,6 @@ public class IntegrationTest {
     EntityRef<ShoppingCart.Command> cart3 = ClusterSharding.get(testKit1.system())
       .entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, "cart-3");
     TestProbe<ShoppingCart.Confirmation> probe3 = testKit1.createTestProbe();
-
-    TestProbe<ShoppingCart.Event> eventProbe4 = testKit4.createTestProbe();
-    testKit4.system().eventStream().tell(new EventStream.Subscribe<>(ShoppingCart.Event.class, eventProbe4.getRef()));
 
     // update from node1, consume event from node4
     cart3.tell(new ShoppingCart.AddItem("abc", 43, probe3.getRef()));
