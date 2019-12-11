@@ -47,7 +47,6 @@ env:
     - CMD="cd akka-sample-cqrs-scala && sbt test"
     - CMD="cd akka-sample-cqrs-java && sbt test"
     - CMD="cd akka-sample-cqrs-java && mvn test"
-    - CMD="cd akka-sample-vavr && mvn test"
     - CMD="cd docs-gen && sbt paradox"
 script:
   - eval "$CMD"
