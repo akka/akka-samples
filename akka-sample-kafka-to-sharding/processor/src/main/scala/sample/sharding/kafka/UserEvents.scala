@@ -11,6 +11,7 @@ import akka.actor.typed.scaladsl.adapter._
 import akka.cluster.sharding.ShardRegion.ShardId
 import akka.cluster.sharding.dynamic.DynamicShardAllocationStrategy
 import akka.cluster.sharding.typed.ClusterShardingSettings
+import akka.cluster.sharding.typed.Murmur2NoEnvelopeMessageExtractor
 import akka.cluster.sharding.typed.ShardingMessageExtractor
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.sharding.typed.scaladsl.Entity
@@ -59,47 +60,20 @@ object UserEvents {
     }
   }
 
-  /**
-   * User the Kafka key as the entity id. Alternatively the entity id could be in the message
-   * but then care must be taken that the all messages for the same entity id end up in the
-   * same partition and that mapping is replicated in the [[shardId]] function.
+  /*
+   * The murmur2 message extractor matches kafka's default partitioning when messages
+   * have keys that are strings
    */
-  class UserIdMessageExtractor(nrKafkaPartitions: Int) extends ShardingMessageExtractor[Message, Message] {
-
-    private val log = LoggerFactory.getLogger(classOf[UserIdMessageExtractor])
-
-    private val key = new StringSerializer
-
+  class UserIdMessageExtractor(nrKafkaPartitions: Int)
+      extends Murmur2NoEnvelopeMessageExtractor[Message](nrKafkaPartitions) {
     override def entityId(message: Message): String = message.userId
-
-    /**
-     * The default partitioning strategy in Kafka is:
-     * - If a partition is specified in the record, use it
-     * - If no partition is specified but a key is present choose a partition based on a hash of the key
-     *
-     * If you have control of the producer side and can specify the entityId => partition mapping
-     * explicitlyy, that is best. Otherwise below replicates the default partitioning strategy in
-     * Kafka
-     */
-    override def shardId(entityId: String): ShardId = {
-      // topic is not used. If you do not have control of the producer you can
-      // use the same key serializer to match up, otherwise just replicate the explicit partition
-      // assignment in the producer
-      // val keyBytes = key.serialize("not used", entityId)
-      val keyBytes = entityId.getBytes(StandardCharsets.US_ASCII)
-      val shard = (Utils.toPositive(Utils.murmur2(keyBytes)) % nrKafkaPartitions).toString
-      log.debug(s"entityId->shardId ${entityId}->${shard}")
-      shard
-    }
-
-    override def unwrapMessage(message: Message): Message = message
   }
 
   def init(system: ActorSystem[_]): ActorRef[Message] = {
     val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
     ClusterSharding(system).init(
       Entity(TypeKey)(createBehavior = entityContext => UserEvents(entityContext.entityId))
-        .withAllocationStrategy(() => new DynamicShardAllocationStrategy(system.toClassic, TypeKey.name))
+        .withAllocationStrategy(new DynamicShardAllocationStrategy(system.toClassic, TypeKey.name))
         .withMessageExtractor(new UserIdMessageExtractor(processorConfig.nrPartitions))
         .withSettings(ClusterShardingSettings(system)))
   }
