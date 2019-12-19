@@ -3,7 +3,7 @@ val akkaVersion = "2.6.0-M4"
 val `akka-sample-sharding-java` = project
   .in(file("."))
   .settings(
-    organization := "com.typesafe.akka.samples",
+    organization := "com.lightbend.akka.samples",
     scalaVersion := "2.12.8",
     scalacOptions in Compile ++= Seq(
       "-deprecation",

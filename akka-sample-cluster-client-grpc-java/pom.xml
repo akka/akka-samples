@@ -10,7 +10,7 @@
     <akka.grpc.version>0.7.2</akka.grpc.version>
   </properties>
 
-  <groupId>com.typesafe.akka.samples</groupId>
+  <groupId>com.lightbend.akka.samples</groupId>
   <artifactId>akka-sample-cluster-client-grpc-java</artifactId>
   <packaging>jar</packaging>
   <version>empty</version>

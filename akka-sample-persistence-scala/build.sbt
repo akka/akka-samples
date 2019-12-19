@@ -1,4 +1,4 @@
-organization := "com.typesafe.akka.samples"
+organization := "com.lightbend.akka.samples"
 name := "akka-sample-persistence-scala"
 
 scalaVersion := "2.13.1"
