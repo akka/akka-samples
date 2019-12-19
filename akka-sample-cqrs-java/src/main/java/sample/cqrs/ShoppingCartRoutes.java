@@ -64,43 +64,28 @@ public class ShoppingCartRoutes {
         concat(
           pathPrefix(PathMatchers.segment(), (String cartId) ->
             concat(
-              get(() -> handleGetCart(cartId)),
+              get(() -> onSuccess(getCart(cartId), summary -> {
+                if (summary.items.isEmpty())
+                  return complete(StatusCodes.NOT_FOUND);
+                else
+                  return complete(StatusCodes.OK, summary, Jackson.marshaller(objectMapper));
+              })),
               path("checkout", () ->
-                post(() -> handleCheckoutCart(cartId))
+                post(() -> onConfirmationReply(checkout(cartId)))
               )
             )
           ),
           post(() ->
               entity(
                 Jackson.unmarshaller(objectMapper, AddItem.class),
-                this::handleAddItem)),
+                data -> onConfirmationReply(addItem(data)))),
           put(() ->
             entity(
               Jackson.unmarshaller(objectMapper, UpdateItem.class),
-              this::handleUpdateItem))
+              data -> onConfirmationReply(updateItem(data))))
         )
       )
     );
-  }
-
-  private Route handleAddItem(AddItem data) {
-    System.out.println("handleAddItem");
-    EntityRef<ShoppingCart.Command> entityRef =
-      sharding.entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, data.cartId);
-    CompletionStage<ShoppingCart.Confirmation> reply =
-      entityRef.ask(replyTo -> new ShoppingCart.AddItem(data.itemId, data.quantity, replyTo), timeout);
-    return onConfirmationReply(reply);
-  }
-
-  private Route handleUpdateItem(UpdateItem data) {
-    EntityRef<ShoppingCart.Command> entityRef =
-      sharding.entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, data.cartId);
-    CompletionStage<ShoppingCart.Confirmation> reply;
-    if (data.quantity == 0)
-      reply = entityRef.ask(replyTo -> new ShoppingCart.RemoveItem(data.itemId, replyTo), timeout);
-    else
-      reply = entityRef.ask(replyTo -> new ShoppingCart.AdjustItemQuantity(data.itemId, data.quantity, replyTo), timeout);
-    return onConfirmationReply(reply);
   }
 
   private Route onConfirmationReply(CompletionStage<ShoppingCart.Confirmation> reply) {
@@ -112,25 +97,31 @@ public class ShoppingCartRoutes {
     });
   }
 
-  private Route handleGetCart(String cartId) {
+  private CompletionStage<ShoppingCart.Confirmation> addItem(AddItem data) {
     EntityRef<ShoppingCart.Command> entityRef =
-      sharding.entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, cartId);
-    CompletionStage<ShoppingCart.Summary> reply =
-      entityRef.ask(ShoppingCart.Get::new, timeout);
-    return onSuccess(reply, summary -> {
-      if (summary.items.isEmpty())
-        return complete(StatusCodes.NOT_FOUND);
-      else
-        return complete(StatusCodes.OK, summary, Jackson.marshaller(objectMapper));
-    });
+      sharding.entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, data.cartId);
+    return entityRef.ask(replyTo -> new ShoppingCart.AddItem(data.itemId, data.quantity, replyTo), timeout);
   }
 
-  private Route handleCheckoutCart(String cartId) {
+  private CompletionStage<ShoppingCart.Confirmation> updateItem(UpdateItem data) {
+    EntityRef<ShoppingCart.Command> entityRef =
+      sharding.entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, data.cartId);
+    if (data.quantity == 0)
+      return entityRef.ask(replyTo -> new ShoppingCart.RemoveItem(data.itemId, replyTo), timeout);
+    else
+      return entityRef.ask(replyTo -> new ShoppingCart.AdjustItemQuantity(data.itemId, data.quantity, replyTo), timeout);
+  }
+
+  private CompletionStage<ShoppingCart.Summary> getCart(String cartId) {
     EntityRef<ShoppingCart.Command> entityRef =
       sharding.entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, cartId);
-    CompletionStage<ShoppingCart.Confirmation> reply =
-      entityRef.ask(ShoppingCart.Checkout::new, timeout);
-    return onConfirmationReply(reply);
+    return entityRef.ask(ShoppingCart.Get::new, timeout);
+  }
+
+  private CompletionStage<ShoppingCart.Confirmation> checkout(String cartId) {
+    EntityRef<ShoppingCart.Command> entityRef =
+      sharding.entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, cartId);
+    return entityRef.ask(ShoppingCart.Checkout::new, timeout);
   }
 
 
