@@ -40,13 +40,6 @@ lazy val `akka-sample-fsm-scala` = project
     baseProject := "akka-sample-fsm-scala"
   )
 
-lazy val `akka-sample-osgi-dining-hakkers` = project
-  .enablePlugins(AkkaSamplePlugin)
-  .settings(
-    name        := "Akka OSGi Dining Hakkers",
-    baseProject := "akka-sample-osgi-dining-hakkers"
-  )
-
 lazy val `akka-sample-persistence-java` = project
   .enablePlugins(AkkaSamplePlugin)
   .settings(
