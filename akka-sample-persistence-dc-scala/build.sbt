@@ -30,7 +30,7 @@ libraryDependencies ++= Seq(
   "com.lightbend.akka.management" %% "akka-management" % AkkaClusterManagementVersion,
   "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaClusterManagementVersion,
   "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % AkkaPersistenceCassandraVersion % "test",
-  "org.scalatest" %% "scalatest" % "3.0.7" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.8" % "test"
 )
 
 // transitive dependency of akka 2.5x that is brought in by addons but evicted
