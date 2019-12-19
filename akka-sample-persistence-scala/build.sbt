@@ -2,7 +2,7 @@ organization := "com.typesafe.akka.samples"
 name := "akka-sample-persistence-scala"
 
 scalaVersion := "2.13.1"
-def akkaVersion = "2.6.0"
+def akkaVersion = "2.6.1"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-persistence-typed" % akkaVersion,

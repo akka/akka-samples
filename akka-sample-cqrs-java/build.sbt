@@ -1,4 +1,4 @@
-val AkkaVersion = "2.6.0"
+val AkkaVersion = "2.6.1"
 val AkkaPersistenceCassandraVersion = "0.100"
 val AkkaHttpVersion = "10.1.10"
 

@@ -1,4 +1,4 @@
-val akkaVersion = "2.6.0"
+val akkaVersion = "2.6.1"
 
 lazy val `akka-sample-cluster-client-grpc-java` = project
   .in(file("."))
