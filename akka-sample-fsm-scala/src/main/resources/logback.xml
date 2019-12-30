@@ -15,4 +15,4 @@
         <appender-ref ref="ASYNC"/>
     </root>
 
-</configuration
+</configuration>
