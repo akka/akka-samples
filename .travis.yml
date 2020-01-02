@@ -43,7 +43,7 @@ env:
     - CMD="cd akka-sample-persistence-java && sbt test"
     - CMD="cd akka-sample-persistence-java && mvn test"
     - CMD="cd akka-sample-persistence-scala && sbt test"
-    - CMD="mkdir ~/.lightbend && echo $LB_CRED | base64 -d > ~/.lightbend/commercial.credentials && sudo apt-get update && sudo apt-get install protobuf-compiler && cd akka-sample-persistence-dc-scala && sbt test"
+    - CMD="if \[ \"$TRAVIS_SECURE_ENV_VARS\" == \"true\" ]; then mkdir ~/.lightbend && echo $LB_CRED | base64 -d > ~/.lightbend/commercial.credentials && sudo apt-get update && sudo apt-get install protobuf-compiler && cd akka-sample-persistence-dc-scala && sbt test; fi"
     - CMD="cd akka-sample-cqrs-scala && sbt test"
     - CMD="cd akka-sample-cqrs-java && sbt test"
     - CMD="cd akka-sample-cqrs-java && mvn test"
