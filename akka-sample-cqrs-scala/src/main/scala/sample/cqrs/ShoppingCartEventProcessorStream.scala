@@ -17,7 +17,7 @@ class ShoppingCartEventProcessorStream(
     extends EventProcessorStream[ShoppingCart.Event](system, executionContext, eventProcessorId, tag) {
 
   def processEvent(event: ShoppingCart.Event, persistenceId: PersistenceId, sequenceNr: Long): Future[Done] = {
-    log.info("EventProcessor({}) consumed {} from {} with seqNr {}", tag, event, persistenceId, sequenceNr)
+    log.infoN("EventProcessor({}) consumed {} from {} with seqNr {}", tag, event, persistenceId, sequenceNr)
     event match {
       case ShoppingCart.ItemAdded(cartId, itemId, quantity, timestamp) =>
         log.infoN(

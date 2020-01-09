@@ -5,6 +5,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
+import akka.actor.typed.scaladsl.LoggerOps
 import akka.Done
 import akka.NotUsed
 import akka.actor.typed.ActorSystem
@@ -26,8 +27,8 @@ import akka.stream.SharedKillSwitch
 import akka.stream.scaladsl.RestartSource
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
-import com.datastax.driver.core.PreparedStatement
-import com.datastax.driver.core.Row
+import com.datastax.oss.driver.api.core.cql.PreparedStatement
+import com.datastax.oss.driver.api.core.cql.Row
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -94,7 +95,7 @@ abstract class EventProcessorStream[Event: ClassTag](
       .withBackoff(minBackoff = 500.millis, maxBackoff = 20.seconds, randomFactor = 0.1) { () =>
         Source.futureSource {
           readOffset().map { offset =>
-            log.info("Starting stream for tag [{}] from offset [{}]", tag, offset)
+            log.info2("Starting stream for tag [{}] from offset [{}]", tag, offset)
             processEventsByTag(offset)
             // groupedWithin can be used here to improve performance by reducing number of offset writes,
             // with the trade-off of possibility of more duplicate events when stream is restarted
@@ -130,7 +131,7 @@ abstract class EventProcessorStream[Event: ClassTag](
   private def extractOffset(maybeRow: Option[Row]): Offset = {
     maybeRow match {
       case Some(row) =>
-        val uuid = row.getUUID("timeUuidOffset")
+        val uuid = row.getUuid("timeUuidOffset")
         if (uuid == null) {
           NoOffset
         } else {
