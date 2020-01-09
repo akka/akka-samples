@@ -1,7 +1,6 @@
 package sample.cqrs
 
 import scala.concurrent.Future
-import scala.concurrent.duration._
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
@@ -39,7 +38,7 @@ class ShoppingCartRoutes()(implicit system: ActorSystem[_]) {
                 case ShoppingCart.Accepted(summary) =>
                   complete(StatusCodes.OK -> summary)
                 case ShoppingCart.Rejected(reason) =>
-                  complete(StatusCodes.BadRequest, reason)
+                  complete(StatusCodes.BadRequest -> reason)
               }
             }
           },
@@ -57,7 +56,7 @@ class ShoppingCartRoutes()(implicit system: ActorSystem[_]) {
                   case ShoppingCart.Accepted(summary) =>
                     complete(StatusCodes.OK -> summary)
                   case ShoppingCart.Rejected(reason) =>
-                    complete(StatusCodes.BadRequest, reason)
+                    complete(StatusCodes.BadRequest -> reason)
                 }
             }
           },
@@ -76,7 +75,7 @@ class ShoppingCartRoutes()(implicit system: ActorSystem[_]) {
                   case ShoppingCart.Accepted(summary) =>
                     complete(StatusCodes.OK -> summary)
                   case ShoppingCart.Rejected(reason) =>
-                    complete(StatusCodes.BadRequest, reason)
+                    complete(StatusCodes.BadRequest -> reason)
                 }
               }
             })

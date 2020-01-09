@@ -4,7 +4,6 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
-
 import akka.Done
 import akka.NotUsed
 import akka.actor.typed.ActorSystem
@@ -26,8 +25,9 @@ import akka.stream.SharedKillSwitch
 import akka.stream.scaladsl.RestartSource
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
-import com.datastax.driver.core.PreparedStatement
-import com.datastax.driver.core.Row
+import com.datastax.oss.driver.api.core.cql.PreparedStatement
+import com.datastax.oss.driver.api.core.cql.Row
+import com.datastax.oss.driver.api.core.uuid.Uuids
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -110,6 +110,13 @@ abstract class EventProcessorStream[Event: ClassTag](
     query.eventsByTag(tag, offset).mapAsync(1) { eventEnvelope =>
       eventEnvelope.event match {
         case event: Event =>
+          eventEnvelope.offset match {
+            case TimeBasedUUID(offset) =>
+              // these times are from different nodes so don't rely on this being accurate
+              val eventDelay = System.currentTimeMillis() - Uuids.unixTimestamp(offset)
+              log.info("Event eventual consistency {}", eventDelay.millis)
+            case _ =>
+          }
           processEvent(event, PersistenceId.ofUniqueId(eventEnvelope.persistenceId), eventEnvelope.sequenceNr).map(_ =>
             eventEnvelope.offset)
         case other =>
@@ -130,7 +137,7 @@ abstract class EventProcessorStream[Event: ClassTag](
   private def extractOffset(maybeRow: Option[Row]): Offset = {
     maybeRow match {
       case Some(row) =>
-        val uuid = row.getUUID("timeUuidOffset")
+        val uuid = row.getUuid("timeUuidOffset")
         if (uuid == null) {
           NoOffset
         } else {
