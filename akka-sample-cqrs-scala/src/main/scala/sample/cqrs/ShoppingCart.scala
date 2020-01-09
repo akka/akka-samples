@@ -118,7 +118,7 @@ object ShoppingCart {
     def cartId: String
   }
 
-  final case class ItemAdded(cartId: String, itemId: String, quantity: Int) extends Event
+  final case class ItemAdded(cartId: String, itemId: String, quantity: Int, timestamp: Long) extends Event
 
   final case class ItemRemoved(cartId: String, itemId: String) extends Event
 
@@ -161,7 +161,7 @@ object ShoppingCart {
           Effect.reply(replyTo)(Rejected("Quantity must be greater than zero"))
         else
           Effect
-            .persist(ItemAdded(cartId, itemId, quantity))
+            .persist(ItemAdded(cartId, itemId, quantity, System.currentTimeMillis()))
             .thenReply(replyTo)(updatedCart => Accepted(updatedCart.toSummary))
 
       case RemoveItem(itemId, replyTo) =>
@@ -208,7 +208,7 @@ object ShoppingCart {
 
   private def handleEvent(state: State, event: Event) = {
     event match {
-      case ItemAdded(_, itemId, quantity)            => state.updateItem(itemId, quantity)
+      case ItemAdded(_, itemId, quantity, _)         => state.updateItem(itemId, quantity)
       case ItemRemoved(_, itemId)                    => state.removeItem(itemId)
       case ItemQuantityAdjusted(_, itemId, quantity) => state.updateItem(itemId, quantity)
       case CheckedOut(_, eventTime)                  => state.checkout(eventTime)
