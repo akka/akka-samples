@@ -1,0 +1,5 @@
+---
+- hosts: tag_Name_cassandra
+  sudo: yes
+  roles:
+    - cassandra

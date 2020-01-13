@@ -62,7 +62,7 @@ object Main {
 
     val offsetTableStmt =
       """
-      CREATE TABLE IF NOT EXISTS akka.offsetStore (
+      CREATE TABLE IF NOT EXISTS akka_cqrs_sample.offsetStore (
         eventProcessorId text,
         tag text,
         timeUuidOffset timeuuid,

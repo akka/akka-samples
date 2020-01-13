@@ -1,7 +1,7 @@
 import NativePackagerHelper._
 
 val AkkaVersion = "2.6.1"
-val AkkaPersistenceCassandraVersion = "0.98+118-c0a98f49+20200109-1155-SNAPSHOT"
+val AkkaPersistenceCassandraVersion = "0.102-SNAPSHOT"
 val AkkaHttpVersion = "10.1.10"
 
 lazy val `akka-sample-cqrs-scala` = project

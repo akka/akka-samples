@@ -1,0 +1,39 @@
+- apt_repository:
+    repo: deb http://www.apache.org/dist/cassandra/debian 311x main
+    state: present
+
+- name: Add Apache Cassandra repository apt key
+  apt_key: keyserver=pool.sks-keyservers.net id=A278B781FE4B2BDA state=present
+
+- name: Add an Apt signing key, uses whichever key is at the URL
+  apt_key:
+    url: https://www.apache.org/dist/cassandra/KEYS
+    state: present
+
+- name: Install Cassandra
+  apt: pkg=cassandra={{ cassandra_version }} state=present update-cache=yes force=yes
+
+- name: Debug
+  debug:
+    var:  hostvars[inventory_hostname]
+
+- name: Configure seeds
+  lineinfile: "dest=/etc/cassandra/cassandra.yaml state=present regexp='^.*- seeds:.*$' line='      - seeds: \"172.31.21.68\"'"
+
+- name: Configure broadcast address
+  lineinfile: "dest=/etc/cassandra/cassandra.yaml state=present regexp='^# broadcast_address:(.*)$' line='broadcast_address: {{ ansible_default_ipv4.address  }}'"
+
+- name: Configure listening address
+  lineinfile: "dest=/etc/cassandra/cassandra.yaml state=present regexp='^listen_address:(.*)$' line='listen_address: {{ ansible_default_ipv4.address }}'"
+
+- name: Configure rpc address
+  lineinfile: "dest=/etc/cassandra/cassandra.yaml state=present regexp='^rpc_address:(.*)$' line='rpc_address: {{ ansible_default_ipv4.address }}'"
+
+- name: Configure broadcast rpc address
+  lineinfile: "dest=/etc/cassandra/cassandra.yaml state=present regexp='^# broadcast_rpc_address:(.*)$' line='broadcast_rpc_address: {{ ansible_default_ipv4.address  }}'"
+
+- name: Restart
+  systemd:
+    state: restarted
+    name: cassandra
+
