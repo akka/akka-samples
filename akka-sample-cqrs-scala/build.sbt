@@ -1,5 +1,7 @@
+import NativePackagerHelper._
+
 val AkkaVersion = "2.6.1"
-val AkkaPersistenceCassandraVersion = "0.98+118-c0a98f49-SNAPSHOT"
+val AkkaPersistenceCassandraVersion = "0.98+118-c0a98f49+20200109-1155-SNAPSHOT"
 val AkkaHttpVersion = "10.1.10"
 
 lazy val `akka-sample-cqrs-scala` = project
@@ -33,3 +35,15 @@ lazy val `akka-sample-cqrs-scala` = project
     testOptions in Test += Tests.Argument("-oDF"),
     logBuffered in Test := false,
     licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0"))))
+  .settings(
+      assemblyMergeStrategy in assembly := {
+          case "application.conf"             => MergeStrategy.concat
+          case "META-INF/io.netty.versions.properties" => MergeStrategy.first
+          case "module-info.class"            => MergeStrategy.discard
+          case x =>
+              val oldStrategy = (assemblyMergeStrategy in assembly).value
+              oldStrategy(x)
+      }
+  ).enablePlugins(UniversalPlugin, JavaAppPackaging)
+
+

@@ -60,15 +60,9 @@ object Main {
   def createTables(system: ActorSystem[_]): Unit = {
     val session = CassandraSessionExtension(system).session
 
-    // TODO use real replication strategy in real application
-    val keyspaceStmt = """
-      CREATE KEYSPACE IF NOT EXISTS akka_cqrs_sample
-      WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 }
-      """
-
     val offsetTableStmt =
       """
-      CREATE TABLE IF NOT EXISTS akka_cqrs_sample.offsetStore (
+      CREATE TABLE IF NOT EXISTS akka.offsetStore (
         eventProcessorId text,
         tag text,
         timeUuidOffset timeuuid,
@@ -77,7 +71,6 @@ object Main {
       """
 
     // ok to block here, main thread
-    Await.ready(session.executeDDL(keyspaceStmt), 30.seconds)
     Await.ready(session.executeDDL(offsetTableStmt), 30.seconds)
   }
 

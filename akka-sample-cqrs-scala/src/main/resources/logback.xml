@@ -12,6 +12,7 @@
     -->
     <logger name="com.datastax.driver.core.Connection" level="WARN"/>
     <logger name="com.codahale.metrics" level="INFO"/>
+    <logger name="akka.persistence.cassandra" level="DEBUG"/>
 
     <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
         <queueSize>1024</queueSize>

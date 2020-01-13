@@ -122,7 +122,7 @@ abstract class EventProcessorStream[Event: ClassTag](
   private def readOffset(): Future[Offset] = {
     session
       .selectOne(
-        "SELECT timeUuidOffset FROM akka_cqrs_sample.offsetStore WHERE eventProcessorId = ? AND tag = ?",
+        "SELECT timeUuidOffset FROM akka.offsetStore WHERE eventProcessorId = ? AND tag = ?",
         eventProcessorId,
         tag)
       .map(extractOffset)
@@ -142,7 +142,7 @@ abstract class EventProcessorStream[Event: ClassTag](
   }
 
   private def prepareWriteOffset(): Future[PreparedStatement] = {
-    session.prepare("INSERT INTO akka_cqrs_sample.offsetStore (eventProcessorId, tag, timeUuidOffset) VALUES (?, ?, ?)")
+    session.prepare("INSERT INTO akka.offsetStore (eventProcessorId, tag, timeUuidOffset) VALUES (?, ?, ?)")
   }
 
   private def writeOffset(offset: Offset)(implicit ec: ExecutionContext): Future[Done] = {
