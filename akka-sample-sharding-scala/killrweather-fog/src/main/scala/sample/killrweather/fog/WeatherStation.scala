@@ -4,6 +4,7 @@ import scala.util.Random
 
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.scaladsl.LoggerOps
 
 /**
   *  How many weather stations there are? Currently:
@@ -64,13 +65,13 @@ class WeatherStation(ws: WeatherStation.WmoId, settings: FogSettings) {
     Behaviors.setup { context =>
       val api = context.spawn(WeatherApi(settings.host, httpPort, ws), s"api-${ws.id}")
 
-      context.log.info(s"Started WeatherStation ${ws.id} of total ${settings.weatherStations} with weather port $httpPort")
+      context.log.infoN(s"Started WeatherStation ${ws.id} of total ${settings.weatherStations} with weather port $httpPort")
 
       Behaviors.withTimers { timers =>
         timers.startSingleTimer(Register, Register, settings.staggerStartup)
         Behaviors.receiveMessagePartial {
           case Register =>
-            context.log.debug(s"Registering ${ws.id}.")
+            context.log.debug("Registering {}", ws.id)
             api ! WeatherApi.Add(ws, context.self)
             Behaviors.same
           case Start => active(ws, api)

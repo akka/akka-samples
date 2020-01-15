@@ -1,5 +1,9 @@
 package sample.killrweather
 
+import spray.json.JsString
+import spray.json.JsValue
+import spray.json.JsonFormat
+
 /**
  * This formatter determines how to convert to and from Data objects.
  * It is used by the `WeatherRoutes` when receiving remote edge data.
@@ -9,15 +13,39 @@ object JsonFormats {
   import spray.json.RootJsonFormat
   // import the default encoders for primitive types (Int, String, Lists etc)
   import spray.json.DefaultJsonProtocol._
+  import spray.json.deserializationError
 
-  implicit val dataFormat: RootJsonFormat[Aggregator.Data] = jsonFormat3(Aggregator.Data)
-  implicit val dataIngestedFormat: RootJsonFormat[WeatherRoutes.DataIngested] = jsonFormat1(WeatherRoutes.DataIngested)
+  /**
+   * Given a set of possible case objects, create a format that accepts uses their toString representation in json
+   */
+  private final case class SimpleEnumFormat[T](possibleValues: Set[T]) extends JsonFormat[T] {
+    val stringToValue: Map[String, T] = possibleValues.map(value => value.toString.toLowerCase -> value).toMap
+    val valueToString: Map[T, String] = stringToValue.map { case (string, value) => value -> string }
 
-  implicit val queryWindowFormat: RootJsonFormat[WeatherRoutes.TimeWindow] = jsonFormat3(WeatherRoutes.TimeWindow)
-  implicit val queryStatusFormat: RootJsonFormat[WeatherRoutes.QueryResult] = jsonFormat5(WeatherRoutes.QueryResult)
+    override def read(json: JsValue): T = json match {
+      case JsString(text) =>
+        stringToValue.get(text.toLowerCase) match {
+          case Some(t) => t
+          case None => deserializationError(s"Possible values are ${stringToValue.keySet}, [$text] is not among them")
+        }
+      case surprise =>
+        deserializationError(s"Expected a string value, got $surprise")
+    }
 
-  implicit val stationAddedFormat: RootJsonFormat[WeatherRoutes.WeatherStationAdded] = jsonFormat1(WeatherRoutes.WeatherStationAdded)
-  implicit val stationsFormat: RootJsonFormat[WeatherRoutes.WeatherStations] = jsonFormat1(WeatherRoutes.WeatherStations)
-  implicit val stationFormat: RootJsonFormat[Guardian.WeatherStation] = jsonFormat1(Guardian.WeatherStation)
+    override def write(obj: T): JsValue =
+      JsString(valueToString(obj))
+  }
+
+  implicit val functionFormat: JsonFormat[WeatherStation.Function] = SimpleEnumFormat(WeatherStation.Function.All)
+  implicit val dataTypeFormat: JsonFormat[WeatherStation.DataType] = SimpleEnumFormat(WeatherStation.DataType.All)
+  implicit val dataFormat: RootJsonFormat[WeatherStation.Data] = jsonFormat3(WeatherStation.Data)
+
+  implicit val dataIngestedFormat: RootJsonFormat[WeatherStation.DataRecorded] = jsonFormat1(WeatherStation.DataRecorded)
+
+  implicit val queryWindowFormat: RootJsonFormat[WeatherStation.TimeWindow] = jsonFormat3(WeatherStation.TimeWindow)
+  implicit val queryStatusFormat: RootJsonFormat[WeatherStation.QueryResult] = jsonFormat5(WeatherStation.QueryResult)
+
+  implicit val stationAddedFormat: RootJsonFormat[Stations.WeatherStationAdded] = jsonFormat1(Stations.WeatherStationAdded)
+  implicit val stationsFormat: RootJsonFormat[Stations.WeatherStations] = jsonFormat1(Stations.WeatherStations)
 
 }

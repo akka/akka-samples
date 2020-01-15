@@ -15,6 +15,8 @@ types on each clustered node.
 
 ### Aggregator - sharded data by type
  
+FIXME this is not how it was working though, it would always create one Aggregate per weather station id
+ 
 A sharded `Aggregator` has a declared data type and receives that data stream from remote devices via the  `Guardian`.
 For each `Aggregator`, for one or across all weather stations, common cumulative computations can be run 
 for a given time window queried, e.g. daily, monthly or annual such as:
@@ -130,6 +132,32 @@ Start even more nodes in the same way, if you like.
 Each node's log will show its dynamic weather port opened for weather stations to connect to. 
 ```
 [2019-11-04 14:43:45,861] [INFO] [akka.actor.typed.ActorSystem] [KillrWeather-akka.actor.default-dispatcher-16] [] - WeatherServer online at http://127.0.0.1:8081/
+```
+
+### Interacting with the HTTP endpoint manually
+
+With the cluster running you can interact with the HTTP endpoint using `curl`
+
+List known stations on a node 
+```
+curl http://localhost:12553/weather
+```
+    
+Add a station 123 on a node: 
+```
+curl -XPOST http://localhost:12553/weather/123
+```
+
+Record data for station 123:
+
+```
+curl -XPOST http://localhost:12553/weather/123/data -H "Content-Type: application/json" --data '{"eventTime": 1579106781, "dataType": "temperature", "value": 10.3}'
+```
+
+Query average temperature for station 123:
+
+```
+curl "http://localhost:12553/weather/123?type=temperature&function=average"
 ```
 
 ### The Fog Network
