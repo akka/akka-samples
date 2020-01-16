@@ -5,8 +5,7 @@ import spray.json.JsValue
 import spray.json.JsonFormat
 
 /**
- * This formatter determines how to convert to and from Data objects.
- * It is used by the `WeatherRoutes` when receiving remote edge data.
+ * Formats to marshall and unmarshall objects to JSON in the HTTP API, for internode serialization CBOR and Jackson is used
  */
 object JsonFormats {
 
@@ -44,8 +43,5 @@ object JsonFormats {
 
   implicit val queryWindowFormat: RootJsonFormat[WeatherStation.TimeWindow] = jsonFormat3(WeatherStation.TimeWindow)
   implicit val queryStatusFormat: RootJsonFormat[WeatherStation.QueryResult] = jsonFormat5(WeatherStation.QueryResult)
-
-  implicit val stationAddedFormat: RootJsonFormat[Stations.WeatherStationAdded] = jsonFormat1(Stations.WeatherStationAdded)
-  implicit val stationsFormat: RootJsonFormat[Stations.WeatherStations] = jsonFormat1(Stations.WeatherStations)
 
 }

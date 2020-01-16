@@ -1,14 +1,12 @@
 package sample.killrweather.fog
 
-import java.net.{DatagramSocket, InetSocketAddress}
-import java.nio.channels.DatagramChannel
+import akka.actor.typed.SupervisorStrategy
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.Behavior
+import com.typesafe.config.Config
 
 import scala.concurrent.duration._
-import scala.util.control.NonFatal
-
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorSystem, Behavior}
-import com.typesafe.config.Config
 
 /**
   * In another terminal start the `Fog` (see Fog computing https://en.wikipedia.org/wiki/Fog_computing).
@@ -18,25 +16,27 @@ import com.typesafe.config.Config
 object Fog {
 
   def main(args: Array[String]): Unit = {
-
-    val ports = if (args.isEmpty) Seq(8081) else args.map(_.toInt).toSeq
-
-    ActorSystem[Nothing](Guardian(ports.toVector), "Fog")
+    val weatherApiPorts = if (args.isEmpty) Seq(12553, 12554) else args.map(_.toInt).toSeq
+    ActorSystem[Nothing](Guardian(weatherApiPorts), "Fog")
   }
 }
 
 object Guardian {
 
-  def apply(ports: Vector[Int]): Behavior[Nothing] = {
+  def apply(weatherPorts: Seq[Int]): Behavior[Nothing] = {
     Behaviors.setup[Nothing] { context =>
       val settings = FogSettings(context.system)
-      val weatherPorts = ports.flatMap(settings.findHttpPort)
 
       (1 until settings.weatherStations).foreach { n =>
-        val wsid = WeatherStation.WmoId(n.toString)
+        val wsid = n.toString
+        // choose one of the HTTP API nodes to report to
         val weatherPort = weatherPorts(n % weatherPorts.size)
 
-        context.spawn(WeatherStation(wsid, settings, weatherPort), s"weather-station-${wsid.id}")
+        context.spawn(
+          Behaviors.supervise(
+            WeatherStation(wsid, settings, weatherPort)
+          ).onFailure[RuntimeException](SupervisorStrategy.restartWithBackoff(1.second, 5.seconds, 0.5)),
+            s"weather-station-$wsid")
       }
       Behaviors.empty
     }
@@ -73,19 +73,4 @@ final case class FogSettings(
     staggerStartup: FiniteDuration,
     host: String,
     registrationTimeout: FiniteDuration,
-    sampleInterval: FiniteDuration) {
-
-  def findHttpPort(attempt: Int): Option[Int] = {
-    val ds: DatagramSocket = DatagramChannel.open().socket()
-    try {
-      ds.bind(new InetSocketAddress(host, attempt))
-      Some(attempt)
-    } catch {
-      case NonFatal(e) =>
-        ds.close()
-        println(s"Unable to bind to port $attempt for http server to send data: ${e.getMessage}")
-        None
-    } finally
-      ds.close()
-  }
-}
+    sampleInterval: FiniteDuration)

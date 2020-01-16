@@ -10,31 +10,26 @@ This program starts an ActorSystem with Cluster Sharding enabled. It joins the c
 
 ### Guardian
 
-The [Guardian.scala](killrweather/src/main/scala/sample/killrweather/Guardian.scala) starts the infrastructure to shard any number of data `Aggregator`
-types on each clustered node. 
+The [Guardian.scala](killrweather/src/main/scala/sample/killrweather/Guardian.scala) bootstraps the application to shard 
+any number of data `WeatherStation` types on each clustered node. 
 
-### Aggregator - sharded data by type
+### WeatherStation - sharded data by id
  
-FIXME this is not how it was working though, it would always create one Aggregate per weather station id
- 
-A sharded `Aggregator` has a declared data type and receives that data stream from remote devices via the  `Guardian`.
-For each `Aggregator`, for one or across all weather stations, common cumulative computations can be run 
+A sharded `WeatherStation` has a set of recorded data points and receives that data stream from remote devices via the
+HTTP endpoint. For each `WeatherStation`, common cumulative computations can be run 
 for a given time window queried, e.g. daily, monthly or annual such as:
 
 * aggregate
 * averages 
 * high/low 
-* topK (e.g. the top N highest temperatures)
-
-Thus far, only temperature data is received, sharded and processed. Other types can easily be added.
 
 ### Receiving edge device data by data type
 
-A [WeatherServer](killrweather/src/main/scala/sample/killrweather/WeatherServer.scala) is started with
-HTTP [WeatherRoutes](killrweather/src/main/scala/sample/killrweather/WeatherRoutes.scala) 
-to receive and unmarshall data from remote devices by data type, by station ID, device ID and data type.
-The data types are sharded using [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/scala/typed/cluster-sharding.html
-).
+The [WeatherHttpServer](killrweather/src/main/scala/sample/killrweather/WeatherHttpServer.scala) is started with 
+ [WeatherRoutes](killrweather/src/main/scala/sample/killrweather/WeatherRoutes.scala)
+to receive and unmarshall data from remote devices by data type, by station ID, device ID and data type and to allow 
+querying. The HTTP port of each node is chosen from the port used for Akka Remoting plus 10000, so for a node running 
+on port 2525 the HTTP port will be 12525.
 
 ### Configuration
 
@@ -48,19 +43,16 @@ Open [Fog.scala](killrweather-fog/src/main/scala/sample/killrweather/fog/Fog.sca
 `Fog` is the program simulating many weather stations and their devices which read and report data to clusters.
 The name refers to [Fog computing](https://en.wikipedia.org/wiki/Fog_computing) with edges - the remote weather station
 nodes and their device edges.
-This example starts simply with one device per station, and one data type, temperature. In the wild, other devices would include:
+
+This example starts simply with one actor per station and just reports one data type, temperature. In the wild, other devices would include:
 pressure, precipitation, wind speed, wind direction, sky condition and dewpoint.
-`Fog` starts the [configured](#configuration) number of weather stations their devices.
+`Fog` starts the number of weather stations configured in [killrweather-fog/src/main/resources/application.conf](killrweather-fog/src/main/resources/application.conf) 
+upon boot.
 
 ### Weather stations and devices
 
 Each [WeatherStation](killrweather-fog/src/main/scala/sample/killrweather/fog/WeatherStation.scala) is run on a task to trigger scheduled data sampling.
-These samples are timestamped and sent to the cluster, via the `WeatherStation` [WeatherApi](killrweather-fog/src/main/scala/sample/killrweather/fog/WeatherApi.scala).
-This is done over HTTP using [Akka HTTP](https://doc.akka.io/docs/akka-http/current/index.html). For simplicity, HTTP versus HTTPS is shown.
-
-### Configuration
-
-This application is configured in [killrweather-fog/src/main/resources/application.conf](killrweather-fog/src/main/resources/application.conf)
+These samples are timestamped and sent to the cluster over HTTP using [Akka HTTP](https://doc.akka.io/docs/akka-http/current/index.html). 
 
 ## Akka HTTP example
 
@@ -68,11 +60,11 @@ Within KillrWeather are two simple sides to an HTTP equation.
 
 **Client**
 
-* [WeatherApi](killrweather-fog/src/main/scala/sample/killrweather/fog/Fog.scala) - HTTP data marshall and send
+* [WeatherStation](killrweather-fog/src/main/scala/sample/killrweather/fog/WeatherStation.scala) - HTTP data marshall and send
 
 **Server**
 
-* [WeatherServer](killrweather/src/main/scala/sample/killrweather/WeatherServer.scala) - HTTP server
+* [WeatherHttpServer](killrweather/src/main/scala/sample/killrweather/WeatherHttpServer.scala) - HTTP server
 * [WeatherRoutes](killrweather/src/main/scala/sample/killrweather/WeatherRoutes.scala) - HTTP routes receiver which will unmarshall and pass on the data
 
 ## Running the samples
@@ -93,10 +85,11 @@ This command starts three (the default) `KillrWeather` actor systems (a three no
 
 In the log snippet below, note the dynamic weather ports opened by each KillrWeather node's `WeatherServer` for weather stations to connect to. 
 The number of ports are by default three, for the minimum three node cluster. You can start more cluster nodes, so these are dynamic to avoid bind errors. 
+
 ```
-[2019-11-04 14:43:45,861] [INFO] [akka.actor.typed.ActorSystem] [KillrWeather-akka.actor.default-dispatcher-3] [] - WeatherServer online at http://127.0.0.1:8033/
-[2019-11-04 14:43:45,861] [INFO] [akka.actor.typed.ActorSystem] [KillrWeather-akka.actor.default-dispatcher-14] [] - WeatherServer online at http://127.0.0.1:8056/
-[2019-11-04 14:43:45,861] [INFO] [akka.actor.typed.ActorSystem] [KillrWeather-akka.actor.default-dispatcher-16] [] - WeatherServer online at http://127.0.0.1:8081/
+[2020-01-16 13:44:58,842] [INFO] [] [akka.actor.typed.ActorSystem] [KillrWeather-akka.actor.default-dispatcher-3] [] - WeatherServer online at http://127.0.0.1:12553/
+[2020-01-16 13:44:58,842] [INFO] [] [akka.actor.typed.ActorSystem] [KillrWeather-akka.actor.default-dispatcher-19] [] - WeatherServer online at http://127.0.0.1:53937/
+[2020-01-16 13:44:58,843] [INFO] [] [akka.actor.typed.ActorSystem] [KillrWeather-akka.actor.default-dispatcher-15] [] - WeatherServer online at http://127.0.0.1:12554/
 ```
 
 #### A three node cluster in separate JVMs
@@ -131,42 +124,36 @@ Start even more nodes in the same way, if you like.
 
 Each node's log will show its dynamic weather port opened for weather stations to connect to. 
 ```
-[2019-11-04 14:43:45,861] [INFO] [akka.actor.typed.ActorSystem] [KillrWeather-akka.actor.default-dispatcher-16] [] - WeatherServer online at http://127.0.0.1:8081/
+[2020-01-16 13:44:58,842] [INFO] [] [akka.actor.typed.ActorSystem] [KillrWeather-akka.actor.default-dispatcher-3] [] - WeatherServer online at http://127.0.0.1:12553/
 ```
+
 
 ### Interacting with the HTTP endpoint manually
 
-With the cluster running you can interact with the HTTP endpoint using `curl`
+With the cluster running you can interact with the HTTP endpoint using raw HTTP, for example with `curl`.
 
-List known stations on a node 
-```
-curl http://localhost:12553/weather
-```
-    
-Add a station 123 on a node: 
-```
-curl -XPOST http://localhost:12553/weather/123
-```
-
-Record data for station 123:
+Record data for station 62:
 
 ```
-curl -XPOST http://localhost:12553/weather/123/data -H "Content-Type: application/json" --data '{"eventTime": 1579106781, "dataType": "temperature", "value": 10.3}'
+curl -XPOST http://localhost:12553/weather/62/data -H "Content-Type: application/json" --data '{"eventTime": 1579106781, "dataType": "temperature", "value": 10.3}'
 ```
 
-Query average temperature for station 123:
+Query average temperature for station 62:
 
 ```
-curl "http://localhost:12553/weather/123?type=temperature&function=average"
+curl "http://localhost:12553/weather/62?type=temperature&function=average"
 ```
 
 ### The Fog Network
  
 In a new terminal start the `Fog`, (see [Fog computing](https://en.wikipedia.org/wiki/Fog_computing))
 
-Each simulated remote weather station will attempt to connect to one of the round-robin assigned ports for Fog networking over HTTP.   
-Similar to the dynamic WeatherServer ports **8081 8033 8056**  [in the log snippet above](#dynamic-weatherserver-ports),  
-pass in the ports you see (8081 is always first), for example:
+Each simulated remote weather station will attempt to connect to one of the round-robin assigned ports for Fog networking over HTTP.
+
+The fog application, when run without parameters, will expect the cluster to have been started without parameters as well so that the HTTP ports if has bound are predictable.
+If you have started cluster nodes manually providing port numbers you will have to do the same with the fog app or else it will not be able to find the endpoints.   
+
+For example:
  
     sbt "killrweather-fog/runMain sample.killrweather.fog.Fog 8081 8033 8056"
      

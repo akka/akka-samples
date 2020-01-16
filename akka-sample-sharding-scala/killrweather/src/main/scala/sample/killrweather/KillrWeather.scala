@@ -17,13 +17,14 @@ object KillrWeather {
       .asScala
       .flatMap { case AddressFromURIString(s) => s.port }
 
+    // Either use a single port provided by the user, or start the all listed seed nodes plus one node on a random port
+    // in this JVM if the user didn't provide args for the app
+    // In a production application you wouldn't typically start multiple ActorSystem instances in the
+    // same JVM, here we do it to easily demonstrate these ActorSystems (which would be in separate JVM's)
+    // talking to each other.
     val ports = args.headOption match {
       case Some(port) => Seq(port.toInt)
-      case None       =>
-        // In a production application you wouldn't typically start multiple ActorSystem instances in the
-        // same JVM, here we do it to easily demonstrate these ActorSystems (which would be in separate JVM's)
-        // talking to each other.
-        seedNodePorts ++ Seq(0)
+      case None       => seedNodePorts ++ Seq(0)
     }
 
     ports.foreach { port =>

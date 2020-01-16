@@ -1,10 +1,17 @@
 package sample.killrweather.fog
 
-import scala.util.Random
-
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.Behavior
+import akka.actor.typed.scaladsl.ActorContext
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.LoggerOps
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.client.RequestBuilding.Post
+import akka.http.scaladsl.unmarshalling.Unmarshal
+import akka.stream.SystemMaterializer
+
+import scala.util.Failure
+import scala.util.Random
+import scala.util.Success
 
 /**
   *  How many weather stations there are? Currently:
@@ -19,86 +26,85 @@ import akka.actor.typed.scaladsl.LoggerOps
   */
 private[fog] object WeatherStation {
 
-  /**
-   * The World Meteorological Organization (WMO) assigns a 5-digit alpha-numeric
-   * station identifier to all weather observation stations, including moored buoys,
-   * drifting buoys, and C-Man. These IDs are location specific except for drifting buoys which
-   * retain their identifier assigned by deployment location.
-   *
-   * Default parameters are only added here to keep this simple, but still
-   * show actual fields.
-   *
-   * @param id Composite of Air Force Datsav3 station number and NCDC WBAN number
-   * @param name Name of reporting station
-   * @param countryCode 2 letter ISO Country ID
-   * @param callSign International station call sign
-   * @param lat Latitude in decimal degrees
-   * @param long Longitude in decimal degrees
-   * @param elevation Elevation in meters
-   */
-  final case class WmoId(id: String,
-                         name: String = "",
-                         countryCode: String = "",
-                         callSign: String = "",
-                         lat: Double = 0.0,
-                         long: Double = 0.0,
-                         elevation: Double = 0.0)
+  type WeatherStationId = String
 
   sealed trait Command
-  case object Register extends Command
-  case object Start extends Command
   case object Sample extends Command
-
-  val random = new Random()
+  private final case class ProcessSuccess(msg: String) extends Command
+  private final case class ProcessFailure(e: Throwable) extends Command
 
   /** Starts a device and it's task to initiate reading data at a scheduled rate. */
-  def apply(ws: WmoId, settings: FogSettings, httpPort: Int): Behavior[Command] =
-    new WeatherStation(ws, settings).initializing(httpPort)
+  def apply(wsid: WeatherStationId, settings: FogSettings, httpPort: Int): Behavior[Command] =
+    Behaviors.setup(ctx =>
+      new WeatherStation(ctx, wsid, settings, httpPort).running(httpPort)
+    )
 }
 
 /** Starts a device and it's task to initiate reading data at a scheduled rate. */
-class WeatherStation(ws: WeatherStation.WmoId, settings: FogSettings) {
+private class WeatherStation(context: ActorContext[WeatherStation.Command], wsid: WeatherStation.WeatherStationId, settings: FogSettings, httpPort: Int) {
+  import WeatherStation._
 
-  def initializing(httpPort: Int): Behavior[WeatherStation.Command] = {
-    import WeatherStation.{Register, Start}
+  private val random = new Random()
 
-    Behaviors.setup { context =>
-      val api = context.spawn(WeatherApi(settings.host, httpPort, ws), s"api-${ws.id}")
-
-      context.log.infoN(s"Started WeatherStation ${ws.id} of total ${settings.weatherStations} with weather port $httpPort")
-
-      Behaviors.withTimers { timers =>
-        timers.startSingleTimer(Register, Register, settings.staggerStartup)
-        Behaviors.receiveMessagePartial {
-          case Register =>
-            context.log.debug("Registering {}", ws.id)
-            api ! WeatherApi.Add(ws, context.self)
-            Behaviors.same
-          case Start => active(ws, api)
-        }
-      }
-    }
+  private val http = {
+    import akka.actor.typed.scaladsl.adapter._
+    Http(context.system.toClassic)
   }
+  private val stationUrl = s"http://${settings.host}:${httpPort}/weather/$wsid"
 
-  def active(ws: WeatherStation.WmoId, api: ActorRef[WeatherApi.Data]): Behavior[WeatherStation.Command] = {
-    import WeatherStation.Sample
+  def running(httpPort: Int): Behavior[WeatherStation.Command] = {
+    context.log.infoN(s"Started WeatherStation {} of total {} with weather port {}",
+      wsid, settings.weatherStations, httpPort)
 
     Behaviors.setup[WeatherStation.Command] { context =>
-      context.log.debug(s"Started ${ws.id} data sampling.")
+      context.log.debugN(s"Started {} data sampling.", wsid)
 
       Behaviors.withTimers { timers =>
-        timers.startTimerWithFixedDelay(Sample, Sample, settings.sampleInterval)
+        timers.startSingleTimer(Sample, Sample, settings.sampleInterval)
 
-        Behaviors.receiveMessage { _ =>
-          val value = 5 + 30 * WeatherStation.random.nextDouble
-          val eventTime = System.currentTimeMillis
-          val data =  WeatherApi.Data(ws.id, eventTime, value)
-          context.log.debug("Sending data {}.", data)
-          api ! data
+        Behaviors.receiveMessage {
+          case Sample =>
+            val value = 5 + 30 * random.nextDouble
+            val eventTime = System.currentTimeMillis
+            context.log.debug("Recording temperature measurement {}", value)
+            recordTemperature(eventTime, value)
+            Behaviors.same
 
-          Behaviors.same
+          case ProcessSuccess(msg) =>
+            context.log.debugN("Successfully registered data: {}", msg)
+            // trigger next sample only after we got a successful response
+            timers.startSingleTimer(Sample, Sample, settings.sampleInterval)
+            Behaviors.same
+
+          case ProcessFailure(e) =>
+            throw new RuntimeException("Failed to register data", e)
         }
       }
     }
   }
+
+  private def recordTemperature(eventTime: Long, temperature: Double): Unit = {
+    implicit val ec = context.executionContext
+    implicit val materializer = SystemMaterializer(context.system).materializer
+
+    // we could also use a class and a Json formatter like in the server
+    // but since this is the only json we send this is a bit more concise
+    import spray.json._
+    import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+    val json = JsObject(
+      "eventTime" -> JsNumber(eventTime),
+      "dataType" -> JsString("temperature"),
+      "value" -> JsNumber(temperature)
+    )
+
+    context.pipeToSelf(
+      http
+        .singleRequest(Post(stationUrl, json))
+        .flatMap(res => Unmarshal(res).to[String])) {
+      case Success(s) => ProcessSuccess(s)
+      case Failure(e) => ProcessFailure(e)
+    }
+
+  }
+
 }
