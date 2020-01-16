@@ -1,11 +1,11 @@
-organization := "com.typesafe.akka.samples"
+organization := "com.lightbend.akka.samples"
 name := "akka-sample-persistence-dc-java"
 
 enablePlugins(ProtobufPlugin)
 
 scalaVersion := "2.13.1"
 
-val AkkaVersion = "2.6.0"
+val AkkaVersion = "2.6.1"
 val AkkaAddOnsVersion = "1.1.12"
 val AkkaPersistenceCassandraVersion = "0.100"
 val AkkaHttpVersion = "10.1.10"

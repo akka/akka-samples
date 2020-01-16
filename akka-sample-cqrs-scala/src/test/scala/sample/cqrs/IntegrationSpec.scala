@@ -143,7 +143,12 @@ class IntegrationSpec
     }
 
     "continue even processing from offset" in {
+      // give it time to write the offset before shutting down
+      Thread.sleep(1000)
       testKit3.shutdownTestKit()
+
+      val eventProbe4 = testKit4.createTestProbe[ShoppingCart.Event]()
+      testKit4.system.eventStream ! EventStream.Subscribe(eventProbe4.ref)
 
       testKit4.spawn[Nothing](Guardian(), "guardian")
 
@@ -156,9 +161,6 @@ class IntegrationSpec
 
       val cart3 = ClusterSharding(testKit1.system).entityRefFor(ShoppingCart.EntityKey, "cart-3")
       val probe3 = testKit1.createTestProbe[ShoppingCart.Confirmation]
-
-      val eventProbe4 = testKit4.createTestProbe[ShoppingCart.Event]()
-      testKit4.system.eventStream ! EventStream.Subscribe(eventProbe4.ref)
 
       // update from node1, consume event from node4
       cart3 ! ShoppingCart.AddItem("abc", 43, probe3.ref)

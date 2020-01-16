@@ -1,17 +1,3 @@
-lazy val `akka-sample-camel-java` = project
-  .enablePlugins(AkkaSamplePlugin)
-  .settings(
-    name        := "Akka Camel with Java",
-    baseProject := "akka-sample-camel-java"
-  )
-
-lazy val `akka-sample-camel-scala` = project
-  .enablePlugins(AkkaSamplePlugin)
-  .settings(
-    name        := "Akka Camel with Scala",
-    baseProject := "akka-sample-camel-scala"
-  )
-
 lazy val `akka-sample-cluster-java` = project
   .enablePlugins(AkkaSamplePlugin)
   .settings(
@@ -54,20 +40,6 @@ lazy val `akka-sample-fsm-scala` = project
     baseProject := "akka-sample-fsm-scala"
   )
 
-lazy val `akka-sample-multi-node-scala` = project
-  .enablePlugins(AkkaSamplePlugin)
-  .settings(
-    name        := "Akka Multi Node with Scala",
-    baseProject := "akka-sample-multi-node-scala"
-  )
-
-lazy val `akka-sample-osgi-dining-hakkers` = project
-  .enablePlugins(AkkaSamplePlugin)
-  .settings(
-    name        := "Akka OSGi Dining Hakkers",
-    baseProject := "akka-sample-osgi-dining-hakkers"
-  )
-
 lazy val `akka-sample-persistence-java` = project
   .enablePlugins(AkkaSamplePlugin)
   .settings(
@@ -82,23 +54,16 @@ lazy val `akka-sample-persistence-scala` = project
     baseProject := "akka-sample-persistence-scala"
   )
 
-lazy val `akka-sample-remote-java` = project
+lazy val `akka-sample-sharding-java` = project
   .enablePlugins(AkkaSamplePlugin)
   .settings(
-    name        := "Akka Remote with Java",
-    baseProject := "akka-sample-remote-java"
+    name        := "Akka Cluster Sharding with Java",
+    baseProject := "akka-sample-sharding-java"
   )
 
-lazy val `akka-sample-remote-scala` = project
+lazy val `akka-sample-sharding-scala` = project
   .enablePlugins(AkkaSamplePlugin)
   .settings(
-    name        := "Akka Remote with Scala",
-    baseProject := "akka-sample-remote-scala"
-  )
-
-lazy val `akka-sample-supervision-java` = project
-  .enablePlugins(AkkaSamplePlugin)
-  .settings(
-    name        := "Akka Supervision with Java",
-    baseProject := "akka-sample-supervision-java"
+    name        := "Akka Cluster Sharding with Scala",
+    baseProject := "akka-sample-sharding-scala"
   )

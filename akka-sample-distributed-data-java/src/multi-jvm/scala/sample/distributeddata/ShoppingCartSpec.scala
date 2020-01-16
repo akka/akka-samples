@@ -1,14 +1,17 @@
 package sample.distributeddata
 
 import scala.concurrent.duration._
-import akka.cluster.Cluster
-import akka.cluster.ddata.DistributedData
-import akka.cluster.ddata.Replicator.GetReplicaCount
-import akka.cluster.ddata.Replicator.ReplicaCount
+import akka.actor.testkit.typed.scaladsl.TestProbe
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.scaladsl.adapter._
+import akka.cluster.ddata.Replicator
+import akka.cluster.ddata.typed.scaladsl.DistributedData
+import akka.cluster.ddata.typed.scaladsl.Replicator.GetReplicaCount
+import akka.cluster.ddata.typed.scaladsl.Replicator.ReplicaCount
+import akka.cluster.typed.{ Cluster, Join }
 import akka.remote.testconductor.RoleName
 import akka.remote.testkit.MultiNodeConfig
 import akka.remote.testkit.MultiNodeSpec
-import akka.testkit._
 import com.typesafe.config.ConfigFactory
 import scala.collection.JavaConverters._
 
@@ -21,6 +24,9 @@ object ShoppingCartSpec extends MultiNodeConfig {
     akka.loglevel = INFO
     akka.actor.provider = "cluster"
     akka.log-dead-letters-during-shutdown = off
+    akka.actor.serialization-bindings {
+      "sample.distributeddata.ShoppingCart$LineItem" = jackson-cbor
+    }
     """))
 
 }
@@ -29,18 +35,19 @@ class ShoppingCartSpecMultiJvmNode1 extends ShoppingCartSpec
 class ShoppingCartSpecMultiJvmNode2 extends ShoppingCartSpec
 class ShoppingCartSpecMultiJvmNode3 extends ShoppingCartSpec
 
-class ShoppingCartSpec extends MultiNodeSpec(ShoppingCartSpec) with STMultiNodeSpec with ImplicitSender {
+class ShoppingCartSpec extends MultiNodeSpec(ShoppingCartSpec) with STMultiNodeSpec {
   import ShoppingCartSpec._
   import ShoppingCart._
 
   override def initialParticipants = roles.size
 
-  val cluster = Cluster(system)
-  val shoppingCart = system.actorOf(ShoppingCart.props("user-1"))
+  implicit val typedSystem: ActorSystem[Nothing] = system.toTyped
+  val cluster = Cluster(typedSystem)
+  val shoppingCart = system.spawnAnonymous(ShoppingCart.create("user-1"))
 
   def join(from: RoleName, to: RoleName): Unit = {
     runOn(from) {
-      cluster join node(to).address
+      cluster.manager ! Join(node(to).address)
     }
     enterBarrier(from.name + "-joined")
   }
@@ -52,8 +59,9 @@ class ShoppingCartSpec extends MultiNodeSpec(ShoppingCartSpec) with STMultiNodeS
       join(node3, node1)
 
       awaitAssert {
-        DistributedData(system).replicator ! GetReplicaCount
-        expectMsg(ReplicaCount(roles.size))
+        val probe = TestProbe[ReplicaCount]()
+        DistributedData(typedSystem).replicator ! GetReplicaCount(probe.ref)
+        probe.expectMessage(Replicator.ReplicaCount(roles.size))
       }
       enterBarrier("after-1")
     }
@@ -66,8 +74,9 @@ class ShoppingCartSpec extends MultiNodeSpec(ShoppingCartSpec) with STMultiNodeS
       enterBarrier("updates-done")
 
       awaitAssert {
-        shoppingCart ! ShoppingCart.GET_CART
-        val cart = expectMsgType[Cart]
+        val probe = TestProbe[Cart]()
+        shoppingCart ! new ShoppingCart.GetCart(probe.ref)
+        val cart = probe.expectMessageType[Cart]
         cart.items.asScala.toSet should be(Set(
             new LineItem("1", "Apples", 2), new LineItem("2", "Oranges", 3)))
       }
@@ -86,8 +95,9 @@ class ShoppingCartSpec extends MultiNodeSpec(ShoppingCartSpec) with STMultiNodeS
       enterBarrier("updates-done")
 
       awaitAssert {
-        shoppingCart ! ShoppingCart.GET_CART
-        val cart = expectMsgType[Cart]
+        val probe = TestProbe[Cart]()
+        shoppingCart ! new ShoppingCart.GetCart(probe.ref)
+        val cart = probe.expectMessageType[Cart]
         cart.items.asScala.toSet should be(
             Set(new LineItem("1", "Apples", 7), new LineItem("3", "Bananas", 4)))
       }

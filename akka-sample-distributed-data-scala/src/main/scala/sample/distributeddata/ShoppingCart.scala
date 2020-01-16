@@ -100,27 +100,25 @@ object ShoppingCart {
           Behaviors.same
 
         case InternalRemoveItem(productId, GetSuccess(DataKey, _)) =>
-          replicator.askUpdate(
-            askReplyTo => Update(DataKey, LWWMap.empty[String, LineItem], writeMajority, askReplyTo) {
-              _.remove(node, productId)
-            },
-            InternalUpdateResponse.apply)
-
+          removeItem(productId)
           Behaviors.same
 
         case InternalRemoveItem(productId, GetFailure(DataKey, _)) =>
           // ReadMajority failed, fall back to best effort local value
-          replicator.askUpdate(
-            askReplyTo => Update(DataKey, LWWMap.empty[String, LineItem], writeMajority, askReplyTo) {
-              _.remove(node, productId)
-            },
-            InternalUpdateResponse.apply)
-
+          removeItem(productId)
           Behaviors.same
 
         case InternalRemoveItem(_, NotFound(DataKey, _)) =>
           // nothing to remove
           Behaviors.same
+      }
+
+      def removeItem(productId: String): Unit = {
+        replicator.askUpdate(
+          askReplyTo => Update(DataKey, LWWMap.empty[String, LineItem], writeMajority, askReplyTo) {
+            _.remove(node, productId)
+          },
+          InternalUpdateResponse.apply)
       }
 
       def receiveOther: PartialFunction[Command, Behavior[Command]] = {

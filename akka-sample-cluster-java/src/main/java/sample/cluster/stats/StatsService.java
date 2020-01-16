@@ -7,7 +7,6 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import sample.cluster.CborSerializable;
 
 import java.util.Arrays;
@@ -19,8 +18,7 @@ public final class StatsService extends AbstractBehavior<StatsService.Command> {
   public final static class ProcessText implements Command {
     public final String text;
     public final ActorRef<Response> replyTo;
-    @JsonCreator
-    public ProcessText(@JsonProperty("text") String text, @JsonProperty("replyTo") ActorRef<Response> replyTo) {
+    public ProcessText(String text, ActorRef<Response> replyTo) {
       this.text = text;
       this.replyTo = replyTo;
     }
@@ -33,7 +31,7 @@ public final class StatsService extends AbstractBehavior<StatsService.Command> {
   public static final class JobResult implements Response {
     public final double meanWordLength;
     @JsonCreator
-    public JobResult(@JsonProperty("meanWordLength") double meanWordLength) {
+    public JobResult(double meanWordLength) {
       this.meanWordLength = meanWordLength;
     }
     @Override
@@ -46,7 +44,7 @@ public final class StatsService extends AbstractBehavior<StatsService.Command> {
   public static final class JobFailed implements Response {
     public final String reason;
     @JsonCreator
-    public JobFailed(@JsonProperty("reason") String reason) {
+    public JobFailed(String reason) {
       this.reason = reason;
     }
     @Override

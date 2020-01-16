@@ -10,8 +10,6 @@ import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import sample.cluster.CborSerializable;
 
 public final class StatsWorker extends AbstractBehavior<StatsWorker.Command> {
@@ -20,8 +18,7 @@ public final class StatsWorker extends AbstractBehavior<StatsWorker.Command> {
   public static final class Process implements Command {
     public final String word;
     public final ActorRef<Processed> replyTo;
-    @JsonCreator
-    public Process(@JsonProperty("word") String word, @JsonProperty("replyTo") ActorRef<Processed> replyTo) {
+    public Process(String word, ActorRef<Processed> replyTo) {
       this.word = word;
       this.replyTo = replyTo;
     }
@@ -32,8 +29,7 @@ public final class StatsWorker extends AbstractBehavior<StatsWorker.Command> {
   public static final class Processed implements CborSerializable {
     public final String word;
     public final int length;
-    @JsonCreator
-    public Processed(@JsonProperty("word") String word, @JsonProperty("length") int length) {
+    public Processed(String word, int length) {
       this.word = word;
       this.length = length;
     }
