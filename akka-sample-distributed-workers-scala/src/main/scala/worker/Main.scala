@@ -7,7 +7,7 @@ import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import akka.cluster.typed.Cluster
 import akka.persistence.cassandra.testkit.CassandraLauncher
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{ Config, ConfigFactory }
 
 object Main {
 
@@ -54,29 +54,21 @@ object Main {
     ActorSystem[Nothing](
       Behaviors.setup[Nothing](ctx => {
         val cluster = Cluster(ctx.system)
-        //#back-end
         if (cluster.selfMember.hasRole("back-end")) {
           MasterSingleton.init(ctx.system)
         }
-        //#back-end
-        //#front-end
         if (cluster.selfMember.hasRole("front-end")) {
           ctx.spawn(FrontEnd(), "front-end")
           ctx.spawn(WorkResultConsumer(), "consumer")
         }
-        //#front-end
-        //#worker
         if (cluster.selfMember.hasRole("worker")) {
           val masterProxy = MasterSingleton.init(ctx.system)
-          (1 to workers)
-            .foreach(n => ctx.spawn(Worker(masterProxy), s"worker-$n"))
+          (1 to workers).foreach(n => ctx.spawn(Worker(masterProxy), s"worker-$n"))
         }
-        //#worker
         Behaviors.empty
       }),
       "ClusterSystem",
-      config(port, role)
-    )
+      config(port, role))
   }
 
   def config(port: Int, role: String): Config =
@@ -86,18 +78,13 @@ object Main {
     """).withFallback(ConfigFactory.load())
 
   /**
-    * To make the sample easier to run we kickstart a Cassandra instance to
-    * act as the journal. Cassandra is a great choice of backend for Akka Persistence but
-    * in a real application a pre-existing Cassandra cluster should be used.
-    */
+   * To make the sample easier to run we kickstart a Cassandra instance to
+   * act as the journal. Cassandra is a great choice of backend for Akka Persistence but
+   * in a real application a pre-existing Cassandra cluster should be used.
+   */
   def startCassandraDatabase(): Unit = {
     val databaseDirectory = new File("target/cassandra-db")
-    CassandraLauncher.start(
-      databaseDirectory,
-      CassandraLauncher.DefaultTestConfigResource,
-      clean = false,
-      port = 9042
-    )
+    CassandraLauncher.start(databaseDirectory, CassandraLauncher.DefaultTestConfigResource, clean = false, port = 9042)
 
     // shut the cassandra instance down when the JVM stops
     sys.addShutdownHook {

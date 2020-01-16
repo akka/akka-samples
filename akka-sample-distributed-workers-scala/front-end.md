@@ -20,8 +20,6 @@ Now, let's take a look at the code that accomplishes this front-end behavior.
 
 ## The Front-end Actor
 
-@@snip [FrontEnd.scala]($g8src$/scala/worker/FrontEnd.scala) { #front-end }
-
 Note in the source code that as the 'FrontEnd' actor starts up, it:
 
 1. Schedules 'Tick' messages to itself.
@@ -30,7 +28,7 @@ Note in the source code that as the 'FrontEnd' actor starts up, it:
     1. Switches to a new 'busy' behavior.
     1. Sends the 'Work' message to the 'Master' actor of a 'back-end' node.
 
-As you can see the `FrontEnd` actor schedules `Tick` messages to itself when starting up. the `Tick` message then triggers creation of a new `Work`, sending the work to the `Master` actor on a `back-end` node and switching to a new `busy` behavior.
+The `FrontEnd` actor schedules `Tick` messages to itself when starting up. the `Tick` message then triggers creation of a new `Work`, sending the work to the `Master` actor on a `back-end` node and switching to a new `busy` behavior.
 
 The cluster contains one `Master` actor. The `FrontEnd` actor does not need to know the exact location because it sends work to the `masterProxy` that is a cluster singleton proxy.
 
@@ -48,11 +46,8 @@ If the work is not accepted or there is no response, for example if the message 
 You can see the how the actors on a front-end node is started in the method `Main.start` when the node
 contains the `front-end` role:
 
-@@snip [Main.scala]($g8src$/scala/worker/Main.scala) { #front-end }
-
 ## The Work Result Consumer Actor
-As mentioned in the introduction, results are published using Distributed Pub-Sub. The 'WorkResultConsumerActor' subscribes to completion events and logs when a workload has completed:
 
-@@snip [Main.scala]($g8src$/scala/worker/WorkResultConsumer.scala) { #work-result-consumer }
+As mentioned in the introduction, results are published using Distributed Pub-Sub. The 'WorkResultConsumerActor' subscribes to completion events and logs when a workload has completed.
 
 In an actual application you would probably want a way for clients to poll or stream the status changes of the submitted work.

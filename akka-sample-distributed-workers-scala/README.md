@@ -30,7 +30,7 @@ After waiting a few seconds for the cluster to form the output should start look
 [INFO] [07/21/2017 17:41:53.329] [ClusterSystem-akka.actor.default-dispatcher-19] [akka://ClusterSystem@127.0.0.1:2551/user/master/singleton] Work 3bce4d6d-eaae-4da6-b316-0c6f566f2399 is done by worker 2b646020-6273-437c-aa0d-4aad6f12fb47
 ```
    
-Congratulations, you just ran your first Akka Cluster app. Now take a look at what happened under the covers. 
+Now take a look at what happened under the covers. 
 
 ## What happens when you run it
 
@@ -45,8 +45,6 @@ A bird's eye perspective of the architecture looks like this:
 ![Overview](images/cluster-nodes.png)
 
 Let's look at the details of each part of the application, starting with the front-end.
-
-@@@index
 
 * [The Front-end Nodes](front-end.md)
 * [The Back-end Nodes](back-end.md)

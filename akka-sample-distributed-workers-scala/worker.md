@@ -14,8 +14,6 @@
 ![Master to Worker Message Flow](images/master-worker-message-flow.png)
 
 You can see how a worker node and a number of worker actors is started in the method `Main.startWorker`
-if the node contains the role `worker`:
-
-@@snip [Main.scala]($g8src$/scala/worker/Main.scala) { #worker }
+if the node contains the role `worker`.
 
 Now that we have covered all the details, we can experiment with different sets of nodes for the cluster.
