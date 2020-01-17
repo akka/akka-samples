@@ -24,21 +24,6 @@ But before we dive into how the example accomplishes these goals, download the e
 
 The design is based on Derek Wyatt's blog post [Balancing Workload Across Nodes with Akka 2](http://letitcrash.com/post/29044669086/balancing-workload-across-nodes-with-akka-2) from 2009, which is a bit old, but still a good description of the advantages of letting the workers pull work from the master instead of pushing work to the workers.
 
-## Downloading the example 
-
-The Akka Distributed Workers example for Scala is a zipped project that includes a distribution of sbt (build tool). You can run it on Linux, MacOS, or Windows. The only prerequisite is Java 8.
-
-Download and unzip the example:
-
-1. Download the zip file from [Lightbend Tech Hub](https://developer.lightbend.com/start/?group=akka&project=akka-distributed-workers-scala) by clicking `CREATE A PROJECT FOR ME`. 
-1. Extract the zip file to a convenient location: 
-  - On Linux and MacOS systems, open a terminal and use the command `unzip akka-distributed-workers-scala.zip`. Note: On MacOS, if you unzip using Archiver, you also have to make the sbt files executable:
-```
- $ chmod u+x ./sbt
- $ chmod u+x ./sbt-dist/bin/sbt
-```
-  - On Windows, use a tool such as File Explorer to extract the project. 
-
 ## Running the example
 
 To run the sample application, which starts a small cluster inside of the same JVM instance:

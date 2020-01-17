@@ -14,11 +14,7 @@ arrive at the exact same state. This is how event sourcing and [Akka Persistence
 
 If the `Master` fails and is restarted, the replacement `Master` replays events from the log to retrieve the current state. This means that when the WorkState is modified, the `Master` must persist the event before acting on it. When the event is successfully stored, we can modify the state. Otherwise, if a failure occurs before the event is persisted, the replacement `Master` will not be able to attain the same state as the failed `Master`.
 
-Let's look at how a command to process a work item from the front-end comes in:
-
-@@snip [Master.scala]($g8src$/scala/worker/Master.scala) { #persisting }
-
-The first thing you might notice is the comment saying _idempotent_, this means that the same work message may arrive multiple times, but regardless how many times the same work arrives, it should only be executed once. This is needed since the `FrontEnd` actor re-sends work in case of the `Work` or `Ack` messages getting lost (Akka does not provide any guarantee of delivery, [see details in the docs](http://doc.akka.io/docs/akka/current/scala/general/message-delivery-reliability.html#discussion-why-no-guaranteed-delivery-)).
+Let's look at how a command to process a work item from the front-end comes in. The first thing you might notice is the comment saying _idempotent_, this means that the same work message may arrive multiple times, but regardless how many times the same work arrives, it should only be executed once. This is needed since the `FrontEnd` actor re-sends work in case of the `Work` or `Ack` messages getting lost (Akka does not provide any guarantee of delivery, [see details in the docs](http://doc.akka.io/docs/akka/current/scala/general/message-delivery-reliability.html#discussion-why-no-guaranteed-delivery-)).
 
 To make the logic idempotent we simple check if the work id is already known, and if it is we simply `Ack` it without further logic. If the work is previously unknown, we start by transforming it into a `WorkAccepted` event, which we persist,  and only in the `EventHandler` that is called after the event has been persisted do we actually update the `workState`, and send an `Ack` back to the `FrontEnd` and trigger a search for available workers. In this case the event handler delegates the logic to the `WorkState` domain class. 
 
