@@ -49,7 +49,7 @@ private[killrweather] object WeatherStation {
   final case class Record(data: Data, processingTimestamp: Long, replyTo: ActorRef[DataRecorded]) extends Command
   final case class DataRecorded(wsid: String) extends CborSerializable
 
-  final case class Query(wsid: String, dataType: DataType, func: Function, replyTo: ActorRef[QueryResult]) extends Command
+  final case class Query(dataType: DataType, func: Function, replyTo: ActorRef[QueryResult]) extends Command
   final case class QueryResult(wsid: String, dataType: DataType, func: Function, readings: Int, value: Vector[TimeWindow]) extends CborSerializable
 
 
@@ -116,26 +116,29 @@ private[killrweather] object WeatherStation {
         replyTo ! DataRecorded(wsid)
         running(context, wsid, updated) // store
 
-      case Query(wsid, dataType, func, replyTo) =>
+      case Query(dataType, func, replyTo) =>
         val valuesForType = values.filter(_.dataType == dataType)
-        val queryResult =
-          func match {
-            case Function.Average =>
-              val start: Long = valuesForType.headOption.map(_.eventTime).getOrElse(0)
-              val end: Long = valuesForType.lastOption.map(_.eventTime).getOrElse(0)
-              Vector(TimeWindow(start, end, average(valuesForType.map(_.value))))
+        val queryResult: Seq[TimeWindow] =
+          if (valuesForType.isEmpty) Vector.empty
+          else
+            func match {
+              case Function.Average =>
+                val start: Long = valuesForType.head.eventTime
+                val end: Long = valuesForType.last.eventTime
+                Vector(TimeWindow(start, end, average(valuesForType.map(_.value))))
 
-            case Function.HighLow =>
-              val (start, min) = valuesForType.map(e => e.eventTime -> e.value).min
-              val (end, max) = valuesForType.map(e => e.eventTime -> e.value).max
-              Vector(TimeWindow(start, end, min), TimeWindow(start, end, max))
+              case Function.HighLow =>
+                val (start, min) = valuesForType.map(e => e.eventTime -> e.value).min
+                val (end, max) = valuesForType.map(e => e.eventTime -> e.value).max
+                Vector(TimeWindow(start, end, min), TimeWindow(start, end, max))
 
-            case Function.Current =>
-              Vector(valuesForType.lastOption
-                .map(e => TimeWindow(e.eventTime, e.eventTime, e.value))
-                .getOrElse(TimeWindow(0, 0, 0.0)))
+              case Function.Current =>
+                // we know it is not empty from above
+                Vector(valuesForType.lastOption
+                  .map(e => TimeWindow(e.eventTime, e.eventTime, e.value))
+                  .get)
 
-        }
+          }
         replyTo ! QueryResult(wsid, dataType, func, valuesForType.size, queryResult)
         Behaviors.same
 

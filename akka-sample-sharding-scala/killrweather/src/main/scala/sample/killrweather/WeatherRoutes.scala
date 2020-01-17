@@ -29,7 +29,7 @@ private[killrweather] final class WeatherRoutes(system: ActorSystem[_]) {
 
   private def query(wsid: Long, dataType: WeatherStation.DataType, function: WeatherStation.Function): Future[WeatherStation.QueryResult] = {
     val ref = sharding.entityRefFor(WeatherStation.TypeKey, wsid.toString)
-    ref.ask(WeatherStation.Query(wsid.toString, dataType, function, _))
+    ref.ask(WeatherStation.Query(dataType, function, _))
   }
 
   // unmarshallers for the query parameters

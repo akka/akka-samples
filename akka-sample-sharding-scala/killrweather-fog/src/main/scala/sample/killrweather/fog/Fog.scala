@@ -57,20 +57,14 @@ object FogSettings {
         .requiring(_ > Duration.Zero, s"'$durationKey' must be > 0")
 
     FogSettings(
-      config,
       weatherStations =  config.getInt("initial-weather-stations"),
-      staggerStartup = millis("stagger-startup"),
       host = config.getString("weather-station.hostname"),
-      registrationTimeout = millis("weather-station.registration-timeout"),
       sampleInterval = millis("weather-station.sample-interval")
     )
   }
 }
 
 final case class FogSettings(
-    config: Config,
     weatherStations: Int,
-    staggerStartup: FiniteDuration,
     host: String,
-    registrationTimeout: FiniteDuration,
     sampleInterval: FiniteDuration)
