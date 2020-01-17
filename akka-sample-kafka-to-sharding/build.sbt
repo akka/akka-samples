@@ -1,9 +1,10 @@
-val AkkaVersion = "2.6-SNAPSHOT"
+val AkkaVersion = "2.6.1+140-ea78b0af+20200117-0814"
 val AlpakkaKafkaVersion = "1.1.0"
 val AkkaManagementVersion = "1.0.5"
+val AkkaHttpVersion = "10.1.11"
 val LogbackVersion = "1.2.3"
 
-ThisBuild / scalaVersion := "2.13.0"
+ThisBuild / scalaVersion := "2.13.1"
 ThisBuild / organization := "com.lightbend.akka.samples"
 ThisBuild / scalacOptions in Compile ++= Seq(
   "-deprecation",
@@ -15,7 +16,7 @@ ThisBuild / javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecat
 ThisBuild / testOptions in Test += Tests.Argument("-oDF")
 ThisBuild / licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
 
-Global / cancelable := false // ctrl-c
+Global / cancelable := true // ctrl-c
 
 lazy val `akka-sample-kafka-to-sharding` = project.in(file(".")).aggregate(producer, processor, client)
 
@@ -40,6 +41,7 @@ lazy val processor = project
       "com.typesafe.akka" %% "akka-serialization-jackson" % AkkaVersion,
       "com.lightbend.akka.management" %% "akka-management" % AkkaManagementVersion,
       "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaManagementVersion,
+      "com.typesafe.akka" %% "akka-http-spray-json" % AkkaHttpVersion,
       "ch.qos.logback" % "logback-classic" % LogbackVersion,
       "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
       "org.scalatest" %% "scalatest" % "3.0.8" % Test))
@@ -51,5 +53,4 @@ lazy val producer = project
       "com.typesafe.akka" %% "akka-stream-kafka" % AlpakkaKafkaVersion,
       "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
       "ch.qos.logback" % "logback-classic" % "1.2.3",
-      "com.typesafe.akka" %% "akka-serialization-jackson" % AkkaVersion,
       "org.scalatest" %% "scalatest" % "3.0.8" % Test))

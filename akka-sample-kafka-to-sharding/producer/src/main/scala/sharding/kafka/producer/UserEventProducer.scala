@@ -37,18 +37,18 @@ object UserEventProducer extends App {
     ProducerSettings(config, new StringSerializer, new ByteArraySerializer)
       .withBootstrapServers(producerConfig.bootstrapServers)
 
-  val nrUsers = 100
+  val nrUsers = 200
   val maxPrice = 10000
-  val maxQuatity = 5
+  val maxQuantity = 5
   val products = List("cat t-shirt", "akka t-shirt", "skis", "climbing shoes", "rope")
 
   val done: Future[Done] =
     Source
-      .tick(1000.millis, 1000.millis, "tick")
+      .tick(1.second, 1.second, "tick")
       .map(_ => {
         val randomEntityId = Random.nextInt(nrUsers).toString
         val price = Random.nextInt(maxPrice)
-        val quantity = Random.nextInt(maxQuatity)
+        val quantity = Random.nextInt(maxQuantity)
         val product = products(Random.nextInt(products.size))
         val message = UserPurchaseProto(randomEntityId, product, quantity, price).toByteArray
         log.info("Sending message to user {}", randomEntityId)
@@ -65,7 +65,8 @@ object UserEventProducer extends App {
         new ProducerRecord[String, Array[Byte]](producerConfig.topic, entityId, message)
       case Explicit =>
         // this logic MUST be replicated in the MessageExtractor entityId -> shardId function!
-        val shardAndPartition = (Utils.toPositive(Utils.murmur2(entityId.getBytes(StandardCharsets.US_ASCII))) % producerConfig.nrPartitions)
+        val shardAndPartition = (Utils.toPositive(Utils.murmur2(entityId.getBytes(StandardCharsets.UTF_8))) % producerConfig.nrPartitions)
+        log.info(s"entityId->partition ${entityId}->${shardAndPartition}")
         new ProducerRecord[String, Array[Byte]](producerConfig.topic, shardAndPartition, entityId, message)
     }
   }

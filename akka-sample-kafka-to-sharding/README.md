@@ -39,51 +39,65 @@ The sample demonstrates how the dynamic shard allocation strategy can used so me
   bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 128 --topic user-events
 ```
   
-* Start a single node, two arguments are required, the akka remoting port and an akka management port. 
-  Seed nodes of 2551 and 2552 are setup so these two akka nodes must be started first 
+* Start a single processor, this will consume the messages from the topic and distribute them to sharding,
+  three arguments are required, the akka remoting port, the akka management port, and the gRPC port for the front end. 
+* If you run on different ports the first two akka remoting ports should be 2551/2552 as they are configured as seeds.
 * As there is a single consumer, all partitions will initially be assigned to this node.
 
 ```
- sbt procesor / "run 2551 8551 8081"
+sbt "processor / run 2551 8551 8081"
+```
+
+The processor starts a KafkaConsumer, as it is the only consumer in the group it will be assigned every single Kafka partition
+and shards for each partition will be assigned to the current node. You will see logs like:
+
+```
+[info] [2020-01-16 09:48:51,040] [INFO] [akka://KafkaToSharding/user/kafka-event-processor/rebalancerRef] - Partition [1] assigned to current node. Updating shard allocation
+[info] [2020-01-16 09:48:51,040] [INFO] [akka://KafkaToSharding/user/kafka-event-processor/rebalancerRef] - Partition [25] assigned to current node. Updating shard allocation
+[info] [2020-01-16 09:48:51,043] [INFO] [akka://KafkaToSharding/user/kafka-event-processor/rebalancerRef] - Partition [116] assigned to current node. Updating shard allocation
 ```
 
 If there are existing messages on the topic they will all be processed locally as there is a single node.
 
-* Start the Kafka producer to see some messages flowing from Kafka to sharding.
+Next we start the Kafka producer to see some messages flowing from Kafka to sharding.
 
 ```
-sbt producer / run
+sbt "producer / run"
 ```
 
 In the producer window you'll see:
 
 ```
-Sending message to user 1527972333
-Sending message to user -233160412
-Sending message to user 1756778986
-Sending message to user -1059178536
+[INFO] [01/16/2020 09:51:38.639] [UserEventProducer(akka://UserEventProducer)] Sending message to user 29
+[INFO] [01/16/2020 09:51:39.660] [UserEventProducer(akka://UserEventProducer)] Sending message to user 60
+[INFO] [01/16/2020 09:51:40.680] [UserEventProducer(akka://UserEventProducer)] Sending message to user 75
+
 ```
 
 In the single processor node the messages will start flowing:
 
 ```
-Forwarding message for entity 25 to cluster sharding
-user 25 purchase cat t-shirt, quantity 3, price 2080
-Forwarding message for entity 13 to cluster sharding
-user 13 purchase cat t-shirt, quantity 2, price 898 
+[info] [2020-01-16 09:51:38,672] [INFO] [sample.sharding.kafka.UserEventsKafkaProcessor$] [KafkaToSharding-akka.actor.default-dispatcher-26] [akka://KafkaToSharding/user/kafka-event-processor] - entityId->partition 29->45
+[info] [2020-01-16 09:51:38,672] [INFO] [sample.sharding.kafka.UserEventsKafkaProcessor$] [KafkaToSharding-akka.actor.default-dispatcher-26] [akka://KafkaToSharding/user/kafka-event-processor] - Forwarding message for entity 29 to cluster sharding
+[info] [2020-01-16 09:51:38,673] [INFO] [sample.sharding.kafka.UserEvents$] [KafkaToSharding-akka.actor.default-dispatcher-26] [akka://KafkaToSharding/system/sharding/user-processing/75/29] - user 29 purchase cat t-shirt, quantity 0, price 8874
+[info] [2020-01-16 09:51:39,702] [INFO] [sample.sharding.kafka.UserEventsKafkaProcessor$] [KafkaToSharding-akka.actor.default-dispatcher-17] [akka://KafkaToSharding/user/kafka-event-processor] - entityId->partition 60->111
+[info] [2020-01-16 09:51:39,703] [INFO] [sample.sharding.kafka.UserEventsKafkaProcessor$] [KafkaToSharding-akka.actor.default-dispatcher-17] [akka://KafkaToSharding/user/kafka-event-processor] - Forwarding message for entity 60 to cluster sharding
+[info] [2020-01-16 09:51:39,706] [INFO] [sample.sharding.kafka.UserEvents$] [KafkaToSharding-akka.actor.default-dispatcher-17] [akka://KafkaToSharding/system/sharding/user-processing/2/60] - user 60 purchase cat t-shirt, quantity 2, price 9375
+[info] [2020-01-16 09:51:40,732] [INFO] [sample.sharding.kafka.UserEventsKafkaProcessor$] [KafkaToSharding-akka.actor.default-dispatcher-17] [akka://KafkaToSharding/user/kafka-event-processor] - entityId->partition 75->1
+[info] [2020-01-16 09:51:40,732] [INFO] [sample.sharding.kafka.UserEventsKafkaProcessor$] [KafkaToSharding-akka.actor.default-dispatcher-17] [akka://KafkaToSharding/user/kafka-event-processor] - Forwarding message for entity 75 to cluster sharding
 ```
 
 THe first log line is just after the message has been taken from Kafka.
 The second log is from the sharded entity. The goal is to have these
-always on the same node as the dynamic partitioner will move the hsard to where ever the
+always on the same node as the external shard allocation strategy will move the shard to where ever the
 Kafka partition is being consumed.
 
-As there is only one node we get 100% locallity, each forwarded message is processed on the same node
+As there is only one node we get 100% locality, each forwarded message is processed on the same node
 
 Now let's see that remain true once we add more nodes to the Akka Cluster, add another with different ports:
 
 ```
- sbt procesor / "run 2552 8552 8082"
+ sbt "processor / run 2552 8552 8082"
 ```
 
 When this starts up we'll see Kafka assign partitions to the new node (it is in the same consumer group):
@@ -92,16 +106,26 @@ When this starts up we'll see Kafka assign partitions to the new node (it is in 
 Partition [29] assigned to current node. Updating shard allocation
 ```
 
-Followed by the rebalance that moves the shards:
+On one of the nodes, where the ShardCoordinator runs, we'll see the rebalance happening:
 
 ```
- Starting rebalance for shards [45,34,12,51,8,19,23,62,4,40,15,11,9,44,33,22,56,55,26,50,37,61,13,46,24,35,16,5,10,59,48,21,54,43,57,32,49,6,36,1,39,17,25,60,14,47,31,58,53,42,0,20,27,2,38,18,30,7,29,41,63,3,52,28]. Current shards rebalancing: []
+[info] [2020-01-16 09:59:39,923] [INFO] [akka://KafkaToSharding@127.0.0.1:2551/system/sharding/user-processingCoordinator/singleton/coordinator] - Starting rebalance for shards [45,33,16,2,3,15,11,6,36]. Current shards rebalancing: []
 ```
 
-Both nodes now have roughly 64 shards / partitions, all co-located.
+Both nodes now have roughly 64 shards / partitions, all co-located with the Kafka Producer.
+You can verify this by the logs showing that when a message is received by the Kafka producer when it is forwarded to 
+cluster sharding the entity logs receiving the event on the same node. 
 
-After some period of settling down then each node in the cluster should be processing about number of messages
-with each `Forward message for entity X` being followed by a `user event message for user id x` on the same node.
+```
+[info] [2020-01-17 08:27:58,199] [INFO] [akka://KafkaToSharding/user/kafka-event-processor] - Forwarding message for entity 29 to cluster sharding
+[info] [2020-01-17 08:27:58,204] [INFO] [akka://KafkaToSharding/system/sharding/user-processing/45/29] - user 29 purchase cat t-shirt, quantity 1, price 2093
+[info] [2020-01-17 08:28:08,218] [INFO] [akka://KafkaToSharding/user/kafka-event-processor] - Forwarding message for entity 56 to cluster sharding
+[info] [2020-01-17 08:28:08,218] [INFO] [akka://KafkaToSharding/system/sharding/user-processing/6/56] - user 56 purchase akka t-shirt, quantity 3, price 8576
+[info] [2020-01-17 08:28:28,288] [INFO] [akka://KafkaToSharding/user/kafka-event-processor] - Forwarding message for entity 44 to cluster sharding
+[info] [2020-01-17 08:28:28,296] [INFO] [akka://KafkaToSharding/system/sharding/user-processing/59/44] - user 44 purchase cat t-shirt, quantity 3, price 9716
+```
+
+Each forwarding messaging is followed by log for the same entity on the current node.
 
 Using Akka management we can see the shard allocations and the number of entities per shard (uses `curl` and `jq`):
 
@@ -120,10 +144,9 @@ We can count the number of shards on each:
 curl -v localhost:8551/cluster/shards/user-processing  | jq -r "." | grep shardId  | wc
 ```
 
-This should return 64 on each node.
+The number of shards will depend which entities have receives messages.
 
-
-We now have a 2 node Akka Cluster with a Kafka Consumer running on each where the kafka partitions allign
+We now have a 2 node Akka Cluster with a Kafka Consumer running on each where the kafka partitions align 
 with Cluster shards.
 
 A use case for sending the processing to sharding is it allows each entity to be queried from any where in the cluster
@@ -136,10 +159,12 @@ the correct node even if that moves due to a kafka rebalance.
 A gRPC client is included which can be started with...
 
 ```
- sbt client/ run
+ sbt "client/run"
 ```
 
-It assumes there is one of the nodes running its front end port on 8081. The users are `0-99`
+It assumes there is one of the nodes running its front end port on 8081. 
+You can enter the user id to get their stats: The users are `0-199`, try entering users
+that have shown up in the logs of the other processes.
 
 ```
 7

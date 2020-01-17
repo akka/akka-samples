@@ -1,33 +1,26 @@
 package sample.sharding.kafka
 
-import java.nio.charset.StandardCharsets
-
 import akka.Done
 import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.scaladsl.adapter._
-import akka.cluster.sharding.ShardRegion.ShardId
-import akka.cluster.sharding.dynamic.DynamicShardAllocationStrategy
+import akka.cluster.sharding.external.ExternalShardAllocationStrategy
 import akka.cluster.sharding.typed.ClusterShardingSettings
 import akka.cluster.sharding.typed.Murmur2NoEnvelopeMessageExtractor
-import akka.cluster.sharding.typed.ShardingMessageExtractor
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.sharding.typed.scaladsl.Entity
 import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
-import org.apache.kafka.common.serialization.StringSerializer
-import org.apache.kafka.common.utils.Utils
-import org.slf4j.LoggerFactory
 
 object UserEvents {
 
-  val TypeKey: EntityTypeKey[UserEvents.Message] = EntityTypeKey[UserEvents.Message]("user-processing")
+  val TypeKey: EntityTypeKey[UserEvents.Message] =
+    EntityTypeKey[UserEvents.Message]("user-processing")
 
   sealed trait Message {
     def userId: String
   }
-  sealed trait UserEvent extends Message
+  sealed trait UserEvent extends Message with CborSerializable
   case class UserAction(userId: String, description: String, replyTo: ActorRef[Done]) extends UserEvent
   case class UserPurchase(userId: String, product: String, quantity: Long, priceInPence: Long, replyTo: ActorRef[Done])
       extends UserEvent
@@ -73,7 +66,7 @@ object UserEvents {
     val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
     ClusterSharding(system).init(
       Entity(TypeKey)(createBehavior = entityContext => UserEvents(entityContext.entityId))
-        .withAllocationStrategy(new DynamicShardAllocationStrategy(system.toClassic, TypeKey.name))
+        .withAllocationStrategy(new ExternalShardAllocationStrategy(system, TypeKey.name))
         .withMessageExtractor(new UserIdMessageExtractor(processorConfig.nrPartitions))
         .withSettings(ClusterShardingSettings(system)))
   }

@@ -53,7 +53,6 @@ object UserEventsKafkaProcessor {
         val kafkaConsumer: Source[ConsumerRecord[String, Array[Byte]], Consumer.Control] =
           Consumer.plainSource(consumerSettings, subscription)
 
-        // TODO deal with failures/restarts etc
         val stream: Future[Done] = kafkaConsumer
           .log("kafka-consumer")
           .filter(_.key() != null) // no entity id
