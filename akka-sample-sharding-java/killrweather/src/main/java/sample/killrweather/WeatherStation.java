@@ -91,7 +91,7 @@ final class WeatherStation extends AbstractBehavior<WeatherStation.Command> {
     public final WeatherStation.Function function;
     public final int readings;
     public final List<TimeWindow> value;
-
+    @JsonCreator
     public QueryResult(String wsid, WeatherStation.DataType dataType, WeatherStation.Function function, int readings, List<TimeWindow> value) {
       this.wsid = wsid;
       this.dataType = dataType;
@@ -106,7 +106,7 @@ final class WeatherStation extends AbstractBehavior<WeatherStation.Command> {
   // small domain model for queriying and storing weather data
 
   enum Function {
-    // needed for the HTTP API
+    // readable names needed for the HTTP API JSON marshalling
     @JsonProperty("highlow")
     HighLow,
     @JsonProperty("average")
@@ -135,7 +135,7 @@ final class WeatherStation extends AbstractBehavior<WeatherStation.Command> {
     public final double value;
 
     @JsonCreator
-    public Data(@JsonProperty("eventTime") long eventTime, @JsonProperty("dataType") DataType dataType, @JsonProperty("value") double value) {
+    public Data(long eventTime, DataType dataType, double value) {
       this.eventTime = eventTime;
       this.dataType = dataType;
       this.value = value;

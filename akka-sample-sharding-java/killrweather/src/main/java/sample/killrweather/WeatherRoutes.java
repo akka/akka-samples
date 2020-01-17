@@ -9,22 +9,31 @@ import akka.http.javadsl.model.StatusCodes;
 import akka.http.javadsl.server.ExceptionHandler;
 import akka.http.javadsl.server.Route;
 import akka.http.javadsl.unmarshalling.Unmarshaller;
+import akka.serialization.jackson.JacksonObjectMapperProvider;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static akka.http.javadsl.server.Directives.*;
 import static akka.http.javadsl.server.PathMatchers.*;
 
 
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
 public class WeatherRoutes {
 
   private final ClusterSharding sharding;
   private final Duration timeout;
+  private final ObjectMapper objectMapper;
+  private final Unmarshaller<HttpEntity, WeatherStation.Data> dataUnmarshaller;
 
   public WeatherRoutes(ActorSystem<?> system) {
     sharding = ClusterSharding.get(system);
     timeout = system.settings().config().getDuration("killrweather.routes.ask-timeout");
+    // use a pre-configured object mapper from akka-jackson also for HTTP JSON
+    // this lets us use the -parameters compiler argument to skip annotating field names on immutable classes
+    objectMapper = JacksonObjectMapperProvider.get(system).getOrCreate("jackson-json", Optional.empty());
+    dataUnmarshaller = Jackson.unmarshaller(objectMapper, WeatherStation.Data.class);
   }
 
   private CompletionStage<WeatherStation.DataRecorded> recordData(long wsid, WeatherStation.Data data) {
@@ -56,7 +65,7 @@ public class WeatherRoutes {
       default: throw new IllegalArgumentException("Unknown data type " + lcText);
     }
   });
-  private final Unmarshaller<HttpEntity, WeatherStation.Data> dataUnmarshaller = Jackson.unmarshaller(WeatherStation.Data.class);
+
 
 
   public Route weather() {
@@ -70,7 +79,7 @@ public class WeatherRoutes {
           ))
         ),
         post(() ->
-          entity(Jackson.unmarshaller(WeatherStation.Data.class), data ->
+          entity(dataUnmarshaller, data ->
             onSuccess(recordData(wsid, data), performed ->
                 complete(StatusCodes.ACCEPTED, performed + " from event time: " + data.eventTime)
             )
