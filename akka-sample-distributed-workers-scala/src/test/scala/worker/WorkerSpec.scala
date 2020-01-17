@@ -16,17 +16,13 @@ import worker.Worker.WorkComplete
 class WorkerSpec extends ScalaTestWithActorTestKit with WordSpecLike {
   val workerId = "id"
   "A Worker" should {
-    "register with the master" in {
-      val master = createTestProbe[Command]()
-      spawn(Worker(master.ref, workerId))
-      val registration = master.expectMessageType[Master.RegisterWorker]
-      registration.workerId shouldEqual workerId
+    "register with receptionist" in {
+      pending
     }
 
     "request work when work is ready" in {
       val master = createTestProbe[Command]()
       val worker = spawn(Worker(master.ref, workerId))
-      master.expectMessageType[Master.RegisterWorker]
       worker ! Worker.WorkIsReady
       master.expectMessage(Master.WorkerRequestsWork(workerId, worker))
     }
@@ -35,7 +31,6 @@ class WorkerSpec extends ScalaTestWithActorTestKit with WordSpecLike {
       val master = createTestProbe[Command]()
       val worker = spawn(Worker(master.ref, workerId))
       val workId = "work1"
-      master.expectMessageType[Master.RegisterWorker]
       worker ! Worker.WorkIsReady
       master.expectMessageType[WorkerRequestsWork]
       worker ! SubmitWork(Work(workId, 1))
@@ -62,15 +57,8 @@ class WorkerSpec extends ScalaTestWithActorTestKit with WordSpecLike {
         })
 
       val master = createTestProbe[Command]()
-      val worker = spawn(
-        Worker(
-          master.ref,
-          workerId,
-          workExecutorFactory = () => failingWorkExecutor
-        )
-      )
+      val worker = spawn(Worker(master.ref, workerId, workExecutorFactory = () => failingWorkExecutor))
       val workId = "work1"
-      master.expectMessageType[Master.RegisterWorker]
       worker ! Worker.WorkIsReady
       master.expectMessageType[WorkerRequestsWork]
       worker ! SubmitWork(Work(workId, 1))

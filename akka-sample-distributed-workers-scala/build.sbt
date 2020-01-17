@@ -8,7 +8,7 @@ val cassandraPluginVersion = "0.102"
 
 fork in Test := true
 
-cancelable in Global := true
+Global / cancelable := true
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
