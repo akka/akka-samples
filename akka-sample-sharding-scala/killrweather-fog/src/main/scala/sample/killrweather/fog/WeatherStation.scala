@@ -6,9 +6,11 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.LoggerOps
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding.Post
+import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.SystemMaterializer
 
+import scala.concurrent.Future
 import scala.util.Failure
 import scala.util.Random
 import scala.util.Success
@@ -97,10 +99,14 @@ private class WeatherStation(context: ActorContext[WeatherStation.Command], wsid
       "value" -> JsNumber(temperature)
     )
 
-    context.pipeToSelf(
-      http
-        .singleRequest(Post(stationUrl, json))
-        .flatMap(res => Unmarshal(res).to[String])) {
+    val futureResponseBody: Future[String] = http.singleRequest(Post(stationUrl, json))
+      .flatMap (res =>
+        Unmarshal(res).to[String].map(body =>
+          if (res.status.isSuccess()) body
+          else throw new RuntimeException(s"Failed to register data: $body")
+        )
+      )
+    context.pipeToSelf(futureResponseBody) {
       case Success(s) => ProcessSuccess(s)
       case Failure(e) => ProcessFailure(e)
     }
