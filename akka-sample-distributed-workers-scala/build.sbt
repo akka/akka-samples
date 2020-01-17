@@ -6,9 +6,7 @@ scalaVersion := "2.13.1"
 val akkaVersion = "2.6.1"
 val cassandraPluginVersion = "0.102"
 
-fork in Test := true
-
-Global / cancelable := true
+Global / cancelable := false
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
@@ -22,5 +20,4 @@ libraryDependencies ++= Seq(
   // test dependencies
   "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
   "org.scalatest" %% "scalatest" % "3.0.8" % Test,
-  "commons-io" % "commons-io" % "2.4" % Test
-)
+  "commons-io" % "commons-io" % "2.4" % Test)
