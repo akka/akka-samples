@@ -16,9 +16,6 @@ import worker.Worker.WorkComplete
 class WorkerSpec extends ScalaTestWithActorTestKit with WordSpecLike {
   val workerId = "id"
   "A Worker" should {
-    "register with receptionist" in {
-      pending
-    }
 
     "request work when work is ready" in {
       val master = createTestProbe[Command]()
