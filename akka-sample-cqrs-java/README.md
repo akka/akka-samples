@@ -23,26 +23,42 @@ The implementation is resilient: it uses an *Akka Cluster Singleton* in combinat
 1. Start a Cassandra server by running:
 
 ```
-mvn exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="cassandra"
+mvn compile exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="cassandra"
 ```
 
 2. Start a node that runs the write model:
 
 ```
-mvn -Dakka.cluster.roles.0=write-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2551"
+mvn compile -Dakka.cluster.roles.0=write-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2551"
 ```
 
 3. Start a node that runs the read model:
 
 ```
-mvn -Dakka.cluster.roles.0=read-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2552"
+mvn compile -Dakka.cluster.roles.0=read-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2552"
 ```
 
 4. More write or read nodes can be started by defining roles and port:
 
 ```
-mvn -Dakka.cluster.roles.0=write-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2553"
-mvn -Dakka.cluster.roles.0=read-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2554"
+mvn compile -Dakka.cluster.roles.0=write-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2553"
+mvn compile -Dakka.cluster.roles.0=read-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2554"
 ``` 
 
-TODO: how to enter or simulate updates
+Try it with curl:
+
+ ```
+ # add item to cart
+ curl -X POST -H "Content-Type: application/json" -d '{"cartId":"cart1", "itemId":"socks", "quantity":3}' http://127.0.0.1:8051/shopping/carts
+
+ # get cart
+ curl http://127.0.0.1:8051/shopping/carts/cart1
+
+ # update quantity of item
+ curl -X PUT -H "Content-Type: application/json" -d '{"cartId":"cart1", "itemId":"socks", "quantity":5}' http://127.0.0.1:8051/shopping/carts
+
+ # check out cart
+ curl -X POST -H "Content-Type: application/json" -d '{}' http://127.0.0.1:8051/shopping/carts/cart1/checkout
+ ```
+
+ or same `curl` commands to port 8052.

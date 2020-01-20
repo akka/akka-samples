@@ -23,22 +23,25 @@ public class Main {
       System.out.println("Started Cassandra, press Ctrl + C to kill");
       new CountDownLatch(1).await();
     } else {
-      int port = Integer.parseInt(args[0]);
-      startNode(port);
+      String portString = args[0];
+      int port = Integer.parseInt(portString);
+      int httpPort = Integer.parseInt("80" + portString.substring(portString.length() - 2));
+      startNode(port, httpPort);
     }
 
   }
 
-  private static void startNode(int port) {
-    ActorSystem<Void> system = ActorSystem.create(Guardian.create(), "Shopping", config(port));
+  private static void startNode(int port, int httpPort) {
+    ActorSystem<Void> system = ActorSystem.create(Guardian.create(), "Shopping", config(port, httpPort));
 
     if (Cluster.get(system).selfMember().hasRole("read-model"))
       createTables(system);
   }
 
-  private static Config config(int port) {
+  private static Config config(int port, int httpPort) {
     return ConfigFactory.parseString(
-      "akka.remote.artery.canonical.port = " + port)
+      "akka.remote.artery.canonical.port = " + port + "\n" +
+      "shopping.http.port ="  + httpPort + "\n")
       .withFallback(ConfigFactory.load());
   }
 
@@ -83,18 +86,18 @@ class Guardian {
     return Behaviors.setup(context -> {
       ActorSystem<?> system = context.getSystem();
       EventProcessorSettings settings = EventProcessorSettings.create(system);
+      int httpPort = system.settings().config().getInt("shopping.http.port");
 
-      if (Cluster.get(system).selfMember().hasRole("write-model")) {
-        ShoppingCart.init(system, settings);
-      }
+      ShoppingCart.init(system, settings);
 
       if (Cluster.get(system).selfMember().hasRole("read-model")) {
-
         EventProcessor.init(
           system,
           settings,
           tag -> new ShoppingCartEventProcessorStream(system, settings.id, tag));
       }
+
+      ShoppingCartServer.startHttpServer(new ShoppingCartRoutes(system).shopping(), httpPort, system);
 
       return Behaviors.empty();
     });
