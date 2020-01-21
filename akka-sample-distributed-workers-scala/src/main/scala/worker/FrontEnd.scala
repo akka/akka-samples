@@ -14,7 +14,7 @@ import scala.util.Failure
 import scala.util.Success
 
 /**
- * Dummy front-end that periodically sends a workload to the master.
+ * Dummy front-end that periodically sends a workload to the work manager.
  */
 object FrontEnd {
 
@@ -27,7 +27,7 @@ object FrontEnd {
   private def nextWorkId(): String = UUID.randomUUID().toString
 
   def apply(): Behavior[Command] = Behaviors.setup { ctx =>
-    val masterProxy = MasterSingleton.init(ctx.system)
+    val masterProxy = WorkManagerSingleton.init(ctx.system)
     Behaviors.setup { ctx =>
       Behaviors.withTimers { timers =>
         new FrontEnd(masterProxy, ctx, timers).idle(0)
@@ -35,10 +35,12 @@ object FrontEnd {
     }
   }
 
-
 }
 
-class FrontEnd private(masterProxy: ActorRef[SubmitWork], ctx: ActorContext[FrontEnd.Command], timers: TimerScheduler[FrontEnd.Command]) {
+class FrontEnd private (
+    masterProxy: ActorRef[SubmitWork],
+    ctx: ActorContext[FrontEnd.Command],
+    timers: TimerScheduler[FrontEnd.Command]) {
   import FrontEnd._
 
   def idle(workCounter: Int): Behavior[Command] = {

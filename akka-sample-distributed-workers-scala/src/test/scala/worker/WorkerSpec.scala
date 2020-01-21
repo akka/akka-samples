@@ -18,25 +18,25 @@ class WorkerSpec extends ScalaTestWithActorTestKit with WordSpecLike {
   "A Worker" should {
 
     "request work when work is ready" in {
-      val master = createTestProbe[Command]()
-      val worker = spawn(Worker(master.ref, workerId))
+      val workManager = createTestProbe[Command]()
+      val worker = spawn(Worker(workManager.ref, workerId))
       worker ! Worker.WorkIsReady
-      master.expectMessage(WorkManager.WorkerRequestsWork(workerId, worker))
+      workManager.expectMessage(WorkManager.WorkerRequestsWork(workerId, worker))
     }
 
     "report work is done until ack" in {
-      val master = createTestProbe[Command]()
-      val worker = spawn(Worker(master.ref, workerId))
+      val workManager = createTestProbe[Command]()
+      val worker = spawn(Worker(workManager.ref, workerId))
       val workId = "work1"
       worker ! Worker.WorkIsReady
-      master.expectMessageType[WorkerRequestsWork]
+      workManager.expectMessageType[WorkerRequestsWork]
       worker ! SubmitWork(Work(workId, 1))
-      master.expectMessageType[WorkIsDone]
+      workManager.expectMessageType[WorkIsDone]
       //  should retry until ack is sent
-      master.expectMessageType[WorkIsDone]
+      workManager.expectMessageType[WorkIsDone]
       worker ! Worker.Ack(workId)
       // then worker can request more work
-      master.expectMessageType[WorkerRequestsWork]
+      workManager.expectMessageType[WorkerRequestsWork]
     }
 
     "report failure if work fails" in {

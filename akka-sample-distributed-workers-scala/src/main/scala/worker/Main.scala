@@ -55,15 +55,15 @@ object Main {
       Behaviors.setup[Nothing](ctx => {
         val cluster = Cluster(ctx.system)
         if (cluster.selfMember.hasRole("back-end")) {
-          MasterSingleton.init(ctx.system)
+          WorkManagerSingleton.init(ctx.system)
         }
         if (cluster.selfMember.hasRole("front-end")) {
           ctx.spawn(FrontEnd(), "front-end")
           ctx.spawn(WorkResultConsumer(), "consumer")
         }
         if (cluster.selfMember.hasRole("worker")) {
-          val masterProxy = MasterSingleton.init(ctx.system)
-          (1 to workers).foreach(n => ctx.spawn(Worker(masterProxy), s"worker-$n"))
+          val workManagerProxy = WorkManagerSingleton.init(ctx.system)
+          (1 to workers).foreach(n => ctx.spawn(Worker(workManagerProxy), s"worker-$n"))
         }
         Behaviors.empty
       }),

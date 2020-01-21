@@ -17,7 +17,7 @@ import scala.concurrent.duration._
 
 /**
  * The worker is actually more of a middle manager, delegating the actual work
- * to the WorkExecutor, supervising it and keeping itself available to interact with the work master.
+ * to the WorkExecutor, supervising it and keeping itself available to interact with the work manager.
  */
 object Worker {
 
@@ -30,7 +30,7 @@ object Worker {
   private case object WorkTimeout extends Message
 
   def apply(
-      masterProxy: ActorRef[WorkManager.Command],
+      workManagerProxy: ActorRef[WorkManager.Command],
       workerId: String = UUID.randomUUID().toString,
       workExecutorFactory: () => Behavior[DoWork] = () => WorkExecutor()): Behavior[Message] =
     Behaviors.setup[Message] { ctx =>
@@ -38,7 +38,7 @@ object Worker {
         ctx.system.receptionist ! Receptionist.Register(WorkManager.WorkerServiceKey, ctx.self)
 
         Behaviors
-          .supervise(new Worker(workerId, masterProxy, ctx, timers, workExecutorFactory).idle())
+          .supervise(new Worker(workerId, workManagerProxy, ctx, timers, workExecutorFactory).idle())
           .onFailure[Exception](SupervisorStrategy.restart)
       }
     }
@@ -47,7 +47,7 @@ object Worker {
 
 class Worker private (
     workerId: String,
-    masterProxy: ActorRef[WorkManager.Command],
+    workManagerProxy: ActorRef[WorkManager.Command],
     ctx: ActorContext[Worker.Message],
     timers: TimerScheduler[Worker.Message],
     workExecutorFactory: () => Behavior[DoWork]) {
@@ -66,7 +66,7 @@ class Worker private (
       workId: String): PartialFunction[(scaladsl.ActorContext[Worker.Message], Signal), Behavior[Worker.Message]] = {
     case (_, Terminated(_)) =>
       ctx.log.info("Work executor terminated. Reporting failure")
-      masterProxy ! WorkManager.WorkFailed(ctx.self, workId)
+      workManagerProxy ! WorkManager.WorkFailed(ctx.self, workId)
       // need to re-create the work executor
       idle(createWorkExecutor())
   }
@@ -76,7 +76,7 @@ class Worker private (
       Behaviors.receiveMessagePartial[Worker.Message] {
         case WorkIsReady =>
           // this is the only state where we reply to WorkIsReady
-          masterProxy ! WorkerRequestsWork(workerId, ctx.self)
+          workManagerProxy ! WorkerRequestsWork(workerId, ctx.self)
           Behaviors.same
 
         case SubmitWork(Work(workId, job: Int)) =>
@@ -96,7 +96,7 @@ class Worker private (
         .receiveMessagePartial[Worker.Message] {
           case Worker.WorkComplete(result) =>
             ctx.log.info("Work is complete. Result {}.", result)
-            masterProxy ! WorkManager.WorkIsDone(workerId, workId, result, ctx.self)
+            workManagerProxy ! WorkManager.WorkIsDone(workerId, workId, result, ctx.self)
             ctx.setReceiveTimeout(workAckTimeout, WorkTimeout)
             waitForWorkIsDoneAck(result, workId, workExecutor)
 
@@ -114,11 +114,11 @@ class Worker private (
         .receiveMessage[Worker.Message] {
           case WorkTimeout =>
             ctx.log.info("No ack from master, resending work result")
-            masterProxy ! WorkManager.WorkIsDone(workerId, workId, result, ctx.self)
+            workManagerProxy ! WorkManager.WorkIsDone(workerId, workId, result, ctx.self)
             Behaviors.same
           case Ack(id) if id == workId =>
             ctx.log.info("Work acked")
-            masterProxy ! WorkerRequestsWork(workerId, ctx.self)
+            workManagerProxy ! WorkerRequestsWork(workerId, ctx.self)
             ctx.cancelReceiveTimeout()
             idle(workExecutor)
         }
@@ -127,4 +127,3 @@ class Worker private (
     }
 
 }
-

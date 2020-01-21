@@ -8,9 +8,9 @@ import scala.concurrent.duration._
 import akka.cluster.typed._
 import worker.WorkManager.Command
 
-object MasterSingleton {
+object WorkManagerSingleton {
 
-  private val singletonName = "master"
+  private val singletonName = "work-manager"
   private val singletonRole = "back-end"
 
   def init(system: ActorSystem[_]): ActorRef[Command] = {
