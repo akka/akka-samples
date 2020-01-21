@@ -1,34 +1,50 @@
 # Cluster Sharding sample
 
-The KillrWeather sample illustrates how to use [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/scala/typed/cluster-sharding.html).
+The KillrWeather sample illustrates how to use [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/scala/typed/cluster-sharding.html) in Scala, for the same sample in Java see [Cluster Sharding Sample Java](https://github.com/akka/akka-samples/tree/2.6/akka-sample-sharding-java).
 It also shows the basic usage of [Akka HTTP](https://doc.akka.io/docs/akka-http/current/index.html).
+
+The sample consists of two applications, each a separate maven submodule:
+
+ * *killrweather* - A distributed Akka cluster that shards weather stations, each keeping a set of recorded 
+    data points and allowing for local querying of the records. The cluster app has a HTTP endpoint for recording
+    and querying the data per weather station. 
+
+ * *killrweather-fog* - A client that periodically submits random weather measurements for a set of stations to a 
+    running cluster.
+
+Let's start going through the implementation of the cluster!
  
 ## KillrWeather
 
 Open [KillrWeather.scala](killrweather/src/main/scala/sample/killrweather/KillrWeather.scala).
-This program starts an ActorSystem with Cluster Sharding enabled. It joins the cluster and starts a `Guardian` actor for the system. 
+This program starts an `ActorSystem` which joins the cluster through configuration, and starts a `Guardian` actor for the system. 
 
 ### Guardian
 
 The [Guardian.scala](killrweather/src/main/scala/sample/killrweather/Guardian.scala) bootstraps the application to shard 
-any number of data `WeatherStation` types on each clustered node. 
+`WeatherStation` actors across the cluster nodes.
+
+Setting up sharding with the entity is done in [WeatherStation.scala](killrweather/src/main/scala/sample/killrweather/WeatherStation.scala#L34).
+Keeping the setup logic together with the sharded actor and then calling it from the bootstrap logic of the application is a common pattern to structure sharded entities. 
 
 ### WeatherStation - sharded data by id
  
-A sharded `WeatherStation` has a set of recorded data points and receives that data stream from remote devices via the
-HTTP endpoint. For each `WeatherStation`, common cumulative computations can be run 
-for a given time window queried, e.g. daily, monthly or annual such as:
+Each sharded `WeatherStation` actor has a set of recorded data points for a station identifier.
 
-* aggregate
-* averages 
-* high/low 
+It receives that data stream from remote devices via the HTTP endpoint. Each `WeatherStation` and also respond to queries about it's recorded set of data such as:
+ 
+ * current
+ * averages 
+ * high/low 
 
 ### Receiving edge device data by data type
 
 The [WeatherHttpServer](killrweather/src/main/scala/sample/killrweather/WeatherHttpServer.scala) is started with 
  [WeatherRoutes](killrweather/src/main/scala/sample/killrweather/WeatherRoutes.scala)
-to receive and unmarshall data from remote devices by data type, by station ID, device ID and data type and to allow 
-querying. The HTTP port of each node is chosen from the port used for Akka Remoting plus 10000, so for a node running 
+ to receive and unmarshall data from remote devices by station ID to allow 
+  querying. The HTTP port of each node is chosen from the port used for Akka Remoting plus 10000, so for a node running 		 querying. To interact with the sharded entities it uses the [`EntityRef` API](killrweather/src/main/scala/sample/killrweather/WeatherRoutes.scala#L26).
+ 
+The HTTP port of each node is chosen from the port used for Akka Remoting plus 10000, so for a node running 
 on port 2525 the HTTP port will be 12525.
 
 ### Configuration
@@ -66,6 +82,9 @@ Within KillrWeather are two simple sides to an HTTP equation.
 
 * [WeatherHttpServer](killrweather/src/main/scala/sample/killrweather/WeatherHttpServer.scala) - HTTP server
 * [WeatherRoutes](killrweather/src/main/scala/sample/killrweather/WeatherRoutes.scala) - HTTP routes receiver which will unmarshall and pass on the data
+
+
+Both parts of the application uses Spray-JSON for marshalling and unmarshalling objects to and from JSON.
 
 ## Running the samples
 

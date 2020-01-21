@@ -14,12 +14,6 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 
 /**
- * Generally geo-based data, unless it is a floating station.
- *
- * This is just an example: cluster sharding would be overkill for just keeping a small amount of data,
- * but becomes useful when you have a collection of 'heavy' actors (in terms of processing or state)
- * so you need to distribute them across several nodes.
- *
  * A sharded `WeatherStation` has a set of recorded datapoints
  * For each weather station common cumulative computations can be run:
  * aggregate, averages, high/low, topK (e.g. the top N highest temperatures).
