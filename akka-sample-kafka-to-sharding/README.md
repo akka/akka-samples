@@ -87,7 +87,7 @@ In the single processor node the messages will start flowing:
 [info] [2020-01-16 09:51:40,732] [INFO] [sample.sharding.kafka.UserEventsKafkaProcessor$] [KafkaToSharding-akka.actor.default-dispatcher-17] [akka://KafkaToSharding/user/kafka-event-processor] - Forwarding message for entity 75 to cluster sharding
 ```
 
-THe first log line is just after the message has been taken from Kafka.
+The first log line is just after the message has been taken from Kafka.
 The second log is from the sharded entity. The goal is to have these
 always on the same node as the external shard allocation strategy will move the shard to where ever the
 Kafka partition is being consumed.
@@ -112,8 +112,8 @@ On one of the nodes, where the ShardCoordinator runs, we'll see the rebalance ha
 [info] [2020-01-16 09:59:39,923] [INFO] [akka://KafkaToSharding@127.0.0.1:2551/system/sharding/user-processingCoordinator/singleton/coordinator] - Starting rebalance for shards [45,33,16,2,3,15,11,6,36]. Current shards rebalancing: []
 ```
 
-Both nodes now have roughly 64 shards / partitions, all co-located with the Kafka Producer.
-You can verify this by the logs showing that when a message is received by the Kafka producer when it is forwarded to 
+Both nodes now have roughly 64 shards / partitions, all co-located with the Kafka Consuemer.
+You can verify this by the logs showing that when a message is received by the Kafka Consumer when it is forwarded to 
 cluster sharding the entity logs receiving the event on the same node. 
 
 ```
@@ -144,7 +144,7 @@ We can count the number of shards on each:
 curl -v localhost:8551/cluster/shards/user-processing  | jq -r "." | grep shardId  | wc
 ```
 
-The number of shards will depend which entities have receives messages.
+The number of shards will depend on which entities have received messages.
 
 We now have a 2 node Akka Cluster with a Kafka Consumer running on each where the kafka partitions align 
 with Cluster shards.

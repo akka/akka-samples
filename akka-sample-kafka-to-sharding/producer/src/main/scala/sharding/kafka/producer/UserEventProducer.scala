@@ -61,7 +61,7 @@ object UserEventProducer extends App {
     producerConfig.partitioning match {
       case Default =>
         // rely on the default kafka partitioner to hash the key and distribute among shards
-        // the logic of the default partitionor must be replicated in MessageExtractor entityId -> shardId function
+        // the logic of the default partitioner must be replicated in MessageExtractor entityId -> shardId function
         new ProducerRecord[String, Array[Byte]](producerConfig.topic, entityId, message)
       case Explicit =>
         // this logic MUST be replicated in the MessageExtractor entityId -> shardId function!

@@ -30,7 +30,7 @@ object UserEvents {
 
   case class RunningTotal(totalPurchases: Long, amountSpent: Long)
 
-  def apply(userId: String): Behavior[Message] = running(RunningTotal(0, 0))
+  def apply(): Behavior[Message] = running(RunningTotal(0, 0))
 
   private def running(runningTotal: RunningTotal): Behavior[Message] = {
     Behaviors.setup { ctx =>
@@ -65,7 +65,7 @@ object UserEvents {
   def init(system: ActorSystem[_]): ActorRef[Message] = {
     val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
     ClusterSharding(system).init(
-      Entity(TypeKey)(createBehavior = entityContext => UserEvents(entityContext.entityId))
+      Entity(TypeKey)(createBehavior = _ => UserEvents())
         .withAllocationStrategy(new ExternalShardAllocationStrategy(system, TypeKey.name))
         .withMessageExtractor(new UserIdMessageExtractor(processorConfig.nrPartitions))
         .withSettings(ClusterShardingSettings(system)))
