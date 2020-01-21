@@ -101,8 +101,8 @@ private[killrweather] object WeatherStation {
           val averageForSameType = average(updated.filter(_.dataType == data.dataType).map(_.value))
           context.log.debugN("{} total readings from station {}, type {}, average {}, diff: processingTime - eventTime: {} ms",
             updated.size,
-            data.dataType,
             wsid,
+            data.dataType,
             averageForSameType,
             received - data.eventTime
           )
