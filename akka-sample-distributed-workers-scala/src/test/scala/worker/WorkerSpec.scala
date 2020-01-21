@@ -9,11 +9,12 @@ import worker.WorkManager.Command
 import worker.WorkManager.WorkFailed
 import worker.WorkManager.WorkIsDone
 import worker.WorkManager.WorkerRequestsWork
-import worker.WorkExecutor.DoWork
+import worker.WorkExecutor.ExecuteWork
 import worker.Worker.SubmitWork
 import worker.Worker.WorkComplete
+import org.scalatest.Matchers
 
-class WorkerSpec extends ScalaTestWithActorTestKit with WordSpecLike {
+class WorkerSpec extends ScalaTestWithActorTestKit with WordSpecLike with Matchers {
   val workerId = "id"
   "A Worker" should {
 
@@ -21,7 +22,7 @@ class WorkerSpec extends ScalaTestWithActorTestKit with WordSpecLike {
       val workManager = createTestProbe[Command]()
       val worker = spawn(Worker(workManager.ref, workerId))
       worker ! Worker.WorkIsReady
-      workManager.expectMessage(WorkManager.WorkerRequestsWork(workerId, worker))
+      workManager.expectMessageType[WorkManager.WorkerRequestsWork].workerId shouldEqual workerId
     }
 
     "report work is done until ack" in {
@@ -43,7 +44,7 @@ class WorkerSpec extends ScalaTestWithActorTestKit with WordSpecLike {
 
       var shouldFail = true
       val failingWorkExecutor =
-        Behaviors.receiveMessage[DoWork](doWork => {
+        Behaviors.receiveMessage[ExecuteWork](doWork => {
           if (shouldFail) {
             shouldFail = false
             throw TestException("oh no")

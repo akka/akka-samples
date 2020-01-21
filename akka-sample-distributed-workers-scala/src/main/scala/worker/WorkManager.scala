@@ -25,7 +25,7 @@ import scala.concurrent.duration.{ Deadline, FiniteDuration, _ }
  */
 object WorkManager {
 
-  val WorkerServiceKey: ServiceKey[Worker.Message] = ServiceKey[Worker.Message]("workerService")
+  val WorkerServiceKey: ServiceKey[WorkerCommand] = ServiceKey[WorkerCommand]("workerService")
   val ResultsTopic = "results"
 
   final case class Ack(workId: String) extends CborSerializable
@@ -33,16 +33,22 @@ object WorkManager {
   sealed trait WorkerStatus
   case object Idle extends WorkerStatus
   final case class Busy(workId: String, deadline: Deadline) extends WorkerStatus
-  final case class WorkerState(ref: ActorRef[Worker.Message], status: WorkerStatus)
+  final case class WorkerState(ref: ActorRef[WorkerCommand], status: WorkerStatus)
 
   sealed trait Command extends CborSerializable
   private final case class UpdatedWorkers(workers: Receptionist.Listing) extends Command
 
   // Messages from Workers
-  final case class WorkerRequestsWork(workerId: String, replyTo: ActorRef[Worker.Message]) extends Command
-  final case class WorkIsDone(workerId: String, workId: String, result: Any, replyTo: ActorRef[Worker.Message])
+  final case class WorkerRequestsWork(workerId: String, replyTo: ActorRef[WorkerCommand]) extends Command
+  final case class WorkIsDone(workerId: String, workId: String, result: Any, replyTo: ActorRef[WorkerCommand])
       extends Command
-  final case class WorkFailed(worker: ActorRef[Worker.Message], workId: String) extends Command
+  final case class WorkFailed(worker: ActorRef[WorkerCommand], workId: String) extends Command
+
+  // Responses to requests from workers
+  sealed trait WorkerCommand
+  final case class DoWork(work: Work) extends WorkerCommand
+  final case class WorkAck(id: String) extends WorkerCommand
+  case object WorkAvailable extends WorkerCommand
 
   // External commands
   final case class SubmitWork(work: Work, replyTo: ActorRef[WorkManager.Ack]) extends Command
@@ -54,18 +60,18 @@ object WorkManager {
         val mediator = DistributedPubSub(ctx.system.toClassic).mediator
 
         // the set of available workers is not event sourced as it depends on the current set of workers
-        var workers = Map[ActorRef[Worker.Message], WorkerState]()
+        var workers = Map[ActorRef[WorkerCommand], WorkerState]()
 
         def notifyWorkers(workState: WorkState): Unit =
           if (workState.hasWork) {
             workers.foreach {
               case (_, WorkerState(ref, Idle)) =>
-                ref ! Worker.WorkIsReady
+                ref ! WorkAvailable
               case _ => // busy
             }
           }
 
-        def changeWorkerToIdle(worker: ActorRef[Worker.Message], workId: String): Unit =
+        def changeWorkerToIdle(worker: ActorRef[WorkerCommand], workId: String): Unit =
           workers.get(worker) match {
             case Some(workerState @ WorkerState(_, Busy(`workId`, _))) =>
               val newWorkerState = workerState.copy(status = Idle)
@@ -83,7 +89,7 @@ object WorkManager {
           commandHandler = (workState, command) => {
             command match {
               case UpdatedWorkers(listing) =>
-                val newWorkerList: Set[ActorRef[Worker.Message]] =
+                val newWorkerList: Set[ActorRef[WorkerCommand]] =
                   listing.allServiceInstances(WorkManager.WorkerServiceKey)
 
                 var events = ListBuffer.empty[WorkDomainEvent]
@@ -110,7 +116,7 @@ object WorkManager {
 
                 if (workState.hasWork) {
                   newWorkers.foreach { newWorker =>
-                    newWorker ! Worker.WorkIsReady
+                    newWorker ! WorkAvailable
                   }
                 }
                 if (events.nonEmpty) {
@@ -142,7 +148,7 @@ object WorkManager {
                         ctx.log.info("Giving worker {} some work {}", workerId, work.workId)
                         val newWorkerState = workerState.copy(status = Busy(work.workId, Deadline.now + workTimeout))
                         workers += (replyTo -> newWorkerState)
-                        replyTo ! Worker.SubmitWork(work)
+                        replyTo ! DoWork(work)
                       }
                     case _ =>
                       Effect.none[WorkDomainEvent, WorkState]
@@ -154,7 +160,7 @@ object WorkManager {
                 // idempotent - redelivery from the worker may cause duplicates, so it needs to be
                 if (workState.isDone(workId)) {
                   // previous Ack was lost, confirm again that this is done
-                  replyTo ! Worker.Ack(workId)
+                  replyTo ! WorkAck(workId)
                   Effect.none
                 } else if (!workState.isInProgress(workId)) {
                   ctx.log.info("Work {} not in progress, reported as done by worker {}", workId, workerId)
@@ -165,7 +171,7 @@ object WorkManager {
                   Effect.persist[WorkDomainEvent, WorkState](WorkCompleted(workId, result)).thenRun { _ =>
                     mediator ! DistributedPubSubMediator.Publish(ResultsTopic, WorkResult(workId, result))
                     // Ack back to original sender
-                    replyTo ! Worker.Ack(workId)
+                    replyTo ! WorkAck(workId)
                   }
                 }
               case WorkFailed(workerId, workId) =>

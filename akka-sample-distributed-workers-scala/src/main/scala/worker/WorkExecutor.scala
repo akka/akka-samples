@@ -13,9 +13,9 @@ import scala.concurrent.duration._
   * Work executor is the actor actually performing the work.
   */
 object WorkExecutor {
-  case class DoWork(n: Int, replyTo: ActorRef[WorkComplete])
+  case class ExecuteWork(n: Int, replyTo: ActorRef[WorkComplete])
 
-  def apply(): Behavior[DoWork] = {
+  def apply(): Behavior[ExecuteWork] = {
     Behaviors.setup { ctx =>
       Behaviors.receiveMessage { doWork =>
         val n = doWork.n
