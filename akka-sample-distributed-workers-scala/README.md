@@ -4,7 +4,7 @@ To be reactive, distributed applications must deal gracefully with temporary and
 the ability to scale up and down to make the best use of resources. 
 Akka Cluster provides these capabilities so that you don't have to implement them yourself. 
 The distributed workers example demonstrates the following Akka clustering capabilities:
-
+    
  * elastic addition and removal of the front-end actors that accept client requests
  * elastic addition and removal of the back-end actors that perform the work distribution of actors across different nodes
  * how jobs are re-tried in the face of failures
@@ -38,7 +38,8 @@ When `Main` is run without any parameters, it starts six `ActorSystem`s in the s
 
  * The front-end nodes simulate an external interface, such as a REST API, that accepts workloads from clients.
  * The worker nodes have worker actors that accept and process workloads.
- * The back-end nodes contain a Master actor that coordinates workloads, keeps track of the workers, and delegates work to available workers. One of the nodes is active and one is on standby. If the active Master goes down, the standby takes over.
+ * The back-end nodes contain a WorkManager actor that coordinates workloads, keeps track of the workers, and delegates
+   work to available workers. One of the nodes is active and one is on standby. If the active WorkManager goes down, the standby takes over.
 
 Let's look at the details of each part of the application, starting with the front-end.
 
@@ -51,7 +52,7 @@ gRPC](https://doc.akka.io/docs/akka-grpc/current/index.html) can be used of a gR
 
 To limit the scope of this example, we have chosen to emulate client activity with two ordinary actors:
 
-* The `FrontEnd` actor generates payloads at random intervals and sends them to the 'Master' actor.
+* The `FrontEnd` actor generates payloads at random intervals and sends them to the 'WorkManager' actor.
 * The `WorkResultConsumerActor` that consumes results and logs them.
 
 
