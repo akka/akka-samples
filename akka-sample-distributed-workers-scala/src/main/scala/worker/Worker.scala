@@ -5,7 +5,8 @@ import java.util.UUID
 import akka.actor.typed._
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl._
-import worker.Master.WorkerRequestsWork
+import worker.WorkManager
+import worker.WorkManager.WorkerRequestsWork
 import worker.WorkExecutor.DoWork
 import worker.Worker.Ack
 import worker.Worker.SubmitWork
@@ -14,11 +15,41 @@ import worker.Worker.WorkTimeout
 
 import scala.concurrent.duration._
 
+/**
+ * The worker is actually more of a middle manager, delegating the actual work
+ * to the WorkExecutor, supervising it and keeping itself available to interact with the work master.
+ */
+object Worker {
+
+  sealed trait Message extends CborSerializable
+  case object WorkIsReady extends Message
+  case class Ack(id: String) extends Message
+  case class SubmitWork(work: Work) extends Message
+  case class WorkComplete(result: String) extends Message
+
+  private case object WorkTimeout extends Message
+
+  def apply(
+      masterProxy: ActorRef[WorkManager.Command],
+      workerId: String = UUID.randomUUID().toString,
+      workExecutorFactory: () => Behavior[DoWork] = () => WorkExecutor()): Behavior[Message] =
+    Behaviors.setup[Message] { ctx =>
+      Behaviors.withTimers { timers: TimerScheduler[Message] =>
+        ctx.system.receptionist ! Receptionist.Register(WorkManager.WorkerServiceKey, ctx.self)
+
+        Behaviors
+          .supervise(new Worker(workerId, masterProxy, ctx, timers, workExecutorFactory).idle())
+          .onFailure[Exception](SupervisorStrategy.restart)
+      }
+    }
+
+}
+
 class Worker private (
     workerId: String,
-    masterProxy: ActorRef[Master.Command],
-    ctx: ActorContext[Worker.Command],
-    timers: TimerScheduler[Worker.Command],
+    masterProxy: ActorRef[WorkManager.Command],
+    ctx: ActorContext[Worker.Message],
+    timers: TimerScheduler[Worker.Message],
     workExecutorFactory: () => Behavior[DoWork]) {
 
   private val workAckTimeout =
@@ -32,17 +63,17 @@ class Worker private (
   }
 
   def reportWorkFailedOnRestart(
-      workId: String): PartialFunction[(scaladsl.ActorContext[Worker.Command], Signal), Behavior[Worker.Command]] = {
+      workId: String): PartialFunction[(scaladsl.ActorContext[Worker.Message], Signal), Behavior[Worker.Message]] = {
     case (_, Terminated(_)) =>
       ctx.log.info("Work executor terminated. Reporting failure")
-      masterProxy ! Master.WorkFailed(ctx.self, workId)
+      masterProxy ! WorkManager.WorkFailed(ctx.self, workId)
       // need to re-create the work executor
       idle(createWorkExecutor())
   }
 
-  def idle(workExecutor: ActorRef[DoWork] = createWorkExecutor()): Behavior[Worker.Command] =
-    Behaviors.setup[Worker.Command] { ctx =>
-      Behaviors.receiveMessagePartial[Worker.Command] {
+  def idle(workExecutor: ActorRef[DoWork] = createWorkExecutor()): Behavior[Worker.Message] =
+    Behaviors.setup[Worker.Message] { ctx =>
+      Behaviors.receiveMessagePartial[Worker.Message] {
         case WorkIsReady =>
           // this is the only state where we reply to WorkIsReady
           masterProxy ! WorkerRequestsWork(workerId, ctx.self)
@@ -59,13 +90,13 @@ class Worker private (
       }
     }
 
-  def working(workId: String, workExecutor: ActorRef[DoWork]): Behavior[Worker.Command] =
+  def working(workId: String, workExecutor: ActorRef[DoWork]): Behavior[Worker.Message] =
     Behaviors.setup { ctx =>
       Behaviors
-        .receiveMessagePartial[Worker.Command] {
+        .receiveMessagePartial[Worker.Message] {
           case Worker.WorkComplete(result) =>
             ctx.log.info("Work is complete. Result {}.", result)
-            masterProxy ! Master.WorkIsDone(workerId, workId, result, ctx.self)
+            masterProxy ! WorkManager.WorkIsDone(workerId, workId, result, ctx.self)
             ctx.setReceiveTimeout(workAckTimeout, WorkTimeout)
             waitForWorkIsDoneAck(result, workId, workExecutor)
 
@@ -77,13 +108,13 @@ class Worker private (
         .receiveSignal(reportWorkFailedOnRestart(workId))
     }
 
-  def waitForWorkIsDoneAck(result: String, workId: String, workExecutor: ActorRef[DoWork]): Behavior[Worker.Command] =
+  def waitForWorkIsDoneAck(result: String, workId: String, workExecutor: ActorRef[DoWork]): Behavior[Worker.Message] =
     Behaviors.setup { ctx =>
       Behaviors
-        .receiveMessage[Worker.Command] {
+        .receiveMessage[Worker.Message] {
           case WorkTimeout =>
             ctx.log.info("No ack from master, resending work result")
-            masterProxy ! Master.WorkIsDone(workerId, workId, result, ctx.self)
+            masterProxy ! WorkManager.WorkIsDone(workerId, workId, result, ctx.self)
             Behaviors.same
           case Ack(id) if id == workId =>
             ctx.log.info("Work acked")
@@ -97,32 +128,3 @@ class Worker private (
 
 }
 
-/**
- * The worker is actually more of a middle manager, delegating the actual work
- * to the WorkExecutor, supervising it and keeping itself available to interact with the work master.
- */
-object Worker {
-
-  sealed trait Command extends CborSerializable
-  case object WorkIsReady extends Command
-  case class Ack(id: String) extends Command
-  case class SubmitWork(work: Work) extends Command
-  case class WorkComplete(result: String) extends Command
-
-  private case object WorkTimeout extends Command
-
-  def apply(
-      masterProxy: ActorRef[Master.Command],
-      workerId: String = UUID.randomUUID().toString,
-      workExecutorFactory: () => Behavior[DoWork] = () => WorkExecutor()): Behavior[Command] =
-    Behaviors.setup[Command] { ctx =>
-      Behaviors.withTimers { timers: TimerScheduler[Command] =>
-        ctx.system.receptionist ! Receptionist.Register(Master.WorkerServiceKey, ctx.self)
-
-        Behaviors
-          .supervise(new Worker(workerId, masterProxy, ctx, timers, workExecutorFactory).idle())
-          .onFailure[Exception](SupervisorStrategy.restart)
-      }
-    }
-
-}

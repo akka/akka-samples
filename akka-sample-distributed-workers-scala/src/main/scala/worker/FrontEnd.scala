@@ -7,7 +7,7 @@ import akka.actor.typed._
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, TimerScheduler }
 import akka.util.Timeout
-import worker.Master.SubmitWork
+import worker.WorkManager.SubmitWork
 
 import scala.concurrent.duration._
 import scala.util.Failure
@@ -30,35 +30,32 @@ object FrontEnd {
     val masterProxy = MasterSingleton.init(ctx.system)
     Behaviors.setup { ctx =>
       Behaviors.withTimers { timers =>
-        idle(0, masterProxy, timers, ctx)
+        new FrontEnd(masterProxy, ctx, timers).idle(0)
       }
     }
   }
 
-  def idle(
-      workCounter: Int,
-      masterProxy: ActorRef[SubmitWork],
-      timers: TimerScheduler[Command],
-      ctx: ActorContext[Command]): Behavior[Command] = {
+
+}
+
+class FrontEnd private(masterProxy: ActorRef[SubmitWork], ctx: ActorContext[FrontEnd.Command], timers: TimerScheduler[FrontEnd.Command]) {
+  import FrontEnd._
+
+  def idle(workCounter: Int): Behavior[Command] = {
     val nextTick = ThreadLocalRandom.current.nextInt(3, 10).seconds
     timers.startSingleTimer("tick", Tick, nextTick)
     Behaviors.receiveMessage {
       case Tick =>
-        busy(workCounter + 1, Work(nextWorkId(), workCounter), masterProxy, timers, ctx)
+        busy(workCounter + 1, Work(nextWorkId(), workCounter))
       case _ =>
         Behaviors.unhandled
     }
   }
 
-  def busy(
-      workCounter: Int,
-      workInProgress: Work,
-      masterProxy: ActorRef[SubmitWork],
-      timers: TimerScheduler[Command],
-      ctx: ActorContext[Command]): Behavior[Command] = {
+  def busy(workCounter: Int, workInProgress: Work): Behavior[Command] = {
     def sendWork(work: Work): Unit = {
       implicit val timeout: Timeout = Timeout(5.seconds)
-      ctx.ask[SubmitWork, Master.Ack](masterProxy, reply => SubmitWork(work, reply)) {
+      ctx.ask[SubmitWork, WorkManager.Ack](masterProxy, replyTo => SubmitWork(work, replyTo)) {
         case Success(_) => WorkAccepted
         case Failure(_) => Failed
       }
@@ -73,7 +70,7 @@ object FrontEnd {
         Behaviors.same
       case WorkAccepted =>
         ctx.log.info("Got ack for workId {}", workInProgress.workId)
-        idle(workCounter, masterProxy, timers, ctx)
+        idle(workCounter)
       case Retry =>
         ctx.log.info("Retrying work {}", workInProgress.workId)
         sendWork(workInProgress)
@@ -82,4 +79,5 @@ object FrontEnd {
         Behaviors.unhandled
     }
   }
+
 }

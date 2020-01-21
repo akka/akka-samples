@@ -10,10 +10,10 @@ object WorkResultConsumer {
   def apply(): Behavior[Any] =
     Behaviors.setup[Any] { ctx =>
       val mediator = DistributedPubSub(ctx.system).mediator
-      mediator ! DistributedPubSubMediator.Subscribe(Master.ResultsTopic, ctx.self.toClassic)
+      mediator ! DistributedPubSubMediator.Subscribe(WorkManager.ResultsTopic, ctx.self.toClassic)
       Behaviors.receiveMessage[Any] {
         case _: DistributedPubSubMediator.SubscribeAck =>
-          ctx.log.info("Subscribed to {} topic", Master.ResultsTopic)
+          ctx.log.info("Subscribed to {} topic", WorkManager.ResultsTopic)
           Behaviors.same
         case WorkResult(workId, result) =>
           ctx.log.info("Consumed result: {}", result)

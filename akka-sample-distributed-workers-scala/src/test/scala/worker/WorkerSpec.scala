@@ -5,10 +5,10 @@ import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import org.scalatest.WordSpecLike
-import worker.Master.Command
-import worker.Master.WorkFailed
-import worker.Master.WorkIsDone
-import worker.Master.WorkerRequestsWork
+import worker.WorkManager.Command
+import worker.WorkManager.WorkFailed
+import worker.WorkManager.WorkIsDone
+import worker.WorkManager.WorkerRequestsWork
 import worker.WorkExecutor.DoWork
 import worker.Worker.SubmitWork
 import worker.Worker.WorkComplete
@@ -21,7 +21,7 @@ class WorkerSpec extends ScalaTestWithActorTestKit with WordSpecLike {
       val master = createTestProbe[Command]()
       val worker = spawn(Worker(master.ref, workerId))
       worker ! Worker.WorkIsReady
-      master.expectMessage(Master.WorkerRequestsWork(workerId, worker))
+      master.expectMessage(WorkManager.WorkerRequestsWork(workerId, worker))
     }
 
     "report work is done until ack" in {

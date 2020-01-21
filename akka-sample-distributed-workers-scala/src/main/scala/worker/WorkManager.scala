@@ -21,31 +21,43 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.{ Deadline, FiniteDuration, _ }
 
 /**
- * The master actor keep tracks of all available workers, and all scheduled and ongoing work items
+ * The work manager actor keep tracks of all available workers, and all scheduled and ongoing work items
  */
-object Master {
+object WorkManager {
 
-  val WorkerServiceKey: ServiceKey[Worker.Command] = ServiceKey[Worker.Command]("workerService")
+  val WorkerServiceKey: ServiceKey[Worker.Message] = ServiceKey[Worker.Message]("workerService")
+  val ResultsTopic = "results"
+
+  final case class Ack(workId: String) extends CborSerializable
+
+  sealed trait WorkerStatus
+  case object Idle extends WorkerStatus
+  final case class Busy(workId: String, deadline: Deadline) extends WorkerStatus
+  final case class WorkerState(ref: ActorRef[Worker.Message], status: WorkerStatus)
 
   sealed trait Command extends CborSerializable
+  private final case class UpdatedWorkers(workers: Receptionist.Listing) extends Command
+
   // Messages from Workers
-  case class UpdatedWorkers(workers: Receptionist.Listing) extends Command
-  case class WorkerRequestsWork(workerId: String, replyTo: ActorRef[Worker.Command]) extends Command
-  case class WorkIsDone(workerId: String, workId: String, result: Any, replyTo: ActorRef[Worker.Command])
+  final case class WorkerRequestsWork(workerId: String, replyTo: ActorRef[Worker.Message]) extends Command
+  final case class WorkIsDone(workerId: String, workId: String, result: Any, replyTo: ActorRef[Worker.Message])
       extends Command
-  case class WorkFailed(worker: ActorRef[Worker.Command], workId: String) extends Command
+  final case class WorkFailed(worker: ActorRef[Worker.Message], workId: String) extends Command
+
+
 
   // External commands
-  case class SubmitWork(work: Work, replyTo: ActorRef[Master.Ack]) extends Command
+  final case class SubmitWork(work: Work, replyTo: ActorRef[WorkManager.Ack]) extends Command
 
   def apply(workTimeout: FiniteDuration): Behavior[Command] =
     Behaviors.setup { ctx =>
       Behaviors.withTimers { timers =>
         // No typed pub sub yet
+        // FIXME once https://github.com/akka/akka/issues/26338 is done
         val mediator = DistributedPubSub(ctx.system.toClassic).mediator
 
         // the set of available workers is not event sourced as it depends on the current set of workers
-        var workers = Map[ActorRef[Worker.Command], WorkerState]()
+        var workers = Map[ActorRef[Worker.Message], WorkerState]()
 
         def notifyWorkers(workState: WorkState): Unit =
           if (workState.hasWork) {
@@ -56,7 +68,7 @@ object Master {
             }
           }
 
-        def changeWorkerToIdle(worker: ActorRef[Worker.Command], workId: String): Unit =
+        def changeWorkerToIdle(worker: ActorRef[Worker.Message], workId: String): Unit =
           workers.get(worker) match {
             case Some(workerState @ WorkerState(_, Busy(`workId`, _))) =>
               val newWorkerState = workerState.copy(status = Idle)
@@ -66,7 +78,7 @@ object Master {
           }
 
         val listingResponseAdapter = ctx.messageAdapter[Receptionist.Listing](UpdatedWorkers)
-        ctx.system.receptionist ! Receptionist.Subscribe(Master.WorkerServiceKey, listingResponseAdapter)
+        ctx.system.receptionist ! Receptionist.Subscribe(WorkManager.WorkerServiceKey, listingResponseAdapter)
 
         EventSourcedBehavior[Command, WorkDomainEvent, WorkState](
           persistenceId = PersistenceId.ofUniqueId("master"),
@@ -74,8 +86,8 @@ object Master {
           commandHandler = (workState, command) => {
             command match {
               case UpdatedWorkers(listing) =>
-                val newWorkerList: Set[ActorRef[Worker.Command]] =
-                  listing.allServiceInstances(Master.WorkerServiceKey)
+                val newWorkerList: Set[ActorRef[Worker.Message]] =
+                  listing.allServiceInstances(WorkManager.WorkerServiceKey)
 
                 var events = ListBuffer.empty[WorkDomainEvent]
                 val removedWorkers = workers.keySet.diff(newWorkerList)
@@ -112,13 +124,13 @@ object Master {
               case work: SubmitWork =>
                 // idempotent
                 if (workState.isAccepted(work.work.workId)) {
-                  work.replyTo ! Master.Ack(work.work.workId)
+                  work.replyTo ! WorkManager.Ack(work.work.workId)
                   Effect.none
                 } else {
                   ctx.log.info("Accepted work: {}", work.work.workId)
                   Effect.persist(WorkAccepted(work.work)).thenRun { _ =>
                     // Ack back to original sender
-                    work.replyTo ! Master.Ack(work.work.workId)
+                    work.replyTo ! WorkManager.Ack(work.work.workId)
                     notifyWorkers(workState)
                   }
                 }
@@ -173,13 +185,5 @@ object Master {
       }
     }
 
-  val ResultsTopic = "results"
-
-  case class Ack(workId: String) extends CborSerializable
-
-  sealed trait WorkerStatus
-  case object Idle extends WorkerStatus
-  case class Busy(workId: String, deadline: Deadline) extends WorkerStatus
-  case class WorkerState(ref: ActorRef[Worker.Command], status: WorkerStatus)
 
 }
