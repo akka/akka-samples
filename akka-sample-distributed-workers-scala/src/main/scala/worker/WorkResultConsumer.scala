@@ -9,6 +9,7 @@ import akka.actor.typed.scaladsl.adapter._
 object WorkResultConsumer {
   def apply(): Behavior[Any] =
     Behaviors.setup[Any] { ctx =>
+      // FIXME use typed pub sub once https://github.com/akka/akka/issues/26338 is done
       val mediator = DistributedPubSub(ctx.system).mediator
       mediator ! DistributedPubSubMediator.Subscribe(WorkManager.ResultsTopic, ctx.self.toClassic)
       Behaviors.receiveMessage[Any] {

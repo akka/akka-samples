@@ -44,16 +44,13 @@ object WorkManager {
       extends Command
   final case class WorkFailed(worker: ActorRef[Worker.Message], workId: String) extends Command
 
-
-
   // External commands
   final case class SubmitWork(work: Work, replyTo: ActorRef[WorkManager.Ack]) extends Command
 
   def apply(workTimeout: FiniteDuration): Behavior[Command] =
     Behaviors.setup { ctx =>
       Behaviors.withTimers { timers =>
-        // No typed pub sub yet
-        // FIXME once https://github.com/akka/akka/issues/26338 is done
+        // FIXME use typed pub sub once https://github.com/akka/akka/issues/26338 is done
         val mediator = DistributedPubSub(ctx.system.toClassic).mediator
 
         // the set of available workers is not event sourced as it depends on the current set of workers
@@ -184,6 +181,5 @@ object WorkManager {
           eventHandler = (workState, event) => workState.updated(event))
       }
     }
-
 
 }
