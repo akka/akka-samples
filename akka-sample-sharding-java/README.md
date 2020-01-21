@@ -2,24 +2,41 @@
 
 The KillrWeather sample illustrates how to use [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/java/typed/cluster-sharding.html).
 It also shows the basic usage of [Akka HTTP](https://doc.akka.io/docs/akka-http/current/index.html).
+
+The sample consists of two applications, each a separate maven submodule:
+ 
+ * *killrweather* - A distributed Akka cluster that shards weather stations, each keeping a set of recorded 
+   data points and allowing for local querying of the records. The cluster app has a HTTP endpoint for recording
+   and querying the data per weather station. 
+ 
+ * *killrweather-fog* - A client that periodically submits random weather measurements for a set of stations to a 
+   running cluster.
+ 
+
+Let's start going through the implementation of the cluster!
  
 ## KillrWeather
 
 Open [KillrWeather.java](killrweather/src/main/java/sample/killrweather/KillrWeather.java).
-This program starts an ActorSystem with Cluster Sharding enabled. It joins the cluster and starts a `Guardian` actor for the system. 
+This program starts an `ActorSystem` which joins the cluster through configuration, and starts a `Guardian` actor for the system. 
 
 ### Guardian
 
 The [Guardian.java](killrweather/src/main/java/sample/killrweather/Guardian.java) bootstraps the application to shard 
-any number of data `WeatherStation` types on each clustered node. 
+`WeatherStation` actors across the cluster nodes.
+
+Setting up sharding with the entity is done in [WeatherStation.java](killrweather/src/main/java/sample/killrweather/WeatherStation.java#L38).
+Keeping the setup logic together with the sharded actor and then calling it from the bootstrap logic of the application 
+is a common pattern to structure sharded entities.
 
 ### WeatherStation - sharded data by id
  
-A sharded `WeatherStation` has a set of recorded data points and receives that data stream from remote devices via the
-HTTP endpoint. For each `WeatherStation`, common cumulative computations can be run 
-for a given time window queried, e.g. daily, monthly or annual such as:
+Each sharded `WeatherStation` actor has a set of recorded data points for a station identifier. 
 
-* aggregate
+It receives that data stream from remote devices via the
+HTTP endpoint. Each `WeatherStation` and also respond to queries about it's recorded set of data such as:
+
+* current
 * averages 
 * high/low 
 
@@ -27,8 +44,10 @@ for a given time window queried, e.g. daily, monthly or annual such as:
 
 The [WeatherHttpServer](killrweather/src/main/java/sample/killrweather/WeatherHttpServer.java) is started with 
  [WeatherRoutes](killrweather/src/main/java/sample/killrweather/WeatherRoutes.java)
-to receive and unmarshall data from remote devices by data type, by station ID, device ID and data type and to allow 
-querying. The HTTP port of each node is chosen from the port used for Akka Remoting plus 10000, so for a node running 
+to receive and unmarshall data from remote devices by station ID to allow 
+querying. To interact with the sharded entities it uses the [`EntityRef` API](killrweather/src/main/java/sample/killrweather/WeatherRoutes.java#L40).
+
+The HTTP port of each node is chosen from the port used for Akka Remoting plus 10000, so for a node running 
 on port 2525 the HTTP port will be 12525.
 
 ### Configuration
@@ -66,6 +85,8 @@ Within KillrWeather are two simple sides to an HTTP equation.
 
 * [WeatherHttpServer](killrweather/src/main/java/sample/killrweather/WeatherHttpServer.java) - HTTP server
 * [WeatherRoutes](killrweather/src/main/java/sample/killrweather/WeatherRoutes.java) - HTTP routes receiver which will unmarshall and pass on the data
+
+Both parts of the application uses Jackson for marshalling and unmarshalling objects to and from JSON.
 
 ## Running the samples
 

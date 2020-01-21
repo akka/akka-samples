@@ -25,11 +25,11 @@ public class KillrWeather {
           .map(addr -> (Integer) addr.port().get()) // Missing Java getter for port, fixed in Akka 2.6.2
           .collect(Collectors.toList());
 
-    // Either use a single port provided by the user, or start the all listed seed nodes plus one node on a random port
-    // in this JVM if the user didn't provide args for the app
-    // In a production application you wouldn't typically start multiple ActorSystem instances in the
-    // same JVM, here we do it to easily demonstrate these ActorSystems (which would be in separate JVM's)
-    // talking to each other.
+    // Either use a single port provided by the user
+    // Or start each listed seed nodes port plus one node on a random port in this single JVM if the user
+    // didn't provide args for the app
+    // In a production application you wouldn't start multiple ActorSystem instances in the
+    // same JVM, here we do it to simplify running a sample cluster from a single main method.
     List<Integer> ports = Arrays.stream(args).findFirst().map(str ->
       Collections.singletonList(Integer.parseInt(str))
     ).orElseGet(() -> {
