@@ -106,7 +106,7 @@ class Worker private (
             waitForWorkIsDoneAck(result, workId, workExecutor)
 
           case _: SubmitWork =>
-            ctx.log.warn("Yikes. Master told me to do work, while I'm already working.")
+            ctx.log.warn("Yikes. WorkManager told me to do work, while I'm already working.")
             Behaviors.unhandled
 
         }

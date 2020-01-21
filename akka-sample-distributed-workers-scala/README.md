@@ -57,7 +57,7 @@ To limit the scope of this example, we have chosen to emulate client activity wi
 
 
 The `FrontEnd` actor only concerns itself with posting workloads, and does not care when the work has been completed. 
-When a workload has been processed successfully and passed to the `Master` actor it publishes the result to all interested cluster nodes through Distributed Pub-Sub. 
+When a workload has been processed successfully and passed to the `WorkManager` actor it publishes the result to all interested cluster nodes through Distributed Pub-Sub. 
 
 The `WorkResultConsumerActor` subscribes to the completion events and logs when a workload has completed.
 
@@ -71,17 +71,17 @@ Note in the source code that as the 'FrontEnd' actor starts up, it:
 1. Each 'Tick' message:
     1. Triggers creation of a new 'Work' message.
     1. Switches to a new 'busy' behavior.
-    1. Sends the 'Work' message to the 'Master' actor of a 'back-end' node.
+    1. Sends the 'Work' message to the 'WorkManager' actor of a 'back-end' node.
 
-The `FrontEnd` actor schedules `Tick` messages to itself when starting up. the `Tick` message then triggers creation of a new `Work`, sending the work to the `Master` actor on a `back-end` node and switching to a new `busy` behavior.
+The `FrontEnd` actor schedules `Tick` messages to itself when starting up. the `Tick` message then triggers creation of a new `Work`, sending the work to the `WorkManager` actor on a `back-end` node and switching to a new `busy` behavior.
 
-The cluster contains one `Master` actor. The `FrontEnd` actor does not need to know the exact location because it sends work to the `masterProxy` that is a cluster singleton proxy.
+The cluster contains one `WorkManager` actor. The `FrontEnd` actor does not need to know the exact location because it sends work to the `masterProxy` that is a cluster singleton proxy.
 
-The 'Master' actor can accept or deny a work request and we need to deal with unexpected errors:
+The 'WorkManager' actor can accept or deny a work request and we need to deal with unexpected errors:
 
-* If the 'Master' accepts the request, the actor schedules a new tick to itself and toggles back to the idle behavior.
+* If the 'WorkManager' accepts the request, the actor schedules a new tick to itself and toggles back to the idle behavior.
 * To deal with failures, the message uses the [ask pattern](http://doc.akka.io/docs/akka/current/scala/actors.html#ask-send-and-receive-future) to add a timeout to wait for a reply. If the timeout expires before the master responds, the returned 'Future' fails with an akka.pattern.AskTimeoutException.
-* We transform timeouts or denials from the 'Master' into a 'Failed' value that is automatically piped back to `self` and a `Retry` is scheduled.
+* We transform timeouts or denials from the 'WorkManager' into a 'Failed' value that is automatically piped back to `self` and a `Retry` is scheduled.
 
 When a workload has been acknowledged by the master, the actor goes back to the  `idle` behavior which schedules
 a `Tick` to start the process again.  
@@ -98,22 +98,22 @@ As mentioned in the introduction, results are published using Distributed Pub-Su
 In an actual application you would probably want a way for clients to poll or stream the status changes of the submitted work.
 
 ## Back end
-The back-end nodes host the `Master` actor, which manages work, keeps track of available workers, 
-and notifies registered workers when new work is available. The single `Master` actor is the heart of the solution, 
+The back-end nodes host the `WorkManager` actor, which manages work, keeps track of available workers, 
+and notifies registered workers when new work is available. The single `WorkManager` actor is the heart of the solution, 
 with built-in resilience provided by the [Akka Cluster Singleton](http://doc.akka.io/docs/akka/current/scala/guide/modules.html#cluster-singleton).
 
-### The Master singleton
+### The WorkManager singleton
 
 The [Cluster Singleton](http://doc.akka.io/docs/akka/current/scala/guide/modules.html#cluster-singleton) tool in Akka makes sure an 
 actor only runs concurrently on one node within the subset of nodes marked with the role `back-end` at any given time. 
-It will run on the oldest back-end node. If the node on which the 'Master' is running is removed from the cluster, Akka starts a new 
-`Master` on the next oldest node. Other nodes in the cluster interact with the `Master` through the `ClusterSingletonProxy` without 
+It will run on the oldest back-end node. If the node on which the 'WorkManager' is running is removed from the cluster, Akka starts a new 
+`WorkManager` on the next oldest node. Other nodes in the cluster interact with the `WorkManager` through the `ClusterSingletonProxy` without 
 knowing the explicit location. You can see this interaction in the `FrontEnd` and `Worker` actors.
 
 In case of the master node crashing and being removed from the cluster another master actor is automatically started on the new oldest node.
 
 You can see how the master singleton is started in the method `init`
-in `MasterSingleton`:
+in `WorkManagerSingleton`:
 
 The singleton accepts the `Behavior` of the actual singleton actor, as well as configuration 
 which allows us to decide that the singleton actors should only run on the nodes with the role `back-end`.
@@ -123,14 +123,14 @@ being created.
 
 The state of the master is recovered on the standby node in the case of the node being lost through event sourcing.
 
-Let's now explore the implementation of the `Master` actor in depth.
+Let's now explore the implementation of the `WorkManager` actor in depth.
 
 ## Work manager in detail
 
-The `Master` actor is without question the most involved component in this example. 
-This is because it is designed to deal with failures. While the Akka cluster takes care of restarting the `Master` in case of a failure, we also want to make sure that the new `Master` can arrive at the same state as the failed `Master`. We use event sourcing and Akka Persistence to achieve this.
+The `WorkManager` actor is without question the most involved component in this example. 
+This is because it is designed to deal with failures. While the Akka cluster takes care of restarting the `WorkManager` in case of a failure, we also want to make sure that the new `WorkManager` can arrive at the same state as the failed `WorkManager`. We use event sourcing and Akka Persistence to achieve this.
 
-If the `back-end` node hosting the `Master` actor would crash the Akka Cluster Singleton makes sure it starts up on a different node, but we would also want it to reach the exact same state as the crashed node `Master`. This is achieved through use of event sourcing and [Akka Persistence](http://doc.akka.io/docs/akka/current/scala/persistence.html).
+If the `back-end` node hosting the `WorkManager` actor would crash the Akka Cluster Singleton makes sure it starts up on a different node, but we would also want it to reach the exact same state as the crashed node `WorkManager`. This is achieved through use of event sourcing and [Akka Persistence](http://doc.akka.io/docs/akka/current/scala/persistence.html).
 
 ### Tracking current work items
 
@@ -139,7 +139,7 @@ The current set of work item is modelled in the `WorkState` class. It keeps trac
 This allows us to capture and store each such event that happens, we can later replay all of them on an empty model and 
 arrive at the exact same state. This is how event sourcing and [Akka Persistence](http://doc.akka.io/docs/akka/current/scala/persistence.html) allows the actor to start on any node and reach the same state as a previous instance.
 
-If the `Master` fails and is restarted, the replacement `Master` replays events from the log to retrieve the current state. This means that when the WorkState is modified, the `Master` must persist the event before acting on it. When the event is successfully stored, we can modify the state. Otherwise, if a failure occurs before the event is persisted, the replacement `Master` will not be able to attain the same state as the failed `Master`.
+If the `WorkManager` fails and is restarted, the replacement `WorkManager` replays events from the log to retrieve the current state. This means that when the WorkState is modified, the `WorkManager` must persist the event before acting on it. When the event is successfully stored, we can modify the state. Otherwise, if a failure occurs before the event is persisted, the replacement `WorkManager` will not be able to attain the same state as the failed `WorkManager`.
 
 Let's look at how a command to process a work item from the front-end comes in. The first thing you might notice is the comment saying _idempotent_, this means that the same work message may arrive multiple times, but regardless how many times the same work arrives, it should only be executed once. This is needed since the `FrontEnd` actor re-sends work in case of the `Work` or `Ack` messages getting lost (Akka does not provide any guarantee of delivery, [see details in the docs](http://doc.akka.io/docs/akka/current/scala/general/message-delivery-reliability.html#discussion-why-no-guaranteed-delivery-)).
 
@@ -156,15 +156,15 @@ there are three things that needs to be implemented:
 
 ### Tracking workers
 
-Unlike the `Master` actor, the example system contains multiple workers that can be stopped and restarted frequently. 
-We do not need to save their state since the `Master` is tracking work and will simply send work to another worker 
+Unlike the `WorkManager` actor, the example system contains multiple workers that can be stopped and restarted frequently. 
+We do not need to save their state since the `WorkManager` is tracking work and will simply send work to another worker 
 if the original fails to respond. So, rather than persisting a list of available workers, the example uses the following 
 strategy:
 
 * Running workers periodically register with the master using a `RegisterWorker` message. 
-  If a `back-end` node fails and the `Master` is started on a new node, the registrations go automatically to the new node.
+  If a `back-end` node fails and the `WorkManager` is started on a new node, the registrations go automatically to the new node.
 * Any type of failure -- whether from the network, worker actor, or node -- that prevents a `RegisterWorker` 
-  message from arriving within the `work-timeout` period causes the 'Master' actor to remove the worker from its list.
+  message from arriving within the `work-timeout` period causes the 'WorkManager' actor to remove the worker from its list.
 
 When stopping a `Worker` Actor still tries to gracefully remove it self using the `DeRegisterWorker` message, 
 but in case of crash it will have no chance to communicate that with the master node.
@@ -173,13 +173,13 @@ Now let's move on to the last piece of the puzzle, the worker nodes.
 
 ## Worker nodes
 
-`Worker` actors and the `Master` actor interact as follows:
+`Worker` actors and the `WorkManager` actor interact as follows:
 
 1. `Worker` actors register with the receptionist. 
-1. The `Master` subscribes to workers via the receptionist.
-1. When the `Master` actor has work, it sends a `WorkIsReady` message to all workers it thinks are not busy.
-1. The `Master` picks the first reply and assigns the work to that worker. 
-   This achieves back pressure because the `Master` does not push work on workers that are already busy and overwhelm 
+1. The `WorkManager` subscribes to workers via the receptionist.
+1. When the `WorkManager` actor has work, it sends a `WorkIsReady` message to all workers it thinks are not busy.
+1. The `WorkManager` picks the first reply and assigns the work to that worker. 
+   This achieves back pressure because the `WorkManager` does not push work on workers that are already busy and overwhelm 
    their mailboxes.
 1. When the worker receives work from the master, it delegates the actual processing to a child actor, `WorkExecutor`. 
    This allows the worker to be responsive while its child executes the work.
@@ -232,7 +232,7 @@ sbt "runMain worker.Main 5001 3"
 
 Look at the log output in the different terminal windows. In the second window (front-end) you should see that the produced jobs are processed and logged as `"Consumed result"`.
 
-Take a look at the logging that is done in `WorkProducer`, `Master` and `Worker`. Identify the corresponding log entries in the 3 terminal windows with Akka nodes.
+Take a look at the logging that is done in `WorkProducer`, `WorkManager` and `Worker`. Identify the corresponding log entries in the 3 terminal windows with Akka nodes.
 
 Shutdown the worker node (fourth terminal window) with `ctrl-c`. Observe how the `"Consumed result"` logs in the front-end node (second terminal window) stops. Start the worker node again.
 
@@ -281,7 +281,7 @@ The `FrontEnd` in this sample is a dummy that automatically generates work. A re
 
 ### Scaling better with many masters
 
-If the singleton master becomes a bottleneck we could start several master actors and shard the jobs among them. This could be achieved by using [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/scala/cluster-sharding.html) with many `Master` actors as entities and a hash of some sort on the payload deciding which master it should go to.
+If the singleton master becomes a bottleneck we could start several master actors and shard the jobs among them. This could be achieved by using [Akka Cluster Sharding](http://doc.akka.io/docs/akka/current/scala/cluster-sharding.html) with many `WorkManager` actors as entities and a hash of some sort on the payload deciding which master it should go to.
 
 ### More tools for building distributed systems
 
