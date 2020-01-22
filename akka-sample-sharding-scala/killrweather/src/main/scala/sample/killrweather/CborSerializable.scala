@@ -1,6 +1,6 @@
 package sample.killrweather
 
 /**
- * Marker trait for serialization with Jackson CBOR.
+ * Marker trait for messages to be serialized with Jackson CBOR.
  */
 trait CborSerializable
