@@ -26,6 +26,13 @@ lazy val `akka-sample-distributed-data-scala` = project
     baseProject := "akka-sample-distributed-data-scala"
   )
 
+lazy val `akka-sample-distributed-workers-scala` = project
+  .enablePlugins(AkkaSamplePlugin)
+  .settings(
+    name        := "Akka Distributed Workers with Scala",
+    baseProject := "akka-sample-distributed-workers-scala"
+  )
+
 lazy val `akka-sample-fsm-java` = project
   .enablePlugins(AkkaSamplePlugin)
   .settings(
