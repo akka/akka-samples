@@ -53,6 +53,7 @@ object UserEventsKafkaProcessor {
         val kafkaConsumer: Source[ConsumerRecord[String, Array[Byte]], Consumer.Control] =
           Consumer.plainSource(consumerSettings, subscription)
 
+        // TODO use committable source and reliable delivery (once released)?
         val stream: Future[Done] = kafkaConsumer
           .log("kafka-consumer")
           .filter(_.key() != null) // no entity id

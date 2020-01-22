@@ -1,4 +1,6 @@
-val AkkaVersion = "2.6.1+147-c102fd03"
+// TODO switch to Akka 2.6.2 once released, this is a nightly snapshot
+val AkkaVersion = "2.6.1+137-a9750b3c"
+// TODO upgrade to 2.0.0
 val AlpakkaKafkaVersion = "1.1.0"
 val AkkaManagementVersion = "1.0.5"
 val AkkaHttpVersion = "10.1.11"
@@ -15,6 +17,7 @@ ThisBuild / scalacOptions in Compile ++= Seq(
 ThisBuild / javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation")
 ThisBuild / testOptions in Test += Tests.Argument("-oDF")
 ThisBuild / licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
+ThisBuild / resolvers += "Akka Snapshots" at "https://repo.akka.io/snapshots"
 
 Global / cancelable := true // ctrl-c
 

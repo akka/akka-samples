@@ -17,10 +17,10 @@ object UserEvents {
   val TypeKey: EntityTypeKey[UserEvents.Message] =
     EntityTypeKey[UserEvents.Message]("user-processing")
 
-  sealed trait Message {
+  sealed trait Message extends CborSerializable {
     def userId: String
   }
-  sealed trait UserEvent extends Message with CborSerializable
+  sealed trait UserEvent extends Message
   case class UserAction(userId: String, description: String, replyTo: ActorRef[Done]) extends UserEvent
   case class UserPurchase(userId: String, product: String, quantity: Long, priceInPence: Long, replyTo: ActorRef[Done])
       extends UserEvent
@@ -28,7 +28,7 @@ object UserEvents {
   sealed trait UserQuery extends Message
   case class GetRunningTotal(userId: String, replyTo: ActorRef[RunningTotal]) extends UserQuery
 
-  case class RunningTotal(totalPurchases: Long, amountSpent: Long)
+  case class RunningTotal(totalPurchases: Long, amountSpent: Long) extends CborSerializable
 
   def apply(): Behavior[Message] = running(RunningTotal(0, 0))
 

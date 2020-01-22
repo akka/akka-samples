@@ -11,7 +11,7 @@ allocated to a consumer and the location of the shards meaning that most message
 have one network hop.
 
 If all of the messages for the same sharded entity are in the same Kafka partition then
-this can be improved on with the dynamic shard allocation strategy.
+this can be improved on with the external shard allocation strategy.
 For this to be true the producer partitioning must align with the shard extraction 
 in cluster sharding. 
 
@@ -19,20 +19,27 @@ Imagine a scenario that processes all events for users with following constraint
  * The key of the kafka message is the user id which is in turn the entity id in sharding
  * All messages for the same user id end up in the same partition
  
-Then we can enforce that the kafka partition == the akka cluster shard id and use the dynamic
+Then we can enforce that the kafka partition == the akka cluster shard id and use the external 
 sharding allocation strategy to move shards to the node that is consuming that partition, resulting
 in no cross node traffic.
 
 # Running the sample 
 
-The sample is made up of two applications:
+The sample is made up of three applications:
 * `producer` A Kafka producer, that produces events about users 
 * `processor` An Akka Cluster Sharding application that reads the Kafka topic and forwards the messages to a sharded
-              entity that represents a user
+              entity that represents a user and a gRPC front end for accessing the sharded actors state
+* `client` A gRPC client for interacting with the cluster
               
-The sample demonstrates how the dynamic shard allocation strategy can used so messages are processed locally.
+The sample demonstrates how the external shard allocation strategy can used so messages are processed locally.
 
-* Create a topic with many 128 partitions, or update application.conf with the desired number of
+The sample depends on a Kafka broker running locally on port `9092` with a topic with 128 partitions called `user-events.`
+[Kafka can be run in Docker](https://github.com/wurstmeister/kafka-docker) or run locally following [these instructions](https://kafka.apache.org/quickstart).
+
+Update the `applications.conf`s in each project to point to your Kafka broker if not running on `localhost:9092`
+
+
+* Create a topic with 128 partitions, or update application.conf with the desired number of
   partitions e.g. a command from your Kafka installation:
   
 ```
