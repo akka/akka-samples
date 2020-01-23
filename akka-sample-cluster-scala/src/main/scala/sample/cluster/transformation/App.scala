@@ -42,7 +42,7 @@ object App {
     // Override the configuration of the port and role
     val config = ConfigFactory.parseString(s"""
         akka.remote.artery.canonical.port=$port
-        akka.cluster.roles = [frontend]
+        akka.cluster.roles = [$role]
         """)
       .withFallback(ConfigFactory.load("transformation"))
 
