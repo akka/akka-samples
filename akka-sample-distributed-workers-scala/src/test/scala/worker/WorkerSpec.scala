@@ -1,16 +1,14 @@
 package worker
 
+/*
 import akka.actor.testkit.typed.TestException
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import org.scalatest.WordSpecLike
 import worker.WorkManager.Command
-import worker.WorkManager.WorkFailed
 import worker.WorkManager.WorkIsDone
-import worker.WorkManager.WorkerRequestsWork
 import worker.WorkExecutor.ExecuteWork
-import worker.Worker.SubmitWork
 import worker.Worker.WorkComplete
 import org.scalatest.Matchers
 
@@ -70,3 +68,4 @@ class WorkerSpec extends ScalaTestWithActorTestKit with WordSpecLike with Matche
     }
   }
 }
+ */

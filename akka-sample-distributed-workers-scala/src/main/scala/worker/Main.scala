@@ -38,7 +38,7 @@ object Main {
   }
 
   def startClusterInSameJvm(): Unit = {
-    startCassandraDatabase()
+    //startCassandraDatabase()
     // two backend nodes
     start(2551, "back-end")
     start(2552, "back-end")
