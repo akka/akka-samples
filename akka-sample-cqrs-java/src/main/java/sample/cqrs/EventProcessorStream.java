@@ -101,12 +101,17 @@ public abstract class EventProcessorStream<Event> {
       if (maybeRow.isPresent()) {
         UUID uuid = maybeRow.get().getUUID("timeUuidOffset");
         if (uuid == null) {
-          return Offset.noOffset();
+          return startOffset();
         } else {
           return Offset.timeBasedUUID(uuid);
         }
       } else {
-        return Offset.noOffset();
+        return startOffset();
     }
+  }
+
+  // start looking from one week back if no offset was stored
+  private Offset startOffset() {
+    return query.timeBasedUUIDFrom(System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000));
   }
 }
