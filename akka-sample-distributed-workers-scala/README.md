@@ -9,7 +9,7 @@ The distributed workers example demonstrates the following Akka clustering capab
  * elastic addition and removal of the back-end actors that perform the work distribution of actors across different nodes
  * how jobs are re-tried in the face of failures
 
-The design is based on Derek Wyatt's blog post [Balancing Workload Across Nodes with Akka 2](http://letitcrash.com/post/29044669086/balancing-workload-across-nodes-with-akka-2) from 2009, which is a bit old, but still a good description of the advantages of letting the workers pull work from the work manager instead of pushing work to the workers.
+The design is based on Derek Wyatt's blog post [Balancing Workload Across Nodes with Akka 2](http://letitcrash.com/post/29044669086/balancing-workload-across-nodes-with-akka-2) from 2012, which is a bit old, but still a good description of the advantages of letting the workers pull work from the work manager instead of pushing work to the workers.
 
 ## Running the example
 
