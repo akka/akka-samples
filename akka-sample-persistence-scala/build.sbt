@@ -9,7 +9,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
-  "org.scalatest" %% "scalatest" % "3.0.8" % Test
+  "org.scalatest" %% "scalatest" % "3.1.0" % Test
 )
 
 scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint")
