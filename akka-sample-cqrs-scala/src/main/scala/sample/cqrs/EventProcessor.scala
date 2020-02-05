@@ -16,7 +16,6 @@ import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.sharding.typed.scaladsl.Entity
 import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
-import akka.persistence.query.NoOffset
 import akka.persistence.query.Offset
 import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.TimeBasedUUID
@@ -132,12 +131,17 @@ abstract class EventProcessorStream[Event: ClassTag](
       case Some(row) =>
         val uuid = row.getUUID("timeUuidOffset")
         if (uuid == null) {
-          NoOffset
+          startOffset()
         } else {
           TimeBasedUUID(uuid)
         }
-      case None => NoOffset
+      case None => startOffset()
     }
+  }
+
+  // start looking from one week back if no offset was stored
+  private def startOffset(): Offset = {
+    query.timeBasedUUIDFrom(System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000))
   }
 
   private def prepareWriteOffset(): Future[PreparedStatement] = {
