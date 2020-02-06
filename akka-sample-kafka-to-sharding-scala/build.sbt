@@ -1,5 +1,4 @@
-// TODO switch to Akka 2.6.2 once released, this is a nightly snapshot
-val AkkaVersion = "2.6.1+137-a9750b3c"
+val AkkaVersion = "2.6.3"
 // TODO upgrade to 2.0.0
 val AlpakkaKafkaVersion = "1.1.0"
 val AkkaManagementVersion = "1.0.5"
