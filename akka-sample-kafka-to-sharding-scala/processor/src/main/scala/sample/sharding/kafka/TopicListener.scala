@@ -14,7 +14,7 @@ import scala.util.Failure
 import scala.util.Success
 
 object TopicListener {
-  def apply(typeKey: EntityTypeKey[_]): Behavior[ConsumerRebalanceEvent] =
+  def apply(groupId: String, typeKey: EntityTypeKey[_]): Behavior[ConsumerRebalanceEvent] =
     Behaviors.setup { ctx =>
       import ctx.executionContext
       val shardAllocationClient = ExternalShardAllocation(ctx.system).clientFor(typeKey.name)
@@ -28,21 +28,23 @@ object TopicListener {
       }
       val address = Cluster(ctx.system).selfMember.address
       Behaviors.receiveMessage[ConsumerRebalanceEvent] {
-        case TopicPartitionsAssigned(_, partitions) =>
-          partitions.foreach(partition => {
-            ctx.log.info("Partition [{}] assigned to current node. Updating shard allocation", partition.partition())
+        case TopicPartitionsAssigned(sub, partitions) =>
+          partitions.foreach(tp => {
+            val shardId = s"$groupId-${tp.partition()}"
+            ctx.log.info("Partition [{}] assigned to current node. Updating shard allocation", shardId)
             // kafka partition becomes the akka shard
-            val done = shardAllocationClient.updateShardLocation(partition.partition().toString, address)
+            val done = shardAllocationClient.updateShardLocation(shardId, address)
             done.onComplete { result =>
-              ctx.log.info("Result for updating shard {}: {}", partition, result)
+              ctx.log.info("Result for updating shard {}: {}", shardId, result)
             }
 
           })
           Behaviors.same
         case TopicPartitionsRevoked(_, topicPartitions) =>
           ctx.log.info(
-            "Partitions [{}] revoked from current node. New location will update shard allocation",
-            topicPartitions.mkString(","))
+            "Partitions [{}] of group [{}] revoked from current node. New location will update shard allocation",
+            topicPartitions.mkString(","),
+            groupId)
           Behaviors.same
       }
     }

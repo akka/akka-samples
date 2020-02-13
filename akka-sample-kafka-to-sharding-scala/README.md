@@ -30,17 +30,32 @@ The sample is made up of three applications:
 * `processor` An Akka Cluster Sharding application that reads the Kafka topic and forwards the messages to a sharded
               entity that represents a user and a gRPC front end for accessing the sharded actors state
 * `client` A gRPC client for interacting with the cluster
+* `kafka` A local Kafka server
               
 The sample demonstrates how the external shard allocation strategy can used so messages are processed locally.
 
 The sample depends on a Kafka broker running locally on port `9092` with a topic with 128 partitions called `user-events.`
-[Kafka can be run in Docker](https://github.com/wurstmeister/kafka-docker) or run locally following [these instructions](https://kafka.apache.org/quickstart).
+[Kafka can be run in Docker](https://github.com/wurstmeister/kafka-docker) or run locally using the optional `kafka` project.
 
-Update the `applications.conf`s in each project to point to your Kafka broker if not running on `localhost:9092`
+* Run the local Kafka server. This project will also create the `user-events` topic.
+
+```
+sbt "kafka / run"
+```
+
+In the Kafka server window you'll see the following when the server is ready:
+
+```
+12:46:47.022 INFO  [run-main-0          ] sample.sharding.embeddedkafka.Main$   Kafka running on port '9092'
+12:46:47.022 INFO  [run-main-0          ] sample.sharding.embeddedkafka.Main$   Topic 'user-events' with '128' partitions created
+```
+
+If you want to use a different Kafka cluster then then update the `applications.conf`s in each project to point to your 
+Kafka broker if not running on `localhost:9092`.
 
 
-* Create a topic with 128 partitions, or update application.conf with the desired number of
-  partitions e.g. a command from your Kafka installation:
+* _(Optional)_ If you do not run the local Kafka server then you must create a topic with 128 partitions, or update 
+  application.conf with the desired number of partitions e.g. a command from your Kafka installation:
   
 ```
   bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 128 --topic user-events
@@ -104,7 +119,7 @@ As there is only one node we get 100% locality, each forwarded message is proces
 Now let's see that remain true once we add more nodes to the Akka Cluster, add another with different ports:
 
 ```
- sbt "processor / run 2552 8552 8082"
+sbt "processor / run 2552 8552 8082"
 ```
 
 When this starts up we'll see Kafka assign partitions to the new node (it is in the same consumer group):

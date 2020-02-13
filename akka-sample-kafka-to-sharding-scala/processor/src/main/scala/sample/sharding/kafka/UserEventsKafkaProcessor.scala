@@ -39,7 +39,7 @@ object UserEventsKafkaProcessor {
         implicit val scheduler: Scheduler = classic.scheduler
         // TODO config
         val timeout = Timeout(3.seconds)
-        val rebalancerRef = ctx.spawn(TopicListener(UserEvents.TypeKey), "rebalancerRef")
+        val rebalancerRef = ctx.spawn(TopicListener(processorSettings.groupId, UserEvents.TypeKey), "rebalancerRef")
         val shardRegion = UserEvents.init(ctx.system)
         val consumerSettings =
           ConsumerSettings(ctx.system.toClassic, new StringDeserializer, new ByteArrayDeserializer)
@@ -48,7 +48,9 @@ object UserEventsKafkaProcessor {
             .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             .withStopTimeout(0.seconds)
 
-        val subscription = Subscriptions.topics(processorSettings.topic).withRebalanceListener(rebalancerRef.toClassic)
+        val subscription = Subscriptions
+          .topics(processorSettings.topics: _*)
+          .withRebalanceListener(rebalancerRef.toClassic)
 
         val kafkaConsumer: Source[ConsumerRecord[String, Array[Byte]], Consumer.Control] =
           Consumer.plainSource(consumerSettings, subscription)

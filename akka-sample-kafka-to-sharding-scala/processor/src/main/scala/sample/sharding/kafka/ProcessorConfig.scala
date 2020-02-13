@@ -1,14 +1,14 @@
 package sample.sharding.kafka
 
 import com.typesafe.config.Config
+import scala.jdk.CollectionConverters._
 
 case object ProcessorConfig {
   def apply(config: Config): ProcessorConfig =
     new ProcessorConfig(
       config.getString("bootstrap-servers"),
-      config.getString("topic"),
-      config.getString("group"),
-      config.getInt("nr-partitions"))
+      config.getStringList("topics").asScala.toList,
+      config.getString("group"))
 }
 
-final class ProcessorConfig(val bootstrapServers: String, val topic: String, val groupId: String, val nrPartitions: Int)
+final class ProcessorConfig(val bootstrapServers: String, val topics: List[String], val groupId: String)

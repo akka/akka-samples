@@ -1,16 +1,16 @@
 package sample.sharding.kafka
 
 import akka.Done
-import akka.actor.typed.ActorRef
-import akka.actor.typed.ActorSystem
-import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.scaladsl.adapter._
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.sharding.external.ExternalShardAllocationStrategy
 import akka.cluster.sharding.typed.ClusterShardingSettings
-import akka.cluster.sharding.typed.Murmur2NoEnvelopeMessageExtractor
-import akka.cluster.sharding.typed.scaladsl.ClusterSharding
-import akka.cluster.sharding.typed.scaladsl.Entity
-import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
+import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityTypeKey}
+import akka.kafka.{ConsumerSettings, KafkaShardingNoEnvelopeExtractor}
+import org.apache.kafka.common.serialization.StringDeserializer
+
+import scala.concurrent.duration._
 
 object UserEvents {
 
@@ -54,20 +54,27 @@ object UserEvents {
   }
 
   /*
-   * The murmur2 message extractor matches kafka's default partitioning when messages
-   * have keys that are strings
+   * The KafkaShardingMessageExtractor uses the KafkaProducer's underlying DefaultPartitioner so that the same murmur2
+   * hashing algorithm is used for Kafka and Akka Cluster Sharding
    */
-  class UserIdMessageExtractor(nrKafkaPartitions: Int)
-      extends Murmur2NoEnvelopeMessageExtractor[Message](nrKafkaPartitions) {
-    override def entityId(message: Message): String = message.userId
+  class UserIdMessageExtractor(clientSettings: ConsumerSettings[_,_], topic: String, groupId: String)
+                              (implicit actorSystem: akka.actor.ActorSystem, timeout: FiniteDuration)
+      extends KafkaShardingNoEnvelopeExtractor[Message](clientSettings, topic, groupId) {
+    def entityId(message: Message): String = message.userId
   }
 
   def init(system: ActorSystem[_]): ActorRef[Message] = {
     val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
+    implicit val classic: akka.actor.ActorSystem = system.toClassic
+    implicit val timeout: FiniteDuration = 10.seconds
+    val clientSettings = ConsumerSettings(classic, new StringDeserializer, new StringDeserializer)
+    val topic = processorConfig.topics.head
+    val groupId = processorConfig.groupId
+    val messageExtractor = new UserIdMessageExtractor(clientSettings, topic, groupId)
     ClusterSharding(system).init(
       Entity(TypeKey)(createBehavior = _ => UserEvents())
         .withAllocationStrategy(new ExternalShardAllocationStrategy(system, TypeKey.name))
-        .withMessageExtractor(new UserIdMessageExtractor(processorConfig.nrPartitions))
+        .withMessageExtractor(messageExtractor)
         .withSettings(ClusterShardingSettings(system)))
   }
 
