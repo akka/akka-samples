@@ -1,52 +1,61 @@
 package akka.kafka
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import akka.actor.{ActorSystem, ExtendedActorSystem}
 import akka.cluster.sharding.typed.{ShardingEnvelope, ShardingMessageExtractor}
+import akka.kafka.DefaultKafkaShardingMessageExtractor.PartitionCountStrategy
 import akka.kafka.scaladsl.MetadataClient
 import akka.util.Timeout._
-import org.apache.kafka.clients.producer.Partitioner
-import org.apache.kafka.clients.producer.internals.DefaultPartitioner
-import org.apache.kafka.common.{Node, PartitionInfo, Cluster => KafkaCluster}
+import org.apache.kafka.common.utils.Utils
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContextExecutor}
-import scala.jdk.CollectionConverters._
+import scala.concurrent.{Await, ExecutionContext}
 
-private[kafka] trait DefaultKafkaShardingMessageExtractor {
-  implicit val actorSystem: ActorSystem
-  implicit val timeout: FiniteDuration
-  implicit val ec: ExecutionContextExecutor = actorSystem.dispatcher
-
-  val clientSettings: ConsumerSettings[_, _]
-  val groupId: String
-  val topic: String
-
-  private val CLUSTER_ID = "cluster-id"
-  private val kafkaPartitioner = partitioner()
-  private val kafkaCluster = cluster(partitions())
-
-  def shardId(entityId: String): String = {
-    val partition = kafkaPartitioner
-      .partition(topic, entityId, entityId.getBytes(), null, null, kafkaCluster)
-    s"$groupId-$partition"
+object DefaultKafkaShardingMessageExtractor {
+  sealed trait PartitionCountStrategy {
+    def groupId: String
+    def partitions: Int
   }
-
-  def partitions(): List[PartitionInfo] = {
-    val consumerActor = actorSystem.actorOf(KafkaConsumerActor.props(clientSettings), "metadata-consumer-actor")
-    val metadataClient = MetadataClient.create(consumerActor, timeout)
-    val partitions = metadataClient.getPartitionsFor(topic)
-    partitions.foreach(p => actorSystem.log.info("Retrieved %s partitions for topic %s for group %s", p.length, topic, groupId))
-    Await.result(partitions, timeout)
+  final case class Provided(groupId: String, partitions: Int) extends PartitionCountStrategy
+  final case class RetrieveFromKafka(
+                                      system: ActorSystem,
+                                      timeout: FiniteDuration,
+                                      groupId: String,
+                                      topic: String,
+                                      settings: ConsumerSettings[_,_])
+                                    extends PartitionCountStrategy {
+    import RetrieveFromKafka._
+    private implicit val ec: ExecutionContext = system.dispatcher
+    lazy val partitions: Int = {
+      val actorNum = metadataActorCounter.getAndIncrement()
+      val consumerActor = system
+        .asInstanceOf[ExtendedActorSystem]
+        .systemActorOf(KafkaConsumerActor.props(settings), s"metadata-consumer-actor-$actorNum")
+      val metadataClient = MetadataClient.create(consumerActor, timeout)
+      val numPartitions = metadataClient.getPartitionsFor(topic).map(_.length)
+      numPartitions.foreach(num => system.log.info("Retrieved {} partitions for topic '{}' for group '{}'", num, topic, groupId))
+      Await.result(numPartitions, timeout)
+    }
   }
-
-  def cluster(partitions: List[PartitionInfo]): KafkaCluster =
-    new KafkaCluster(CLUSTER_ID, List.empty[Node].asJavaCollection, partitions.asJavaCollection, Set.empty[String].asJava, Set.empty[String].asJava)
-
-  def partitioner(): Partitioner = new DefaultPartitioner()
+  object RetrieveFromKafka {
+    private val metadataActorCounter = new AtomicInteger
+  }
 }
 
-final class KafkaShardingMessageExtractor[M](val clientSettings: ConsumerSettings[_,_], val groupId: String, val topic: String)
-                                            (implicit val actorSystem: ActorSystem, val timeout: FiniteDuration)
+private[kafka] trait DefaultKafkaShardingMessageExtractor {
+  val strategy: PartitionCountStrategy
+  private val groupId: String = strategy.groupId
+  private val kafkaPartitions: Int = strategy.partitions
+
+  def shardId(entityId: String): String = {
+    // simplified version of Kafka's `DefaultPartitioner` implementation
+    val partition = org.apache.kafka.common.utils.Utils.toPositive(Utils.murmur2(entityId.getBytes())) % kafkaPartitions
+    s"$groupId-$partition"
+  }
+}
+
+final class KafkaShardingMessageExtractor[M](val strategy: PartitionCountStrategy)
   extends ShardingMessageExtractor[ShardingEnvelope[M], M] with DefaultKafkaShardingMessageExtractor {
   override def entityId(envelope: ShardingEnvelope[M]): String = envelope.entityId
   override def unwrapMessage(envelope: ShardingEnvelope[M]): M = envelope.message
@@ -60,8 +69,7 @@ final class KafkaShardingMessageExtractor[M](val clientSettings: ConsumerSetting
  *   only contains partitions for the provided topic. If you choose to reuse a different partitioner then make sure your
  *   partitioner doesn't make use of any other Kafka Cluster metadata.
  */
-abstract class KafkaShardingNoEnvelopeExtractor[M](val clientSettings: ConsumerSettings[_,_], val groupId: String, val topic: String)
-                                                  (implicit val actorSystem: ActorSystem, val timeout: FiniteDuration)
+abstract class KafkaShardingNoEnvelopeExtractor[M](val strategy: PartitionCountStrategy)
   extends ShardingMessageExtractor[M, M] with DefaultKafkaShardingMessageExtractor {
   override def unwrapMessage(message: M): M = message
 }

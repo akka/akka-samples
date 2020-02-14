@@ -7,6 +7,7 @@ import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.sharding.external.ExternalShardAllocationStrategy
 import akka.cluster.sharding.typed.ClusterShardingSettings
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityTypeKey}
+import akka.kafka.DefaultKafkaShardingMessageExtractor.{PartitionCountStrategy, RetrieveFromKafka}
 import akka.kafka.{ConsumerSettings, KafkaShardingNoEnvelopeExtractor}
 import org.apache.kafka.common.serialization.StringDeserializer
 
@@ -53,24 +54,28 @@ object UserEvents {
     }
   }
 
-  /*
-   * The KafkaShardingMessageExtractor uses the KafkaProducer's underlying DefaultPartitioner so that the same murmur2
-   * hashing algorithm is used for Kafka and Akka Cluster Sharding
+  /**
+   * Passing in a [[RetrieveFromKafka]] strategy will automatically retrieve the number of partitions of a topic for
+   * use with the same hashing algorithm used by the Apache Kafka [[org.apache.kafka.clients.producer.internals.DefaultPartitioner]]
+   * (murmur2) with Akka Cluster Sharding.
    */
-  class UserIdMessageExtractor(clientSettings: ConsumerSettings[_,_], topic: String, groupId: String)
-                              (implicit actorSystem: akka.actor.ActorSystem, timeout: FiniteDuration)
-      extends KafkaShardingNoEnvelopeExtractor[Message](clientSettings, topic, groupId) {
+  class UserIdMessageExtractor(strategy: PartitionCountStrategy)
+      extends KafkaShardingNoEnvelopeExtractor[Message](strategy) {
     def entityId(message: Message): String = message.userId
   }
 
   def init(system: ActorSystem[_]): ActorRef[Message] = {
     val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
-    implicit val classic: akka.actor.ActorSystem = system.toClassic
-    implicit val timeout: FiniteDuration = 10.seconds
-    val clientSettings = ConsumerSettings(classic, new StringDeserializer, new StringDeserializer)
-    val topic = processorConfig.topics.head
-    val groupId = processorConfig.groupId
-    val messageExtractor = new UserIdMessageExtractor(clientSettings, topic, groupId)
+    val messageExtractor = new UserIdMessageExtractor(
+      strategy = RetrieveFromKafka(
+        system = system.toClassic,
+        timeout = 10.seconds,
+        groupId = processorConfig.groupId,
+        topic = processorConfig.topics.head,
+        settings = ConsumerSettings(system.toClassic, new StringDeserializer, new StringDeserializer)
+          .withBootstrapServers(processorConfig.bootstrapServers)
+      )
+    )
     ClusterSharding(system).init(
       Entity(TypeKey)(createBehavior = _ => UserEvents())
         .withAllocationStrategy(new ExternalShardAllocationStrategy(system, TypeKey.name))
