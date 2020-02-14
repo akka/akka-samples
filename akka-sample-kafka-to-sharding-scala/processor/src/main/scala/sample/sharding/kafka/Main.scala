@@ -1,21 +1,24 @@
 package sample.sharding.kafka
 
-import akka.actor.typed.ActorSystem
-import akka.actor.typed.Terminated
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.adapter._
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior, Terminated}
 import akka.cluster.ClusterEvent.MemberUp
-import akka.cluster.typed.Cluster
-import akka.cluster.typed.Subscribe
+import akka.cluster.sharding.typed.ShardingMessageExtractor
+import akka.cluster.typed.{Cluster, Subscribe}
 import akka.http.scaladsl._
-import akka.http.scaladsl.model.HttpRequest
-import akka.http.scaladsl.model.HttpResponse
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.management.scaladsl.AkkaManagement
 import akka.stream.Materializer
-import com.typesafe.config.Config
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
+
+sealed trait Command
+case object NodeMemberUp extends Command
+case object StartProcessor extends Command
+final case class MessageExtractor(strategy: ShardingMessageExtractor[UserEvents.Message, UserEvents.Message]) extends Command
 
 object Main {
   def main(args: Array[String]): Unit = {
@@ -25,45 +28,69 @@ object Main {
     args.toList match {
       case portString :: managementPort :: frontEndPort :: Nil
           if isInt(portString) && isInt(managementPort) && isInt(frontEndPort) =>
-        startNode(portString.toInt, managementPort.toInt, frontEndPort.toInt)
+        init(portString.toInt, managementPort.toInt, frontEndPort.toInt)
       case _ =>
         throw new IllegalArgumentException("usage: <remotingPort> <managementPort> <frontEndPort>")
     }
   }
 
-  def startNode(remotingPort: Int, akkaManagementPort: Int, frontEndPort: Int): Unit = {
-    ActorSystem(Behaviors.setup[MemberUp] {
+  def init(remotingPort: Int, akkaManagementPort: Int, frontEndPort: Int): Unit = {
+    ActorSystem(Behaviors.setup[Command] {
       ctx =>
-        implicit val mat = Materializer.createMaterializer(ctx.system.toClassic)
-        implicit val ec = ctx.executionContext
         AkkaManagement(ctx.system.toClassic).start()
-        // maybe don't start until part of the cluster, or add health check
-        val binding = startGrpc(ctx.system, mat, frontEndPort)
+
         val cluster = Cluster(ctx.system)
-        cluster.subscriptions.tell(Subscribe(ctx.self, classOf[MemberUp]))
+        val subscriber = ctx.spawn(clusterUpSubscriber(cluster, ctx.self), "cluster-subscriber")
+        cluster.subscriptions.tell(Subscribe(subscriber, classOf[MemberUp]))
+
+        ctx.pipeToSelf(UserEvents.messageExtractor(ctx.system)) {
+          case Success(extractor) => MessageExtractor(extractor)
+          case Failure(ex) => throw new Exception(ex)
+        }
+
+        starting()
+    }, "KafkaToSharding", config(remotingPort, akkaManagementPort))
+
+    def starting(extractor: Option[ShardingMessageExtractor[UserEvents.Message, UserEvents.Message]] = None): Behavior[Command] = Behaviors
+      .receive[Command] {
+        case (ctx, MessageExtractor(extractor)) =>
+          ctx.self.tell(StartProcessor)
+          starting(Some(extractor))
+        case (ctx, StartProcessor) if extractor.isDefined =>
+          UserEvents.init(ctx.system, extractor.get)
+          val eventProcessor = ctx.spawn[Nothing](UserEventsKafkaProcessor(extractor.get), "kafka-event-processor")
+          ctx.watch(eventProcessor)
+          ctx.log.info("Processor started.")
+          val binding: Future[Http.ServerBinding] = startGrpc(ctx.system, frontEndPort, extractor.get)
+          running(binding, eventProcessor)
+      }
+
+    def running(binding: Future[Http.ServerBinding], processor: ActorRef[Nothing]): Behavior[Command] = Behaviors
+      .receiveSignal {
+        case (ctx, Terminated(`processor`)) =>
+          ctx.log.warn("Kafka event processor stopped. Shutting down")
+          binding.map(_.unbind())(ctx.executionContext)
+          Behaviors.stopped
+      }
+
+    def clusterUpSubscriber(cluster: Cluster, parent: ActorRef[Command]): Behavior[MemberUp] = Behaviors.setup[MemberUp] {
+      ctx =>
         Behaviors
           .receiveMessage[MemberUp] {
             case MemberUp(member) if member.uniqueAddress == cluster.selfMember.uniqueAddress =>
               ctx.log.info("Joined the cluster. Starting sharding and kafka processor")
-              UserEvents.init(ctx.system)
-              val eventProcessor = ctx.spawn[Nothing](UserEventsKafkaProcessor(), "kafka-event-processor")
-              ctx.watch(eventProcessor)
+              parent.tell(StartProcessor)
               Behaviors.same
             case MemberUp(member) =>
               ctx.log.info("Member up {}", member)
               Behaviors.same
           }
-          .receiveSignal {
-            case (ctx, Terminated(_)) =>
-              ctx.log.warn("Kafka event processor stopped. Shutting down")
-              binding.map(_.unbind())
-              Behaviors.stopped
-          }
-    }, "KafkaToSharding", config(remotingPort, akkaManagementPort))
+    }
 
-    def startGrpc(system: ActorSystem[_], mat: Materializer, frontEndPort: Int): Future[Http.ServerBinding] = {
+    def startGrpc(system: ActorSystem[_], frontEndPort: Int, extractor: ShardingMessageExtractor[UserEvents.Message, UserEvents.Message]): Future[Http.ServerBinding] = {
+      val mat = Materializer.createMaterializer(system.toClassic)
       val service: HttpRequest => Future[HttpResponse] =
-        UserServiceHandler(new UserGrpcService(system))(mat, system.toClassic)
+        UserServiceHandler(new UserGrpcService(system, extractor))(mat, system.toClassic)
       Http()(system.toClassic).bindAndHandleAsync(
         service,
         interface = "127.0.0.1",
@@ -79,5 +106,4 @@ object Main {
        """).withFallback(ConfigFactory.load())
 
   }
-
 }

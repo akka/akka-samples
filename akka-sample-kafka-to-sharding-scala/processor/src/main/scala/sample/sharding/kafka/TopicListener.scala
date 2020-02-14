@@ -29,6 +29,9 @@ object TopicListener {
       val address = Cluster(ctx.system).selfMember.address
       Behaviors.receiveMessage[ConsumerRebalanceEvent] {
         case TopicPartitionsAssigned(sub, partitions) =>
+          // TODO
+          // - log all partitions assigned in one log line
+          // - block for shard allocation to complete, add configurable timeout
           partitions.foreach(tp => {
             val shardId = s"$groupId-${tp.partition()}"
             ctx.log.info("Partition [{}] assigned to current node. Updating shard allocation", shardId)

@@ -10,13 +10,13 @@ object KafkaBroker extends App with EmbeddedKafka {
   val topic = "user-events"
   val partitions = 128
 
-  val config = EmbeddedKafkaConfig(kafkaPort = port)
-  val server = EmbeddedKafka.start()(config)
+  implicit val config: EmbeddedKafkaConfig = EmbeddedKafkaConfig(kafkaPort = port)
+  val server = EmbeddedKafka.start()
 
   createCustomTopic(topic = topic, partitions = partitions)
 
-  log.info(s"Kafka running on port '$port'")
-  log.info(s"Topic '$topic' with '$partitions' partitions created")
+  log.info(s"Kafka running: localhost:$port")
+  log.info(s"Topic '$topic' with $partitions partitions created")
 
   server.broker.awaitShutdown()
 }

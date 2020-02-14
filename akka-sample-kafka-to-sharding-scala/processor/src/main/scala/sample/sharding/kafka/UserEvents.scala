@@ -5,12 +5,12 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.adapter._
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.sharding.external.ExternalShardAllocationStrategy
-import akka.cluster.sharding.typed.ClusterShardingSettings
+import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingMessageExtractor}
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityTypeKey}
-import akka.kafka.DefaultKafkaShardingMessageExtractor.{PartitionCountStrategy, RetrieveFromKafka}
-import akka.kafka.{ConsumerSettings, KafkaShardingNoEnvelopeExtractor}
+import akka.kafka.{ConsumerSettings, KafkaClusterSharding, KafkaShardingNoEnvelopeExtractor}
 import org.apache.kafka.common.serialization.StringDeserializer
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 object UserEvents {
@@ -47,7 +47,8 @@ object UserEvents {
             runningTotal.copy(
               totalPurchases = runningTotal.totalPurchases + 1,
               amountSpent = runningTotal.amountSpent + (quantity * price)))
-        case GetRunningTotal(_, replyTo) =>
+        case GetRunningTotal(id, replyTo) =>
+          ctx.log.info("user {} running total queried", id)
           replyTo ! runningTotal
           Behaviors.same
       }
@@ -55,35 +56,30 @@ object UserEvents {
   }
 
   /**
-   * Passing in a [[RetrieveFromKafka]] strategy will automatically retrieve the number of partitions of a topic for
-   * use with the same hashing algorithm used by the Apache Kafka [[org.apache.kafka.clients.producer.internals.DefaultPartitioner]]
-   * (murmur2) with Akka Cluster Sharding.
+   * Asynchronously get the Akka Cluster Sharding [[ShardingMessageExtractor]]. Given a topic we can automatically
+   * retrieve the number of partitions and use the same hashing algorithm used by the Apache Kafka
+   * [[org.apache.kafka.clients.producer.internals.DefaultPartitioner]] (murmur2) with Akka Cluster Sharding.
    */
-  class UserIdMessageExtractor(strategy: PartitionCountStrategy)
-      extends KafkaShardingNoEnvelopeExtractor[Message](strategy) {
-    def entityId(message: Message): String = message.userId
+  def messageExtractor(system: ActorSystem[_]): Future[KafkaShardingNoEnvelopeExtractor[Message]] = {
+    val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
+    KafkaClusterSharding.messageExtractorNoEnvelope(
+      system = system.toClassic,
+      timeout = 10.seconds,
+      groupId = processorConfig.groupId,
+      topic = processorConfig.topics.head,
+      entityIdExtractor = (msg: Message) => msg.userId,
+      settings = ConsumerSettings(system.toClassic, new StringDeserializer, new StringDeserializer)
+        .withBootstrapServers(processorConfig.bootstrapServers)
+    )
   }
 
-  def init(system: ActorSystem[_]): ActorRef[Message] = {
-    val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
-    val messageExtractor = new UserIdMessageExtractor(
-      strategy = RetrieveFromKafka(
-        system = system.toClassic,
-        timeout = 10.seconds,
-        groupId = processorConfig.groupId,
-        topic = processorConfig.topics.head,
-        settings = ConsumerSettings(system.toClassic, new StringDeserializer, new StringDeserializer)
-          .withBootstrapServers(processorConfig.bootstrapServers)
-      )
-    )
+  def init(system: ActorSystem[_], messageExtractor: ShardingMessageExtractor[Message, Message]): ActorRef[Message] =
     ClusterSharding(system).init(
       Entity(TypeKey)(createBehavior = _ => UserEvents())
         .withAllocationStrategy(new ExternalShardAllocationStrategy(system, TypeKey.name))
         .withMessageExtractor(messageExtractor)
         .withSettings(ClusterShardingSettings(system)))
-  }
 
-  def querySide(system: ActorSystem[_]): ActorRef[UserQuery] = {
-    init(system).narrow[UserQuery]
-  }
+  def querySide(system: ActorSystem[_], messageExtractor: ShardingMessageExtractor[Message, Message]): ActorRef[UserQuery] =
+    init(system, messageExtractor).narrow[UserQuery]
 }

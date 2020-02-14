@@ -8,6 +8,7 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.adapter._
+import akka.cluster.sharding.typed.ShardingMessageExtractor
 import akka.kafka.ConsumerSettings
 import akka.kafka.Subscriptions
 import akka.kafka.scaladsl.Consumer
@@ -30,7 +31,7 @@ object UserEventsKafkaProcessor {
   sealed trait Command
   private case class KafkaConsumerStopped(reason: Try[Any]) extends Command
 
-  def apply(): Behavior[Nothing] = {
+  def apply(extractor: ShardingMessageExtractor[UserEvents.Message, UserEvents.Message]): Behavior[Nothing] = {
     Behaviors
       .setup[Command] { ctx =>
         val processorSettings = ProcessorConfig(ctx.system.settings.config.getConfig("kafka-to-sharding-processor"))
@@ -40,7 +41,7 @@ object UserEventsKafkaProcessor {
         // TODO config
         val timeout = Timeout(3.seconds)
         val rebalancerRef = ctx.spawn(TopicListener(processorSettings.groupId, UserEvents.TypeKey), "rebalancerRef")
-        val shardRegion = UserEvents.init(ctx.system)
+        val shardRegion = UserEvents.init(ctx.system, extractor)
         val consumerSettings =
           ConsumerSettings(ctx.system.toClassic, new StringDeserializer, new ByteArrayDeserializer)
             .withBootstrapServers(processorSettings.bootstrapServers)

@@ -1,7 +1,5 @@
 package sharding.kafka.producer
 
-import java.nio.charset.StandardCharsets
-
 import akka.Done
 import akka.actor.ActorSystem
 import akka.event.Logging
@@ -10,9 +8,7 @@ import akka.kafka.scaladsl.Producer
 import akka.stream.scaladsl.Source
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization.ByteArraySerializer
-import org.apache.kafka.common.serialization.StringSerializer
-import org.apache.kafka.common.utils.Utils
+import org.apache.kafka.common.serialization.{ByteArraySerializer, StringSerializer}
 import sample.sharding.kafka.serialization.user_events.UserPurchaseProto
 
 import scala.concurrent.Future
@@ -55,7 +51,6 @@ object UserEventProducer extends App {
         // rely on the default kafka partitioner to hash the key and distribute among shards
         // the logic of the default partitioner must be replicated in MessageExtractor entityId -> shardId function
         new ProducerRecord[String, Array[Byte]](producerConfig.topic, randomEntityId, message)
-
       })
       .runWith(Producer.plainSink(producerSettings))
 }

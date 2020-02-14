@@ -154,16 +154,16 @@ Using Akka management we can see the shard allocations and the number of entitie
 ```
 
 // Node 1:
- curl -v localhost:8551/cluster/shards/user-processing  | jq
+ curl -v localhost:8551/cluster/shards/user-processing | jq
 
 // Node 2:
- curl -v localhost:8552/cluster/shards/user-processing  | jq
+ curl -v localhost:8552/cluster/shards/user-processing | jq
 ```
 
 We can count the number of shards on each:
 
 ```
-curl -v localhost:8551/cluster/shards/user-processing  | jq -r "." | grep shardId  | wc
+curl -s localhost:8551/cluster/shards/user-processing | jq -r "." | grep shardId | wc -l
 ```
 
 The number of shards will depend on which entities have received messages.
@@ -181,7 +181,7 @@ the correct node even if that moves due to a kafka rebalance.
 A gRPC client is included which can be started with...
 
 ```
- sbt "client/run"
+sbt "client/run"
 ```
 
 It assumes there is one of the nodes running its front end port on 8081. 
