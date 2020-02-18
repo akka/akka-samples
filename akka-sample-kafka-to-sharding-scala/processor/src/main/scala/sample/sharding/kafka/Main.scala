@@ -18,7 +18,7 @@ import scala.util.{Failure, Success}
 sealed trait Command
 case object NodeMemberUp extends Command
 case object StartProcessor extends Command
-final case class MessageExtractor(strategy: ShardingMessageExtractor[UserEvents.Message, UserEvents.Message]) extends Command
+final case class MessageExtractor(extractor: ShardingMessageExtractor[UserEvents.Message, UserEvents.Message]) extends Command
 
 object Main {
   def main(args: Array[String]): Unit = {
@@ -57,12 +57,16 @@ object Main {
           ctx.self.tell(StartProcessor)
           starting(Some(extractor))
         case (ctx, StartProcessor) if extractor.isDefined =>
-          UserEvents.init(ctx.system, extractor.get)
-          val eventProcessor = ctx.spawn[Nothing](UserEventsKafkaProcessor(extractor.get), "kafka-event-processor")
+          val messageExtractor = extractor.get
+          val processorSettings = ProcessorConfig(ctx.system.settings.config.getConfig("kafka-to-sharding-processor"))
+          UserEvents.init(ctx.system, messageExtractor, processorSettings.groupId)
+          val eventProcessor = ctx.spawn[Nothing](UserEventsKafkaProcessor(messageExtractor), "kafka-event-processor")
           ctx.watch(eventProcessor)
           ctx.log.info("Processor started.")
-          val binding: Future[Http.ServerBinding] = startGrpc(ctx.system, frontEndPort, extractor.get)
+          val binding: Future[Http.ServerBinding] = startGrpc(ctx.system, frontEndPort, messageExtractor)
           running(binding, eventProcessor)
+        case (ctx, StartProcessor) =>
+          Behaviors.same
       }
 
     def running(binding: Future[Http.ServerBinding], processor: ActorRef[Nothing]): Behavior[Command] = Behaviors

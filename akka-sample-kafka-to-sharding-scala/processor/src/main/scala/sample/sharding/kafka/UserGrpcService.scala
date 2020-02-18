@@ -5,6 +5,7 @@ import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.AskPattern._
 import akka.cluster.sharding.typed.ShardingMessageExtractor
 import akka.util.Timeout
+import com.typesafe.config.ConfigFactory
 import sample.sharding.kafka.UserEvents.GetRunningTotal
 import sample.sharding.kafka.UserEvents.RunningTotal
 
@@ -17,7 +18,8 @@ class UserGrpcService(system: ActorSystem[_], extractor: ShardingMessageExtracto
   implicit val sched = system.scheduler
   implicit val ec = system.executionContext
 
-  private val shardRegion: ActorRef[UserEvents.UserQuery] = UserEvents.querySide(system, extractor)
+  private val processorSettings = ProcessorConfig(ConfigFactory.load().getConfig("kafka-to-sharding-processor"))
+  private val shardRegion: ActorRef[UserEvents.UserQuery] = UserEvents.querySide(system, extractor, processorSettings.groupId)
 
   override def userStats(in: UserStatsRequest): Future[UserStatsResponse] = {
     shardRegion

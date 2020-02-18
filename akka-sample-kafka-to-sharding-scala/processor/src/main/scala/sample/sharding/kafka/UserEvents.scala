@@ -7,17 +7,13 @@ import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.sharding.external.ExternalShardAllocationStrategy
 import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingMessageExtractor}
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityTypeKey}
-import akka.kafka.{ConsumerSettings, KafkaClusterSharding, KafkaShardingNoEnvelopeExtractor}
+import akka.kafka.{ConsumerSettings, KafkaClusterSharding}
 import org.apache.kafka.common.serialization.StringDeserializer
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
 object UserEvents {
-
-  val TypeKey: EntityTypeKey[UserEvents.Message] =
-    EntityTypeKey[UserEvents.Message]("user-processing")
-
   sealed trait Message extends CborSerializable {
     def userId: String
   }
@@ -60,12 +56,11 @@ object UserEvents {
    * retrieve the number of partitions and use the same hashing algorithm used by the Apache Kafka
    * [[org.apache.kafka.clients.producer.internals.DefaultPartitioner]] (murmur2) with Akka Cluster Sharding.
    */
-  def messageExtractor(system: ActorSystem[_]): Future[KafkaShardingNoEnvelopeExtractor[Message]] = {
+  def messageExtractor(system: ActorSystem[_]): Future[KafkaClusterSharding.KafkaShardingNoEnvelopeExtractor[Message]] = {
     val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
     KafkaClusterSharding.messageExtractorNoEnvelope(
       system = system.toClassic,
       timeout = 10.seconds,
-      groupId = processorConfig.groupId,
       topic = processorConfig.topics.head,
       entityIdExtractor = (msg: Message) => msg.userId,
       settings = ConsumerSettings(system.toClassic, new StringDeserializer, new StringDeserializer)
@@ -73,13 +68,17 @@ object UserEvents {
     )
   }
 
-  def init(system: ActorSystem[_], messageExtractor: ShardingMessageExtractor[Message, Message]): ActorRef[Message] =
+  def init(system: ActorSystem[_], messageExtractor: ShardingMessageExtractor[Message, Message], groupId: String): ActorRef[Message] = {
+    // create an Akka Cluster Sharding `EntityTypeKey` for `UserEvents` for this Kafka consumer group
+    val typeKey = EntityTypeKey[UserEvents.Message](groupId)
     ClusterSharding(system).init(
-      Entity(TypeKey)(createBehavior = _ => UserEvents())
-        .withAllocationStrategy(new ExternalShardAllocationStrategy(system, TypeKey.name))
+      Entity(typeKey)(createBehavior = _ => UserEvents())
+        // NOTE: why does `ExternalShardAllocationStrategy` not accept the type key type itself?
+        .withAllocationStrategy(new ExternalShardAllocationStrategy(system, typeKey.name))
         .withMessageExtractor(messageExtractor)
         .withSettings(ClusterShardingSettings(system)))
+  }
 
-  def querySide(system: ActorSystem[_], messageExtractor: ShardingMessageExtractor[Message, Message]): ActorRef[UserQuery] =
-    init(system, messageExtractor).narrow[UserQuery]
+  def querySide(system: ActorSystem[_], messageExtractor: ShardingMessageExtractor[Message, Message], groupId: String): ActorRef[UserQuery] =
+    init(system, messageExtractor, groupId).narrow[UserQuery]
 }

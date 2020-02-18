@@ -9,8 +9,8 @@ import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.adapter._
 import akka.cluster.sharding.typed.ShardingMessageExtractor
-import akka.kafka.ConsumerSettings
-import akka.kafka.Subscriptions
+import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
+import akka.kafka.{ConsumerSettings, KafkaClusterSharding, Subscriptions}
 import akka.kafka.scaladsl.Consumer
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
@@ -40,8 +40,9 @@ object UserEventsKafkaProcessor {
         implicit val scheduler: Scheduler = classic.scheduler
         // TODO config
         val timeout = Timeout(3.seconds)
-        val rebalancerRef = ctx.spawn(TopicListener(processorSettings.groupId, UserEvents.TypeKey), "rebalancerRef")
-        val shardRegion = UserEvents.init(ctx.system, extractor)
+        val typeKey = EntityTypeKey[UserEvents.Message](processorSettings.groupId)
+        val rebalanceListener = ctx.spawn(KafkaClusterSharding.RebalanceListener(typeKey), "kafka-cluster-sharding-rebalance-listener")
+        val shardRegion = UserEvents.init(ctx.system, extractor, processorSettings.groupId)
         val consumerSettings =
           ConsumerSettings(ctx.system.toClassic, new StringDeserializer, new ByteArrayDeserializer)
             .withBootstrapServers(processorSettings.bootstrapServers)
@@ -51,7 +52,7 @@ object UserEventsKafkaProcessor {
 
         val subscription = Subscriptions
           .topics(processorSettings.topics: _*)
-          .withRebalanceListener(rebalancerRef.toClassic)
+          .withRebalanceListener(rebalanceListener.toClassic)
 
         val kafkaConsumer: Source[ConsumerRecord[String, Array[Byte]], Consumer.Control] =
           Consumer.plainSource(consumerSettings, subscription)
