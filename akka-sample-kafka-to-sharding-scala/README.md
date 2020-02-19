@@ -32,9 +32,9 @@ The sample is made up of three applications:
 * `client` A gRPC client for interacting with the cluster
 * `kafka` A local Kafka server
               
-The sample demonstrates how the external shard allocation strategy can used so messages are processed locally.
+The sample demonstrates how the external shard allocation strategy can be used so messages are processed locally.
 
-The sample depends on a Kafka broker running locally on port `9092` with a topic with 128 partitions called `user-events.`
+The sample depends on a Kafka broker running locally on port `9092` with a topic with 128 partitions called `user-events`. 
 [Kafka can be run in Docker](https://github.com/wurstmeister/kafka-docker) or run locally using the optional `kafka` project.
 
 * Run the local Kafka server. This project will also create the `user-events` topic.
