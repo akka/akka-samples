@@ -152,18 +152,20 @@ Each forwarding messaging is followed by log for the same entity on the current 
 Using Akka management we can see the shard allocations and the number of entities per shard (uses `curl` and `jq`):
 
 ```
+# Node 1:
+curl -v localhost:8551/cluster/shards/user-processing | jq
 
-// Node 1:
- curl -v localhost:8551/cluster/shards/user-processing | jq
-
-// Node 2:
- curl -v localhost:8552/cluster/shards/user-processing | jq
+# Node 2:
+curl -v localhost:8552/cluster/shards/user-processing | jq
 ```
 
 We can count the number of shards on each:
 
 ```
+# Node 1:
 curl -s localhost:8551/cluster/shards/user-processing | jq -r "." | grep shardId | wc -l
+# Node 2:
+curl -s localhost:8552/cluster/shards/user-processing | jq -r "." | grep shardId | wc -l
 ```
 
 The number of shards will depend on which entities have received messages.

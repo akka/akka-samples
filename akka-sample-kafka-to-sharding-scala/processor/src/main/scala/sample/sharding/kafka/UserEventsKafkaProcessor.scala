@@ -10,10 +10,9 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.adapter._
 import akka.cluster.sharding.typed.ShardingMessageExtractor
 import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
-import akka.kafka.{ConsumerSettings, KafkaClusterSharding, Subscriptions}
-import akka.kafka.scaladsl.Consumer
-import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
+import akka.kafka.{CommitterSettings, ConsumerMessage, ConsumerSettings, KafkaClusterSharding, Subscriptions}
+import akka.kafka.scaladsl.{Committer, Consumer}
+import akka.stream.scaladsl.SourceWithContext
 import akka.util.Timeout
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -41,10 +40,10 @@ object UserEventsKafkaProcessor {
         // TODO config
         val timeout = Timeout(3.seconds)
         val typeKey = EntityTypeKey[UserEvents.Message](processorSettings.groupId)
-        val rebalanceListener = ctx.spawn(KafkaClusterSharding.RebalanceListener(typeKey), "kafka-cluster-sharding-rebalance-listener")
+        val rebalanceListener = KafkaClusterSharding.rebalanceListener(classic, typeKey)
         val shardRegion = UserEvents.init(ctx.system, extractor, processorSettings.groupId)
         val consumerSettings =
-          ConsumerSettings(ctx.system.toClassic, new StringDeserializer, new ByteArrayDeserializer)
+          ConsumerSettings(classic, new StringDeserializer, new ByteArrayDeserializer)
             .withBootstrapServers(processorSettings.bootstrapServers)
             .withGroupId(processorSettings.groupId)
             .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
@@ -52,12 +51,11 @@ object UserEventsKafkaProcessor {
 
         val subscription = Subscriptions
           .topics(processorSettings.topics: _*)
-          .withRebalanceListener(rebalanceListener.toClassic)
+          .withRebalanceListener(rebalanceListener)
 
-        val kafkaConsumer: Source[ConsumerRecord[String, Array[Byte]], Consumer.Control] =
-          Consumer.plainSource(consumerSettings, subscription)
+        val kafkaConsumer: SourceWithContext[ConsumerRecord[String, Array[Byte]], ConsumerMessage.CommittableOffset, Consumer.Control] =
+          Consumer.sourceWithOffsetContext(consumerSettings, subscription)
 
-        // TODO use committable source and reliable delivery (once released)?
         val stream: Future[Done] = kafkaConsumer
           .log("kafka-consumer")
           .filter(_.key() != null) // no entity id
@@ -65,7 +63,7 @@ object UserEventsKafkaProcessor {
             // alternatively the user id could be in the message rather than use the kafka key
             ctx.log.info(s"entityId->partition ${record.key()}->${record.partition()}")
             ctx.log.info("Forwarding message for entity {} to cluster sharding", record.key())
-            // idempotency?
+            // TODO idempotency? reliable delivery (once released)?
             retry(
               () =>
                 shardRegion.ask[Done](replyTo => {
@@ -77,10 +75,11 @@ object UserEventsKafkaProcessor {
                     purchaseProto.price,
                     replyTo)
                 })(timeout, ctx.system.scheduler),
-              3,
-              1.second)
+              attempts = 3,
+              delay = 1.second
+            )
           }
-          .runWith(Sink.ignore)
+          .runWith(Committer.sinkWithOffsetContext(CommitterSettings(classic)))
 
         stream.onComplete { result =>
           ctx.self ! KafkaConsumerStopped(result)
