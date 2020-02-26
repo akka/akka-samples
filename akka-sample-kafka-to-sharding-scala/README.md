@@ -46,8 +46,8 @@ sbt "kafka / run"
 In the Kafka server window you'll see the following when the server is ready:
 
 ```
-12:46:47.022 INFO  [run-main-0          ] sample.sharding.embeddedkafka.Main$   Kafka running on port '9092'
-12:46:47.022 INFO  [run-main-0          ] sample.sharding.embeddedkafka.Main$   Topic 'user-events' with '128' partitions created
+12:06:59.711 INFO  [run-main-0          ] s.s.embeddedkafka.KafkaBroker$        Kafka running: localhost:9092
+12:06:59.711 INFO  [run-main-0          ] s.s.embeddedkafka.KafkaBroker$        Topic 'user-events' with 128 partitions created
 ```
 
 If you want to use a different Kafka cluster then then update the `applications.conf`s in each project to point to your 
@@ -183,7 +183,7 @@ the correct node even if that moves due to a kafka rebalance.
 A gRPC client is included which can be started with...
 
 ```
-sbt "client/run"
+sbt "client / run"
 ```
 
 It assumes there is one of the nodes running its front end port on 8081. 

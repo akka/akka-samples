@@ -58,8 +58,7 @@ object UserEvents {
    */
   def messageExtractor(system: ActorSystem[_]): Future[KafkaClusterSharding.KafkaShardingNoEnvelopeExtractor[Message]] = {
     val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
-    KafkaClusterSharding.messageExtractorNoEnvelope(
-      system = system.toClassic,
+    KafkaClusterSharding(system.toClassic).messageExtractorNoEnvelope(
       timeout = 10.seconds,
       topic = processorConfig.topics.head,
       entityIdExtractor = (msg: Message) => msg.userId,

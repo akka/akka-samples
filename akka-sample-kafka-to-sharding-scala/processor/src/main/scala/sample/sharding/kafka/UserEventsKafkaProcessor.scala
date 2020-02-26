@@ -40,7 +40,7 @@ object UserEventsKafkaProcessor {
         // TODO config
         val timeout = Timeout(3.seconds)
         val typeKey = EntityTypeKey[UserEvents.Message](processorSettings.groupId)
-        val rebalanceListener = KafkaClusterSharding.rebalanceListener(classic, typeKey)
+        val rebalanceListener = KafkaClusterSharding(classic).rebalanceListener(classic, typeKey)
         val shardRegion = UserEvents.init(ctx.system, extractor, processorSettings.groupId)
         val consumerSettings =
           ConsumerSettings(classic, new StringDeserializer, new ByteArrayDeserializer)
