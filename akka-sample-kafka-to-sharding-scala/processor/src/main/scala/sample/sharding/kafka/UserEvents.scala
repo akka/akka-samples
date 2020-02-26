@@ -72,7 +72,6 @@ object UserEvents {
     val typeKey = EntityTypeKey[UserEvents.Message](groupId)
     ClusterSharding(system).init(
       Entity(typeKey)(createBehavior = _ => UserEvents())
-        // NOTE: why does `ExternalShardAllocationStrategy` not accept the type key type itself?
         .withAllocationStrategy(new ExternalShardAllocationStrategy(system, typeKey.name))
         .withMessageExtractor(messageExtractor)
         .withSettings(ClusterShardingSettings(system)))
