@@ -10,8 +10,8 @@ import worker.WorkExecutor.ExecuteWork
 import worker.Worker.WorkTimeout
 
 import scala.concurrent.duration._
-import akka.actor.typed.internal.delivery.ProducerController
-import akka.actor.typed.internal.delivery.ConsumerController
+import akka.actor.typed.delivery.ConsumerController
+import akka.actor.typed.delivery.ProducerController
 
 /**
  * The worker is actually more of a middle manager, delegating the actual work
@@ -27,34 +27,25 @@ object Worker {
   private case object WorkTimeout extends Message
 
   def apply(
-      workManagerProxy: ActorRef[WorkManager.Command],
       workerId: String = UUID.randomUUID().toString,
       workExecutorFactory: () => Behavior[ExecuteWork] = () => WorkExecutor()): Behavior[Message] =
     Behaviors.setup[Message] { ctx =>
-      Behaviors.withTimers { timers: TimerScheduler[Message] =>
-        val consumerController = ctx.spawn(ConsumerController[WorkManager.WorkerCommand](true), "consumer-controller")
+        val consumerController = ctx.spawn(ConsumerController[WorkManager.WorkerCommand](WorkManager.ManagerServiceKey), "consumer-controller")
         val deliverAdapter = ctx.messageAdapter[ConsumerController.Delivery[WorkManager.WorkerCommand]](d => DeliveredMessage(d.confirmTo, d.msg, d.seqNr))
         consumerController ! ConsumerController.Start(deliverAdapter)
-        ctx.system.receptionist ! Receptionist.Register(WorkManager.ManagerServiceKey, consumerController)
         Behaviors
-          .supervise(new Worker(workerId, consumerController, workManagerProxy, ctx, timers, workExecutorFactory).idle())
+          .supervise(new Worker(workerId, ctx, workExecutorFactory).idle())
           .onFailure[Exception](SupervisorStrategy.restart)
-      }
     }
 
 }
 
 class Worker private (
     workerId: String,
-    consumerController: ActorRef[ConsumerController.Command[WorkManager.WorkerCommand]],
-    workManagerProxy: ActorRef[WorkManager.Command],
     ctx: ActorContext[Worker.Message],
-    timers: TimerScheduler[Worker.Message],
     workExecutorFactory: () => Behavior[ExecuteWork]) {
 
   import Worker._
-
-  // FIXME, remove work ack timeout
 
   def createWorkExecutor(): ActorRef[ExecuteWork] = {
     val supervised = Behaviors.supervise(workExecutorFactory()).onFailure[Exception](SupervisorStrategy.stop)
@@ -63,22 +54,13 @@ class Worker private (
     ref
   }
 
-  def reportWorkFailedOnRestart(
-      workId: String): PartialFunction[(scaladsl.ActorContext[Worker.Message], Signal), Behavior[Worker.Message]] = {
-    case (_, Terminated(_)) =>
-      ctx.log.info("Work executor terminated. Reporting failure")
-      // FIXME no way to report yet, maybe timeout is okay?
-      // need to re-create the work executor
-      idle(createWorkExecutor())
-  }
-
   def idle(workExecutor: ActorRef[ExecuteWork] = createWorkExecutor()): Behavior[Worker.Message] =
       Behaviors.receiveMessagePartial[Worker.Message] {
         case DeliveredMessage(confirmTo, message, seqNr) =>
           message match {
             case WorkManager.DoWork(w@Work(workId, job: Int)) =>
               ctx.log.info("Got work: {}", w)
-              workExecutor ! WorkExecutor.ExecuteWork(job, ctx.self.narrow[Worker.WorkComplete])
+              workExecutor ! WorkExecutor.ExecuteWork(job, ctx.self)
               working(workId, workExecutor, confirmTo, seqNr)
           }
       }
@@ -95,6 +77,13 @@ class Worker private (
             Behaviors.unhandled
 
         }
-        .receiveSignal(reportWorkFailedOnRestart(workId))
+        .receiveSignal {
+          case (_, Terminated(_)) =>
+            ctx.log.info("Work executor terminated")
+            // The work is confirmed meaning it won't be re-delivered. Sending back a failure would need
+            // to be done explicitly
+            confirmTo ! ConsumerController.Confirmed(seqNr)
+            idle(createWorkExecutor())
+        }
 
 }

@@ -19,11 +19,11 @@ import worker.WorkState.WorkerFailed
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.{ Deadline, FiniteDuration, _ }
-import akka.actor.typed.internal.delivery.ProducerController
-import akka.actor.typed.internal.delivery.WorkPullingProducerController
-import akka.actor.typed.internal.delivery.ConsumerController
-import akka.actor.typed.internal.delivery.WorkPullingProducerController.MessageWithConfirmation
-import akka.actor.typed.internal.delivery.WorkPullingProducerController.RequestNext
+import akka.actor.typed.delivery.ProducerController
+import akka.actor.typed.delivery.WorkPullingProducerController
+import akka.actor.typed.delivery.ConsumerController
+import akka.actor.typed.delivery.WorkPullingProducerController.MessageWithConfirmation
+import akka.actor.typed.delivery.WorkPullingProducerController.RequestNext
 import akka.Done
 import scala.util.Success
 import scala.util.Failure
@@ -42,18 +42,6 @@ object WorkManager {
 
   final case class Ack(workId: String) extends CborSerializable
 
-//  sealed trait WorkerStatus
-//  case object Idle extends WorkerStatus
-//  final case class Busy(workId: String, deadline: Deadline) extends WorkerStatus
-//  final case class WorkerState(ref: ActorRef[WorkerCommand], status: WorkerStatus)
-
-
-  // Messages from Workers
- // final case class WorkerRequestsWork(workerId: String, replyTo: ActorRef[WorkerCommand]) extends Command
-  //final case class WorkIsDone(workerId: String, workId: String, result: Any, replyTo: ActorRef[WorkerCommand])
-  //    extends Command
-  //final case class WorkFailed(worker: ActorRef[WorkerCommand], workId: String) extends Command
-
   // Responses to requests from workers
   sealed trait WorkerCommand
   final case class DoWork(work: Work) extends WorkerCommand
@@ -68,10 +56,7 @@ object WorkManager {
   def apply(workTimeout: FiniteDuration): Behavior[Command] =
     Behaviors.setup { ctx =>
       Behaviors.withTimers { timers =>
-        // FIXME use typed pub sub once https://github.com/akka/akka/issues/26338 is done
-
         implicit val timeout = Timeout(5.seconds)
-        val mediator = DistributedPubSub(ctx.system.toClassic).mediator
         val producerController = ctx.spawn(WorkPullingProducerController[WorkerCommand]("work-manager", ManagerServiceKey, None), "producer-controller")
         val requestNextAdapter = ctx.messageAdapter(RequestNextWrapper)
         producerController ! WorkPullingProducerController.Start(requestNextAdapter)
