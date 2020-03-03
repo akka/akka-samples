@@ -1,5 +1,5 @@
 val AkkaVersion = "2.6.3"
-val AlpakkaKafkaVersion = "2.0.2+2-88deb905+20200226-1650"
+val AlpakkaKafkaVersion = "2.0.2+7-af96d529+20200303-1814"
 val AkkaManagementVersion = "1.0.5"
 val AkkaHttpVersion = "10.1.11"
 val KafkaVersion = "2.4.0"
@@ -45,6 +45,7 @@ lazy val processor = project
   .settings(javaAgents += "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test")
   .settings(libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-stream-kafka" % AlpakkaKafkaVersion,
+      "com.typesafe.akka" %% "akka-stream-kafka-cluster-sharding" % AlpakkaKafkaVersion,
       "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
       "com.typesafe.akka" %% "akka-discovery" % AkkaVersion,
       "com.typesafe.akka" %% "akka-cluster-sharding-typed" % AkkaVersion,
