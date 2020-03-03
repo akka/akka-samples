@@ -1,17 +1,15 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <configuration>
-
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>[%date{ISO8601}] [%level] [%logger] [%thread] [%X{akkaSource}] - %msg%n</pattern>
-        </encoder>
-    </appender>
-
-    <logger name="org.apache.kafka" level="WARN" />
-
-    <logger name="akka.cluster.sharding" level="DEBUG" />
-
-    <root level="INFO">
-        <appender-ref ref="STDOUT"/>
-    </root>
+  <appender name="STDOUT"
+  class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>[%date{ISO8601}] [%level] [%logger] [%thread]
+      [%X{akkaSource}] - %msg%n</pattern>
+    </encoder>
+  </appender>
+  <logger name="org.apache.kafka" level="WARN" />
+  <logger name="akka.cluster.sharding" level="DEBUG" />
+  <root level="DEBUG">
+    <appender-ref ref="STDOUT" />
+  </root>
 </configuration>

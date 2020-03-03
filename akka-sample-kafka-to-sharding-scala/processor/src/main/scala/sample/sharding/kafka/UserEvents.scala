@@ -11,44 +11,81 @@ import akka.cluster.sharding.typed.Murmur2NoEnvelopeMessageExtractor
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.sharding.typed.scaladsl.Entity
 import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
+import akka.actor.typed.delivery.ConsumerController
+import akka.actor.typed.delivery.ConsumerController.Start
+import akka.actor.typed.delivery.ConsumerController
+import akka.cluster.sharding.typed.delivery.ShardingConsumerController
+import akka.cluster.sharding.typed.ShardingEnvelope
+import akka.actor.typed.delivery.ConsumerController.SequencedMessage
+import akka.cluster.sharding.typed.Murmur2MessageExtractor
+import akka.actor.typed.delivery.ConsumerController.Confirmed
 
 object UserEvents {
 
-  val TypeKey: EntityTypeKey[UserEvents.Message] =
-    EntityTypeKey[UserEvents.Message]("user-processing")
+  val TypeKey: EntityTypeKey[SequencedMessage[UserEvents.Message]] =
+    EntityTypeKey[SequencedMessage[UserEvents.Message]]("user-processing")
 
   sealed trait Message extends CborSerializable {
     def userId: String
   }
   sealed trait UserEvent extends Message
-  case class UserAction(userId: String, description: String, replyTo: ActorRef[Done]) extends UserEvent
-  case class UserPurchase(userId: String, product: String, quantity: Long, priceInPence: Long, replyTo: ActorRef[Done])
+  case class UserAction(userId: String, description: String) extends UserEvent
+  case class UserPurchase(userId: String, product: String, quantity: Long, priceInPence: Long)
       extends UserEvent
 
   sealed trait UserQuery extends Message
   case class GetRunningTotal(userId: String, replyTo: ActorRef[RunningTotal]) extends UserQuery
 
+  final case class UserEventDelivery(message: Message, confirmTo: ActorRef[ConsumerController.Confirmed], seqNr: Long)
+
   case class RunningTotal(totalPurchases: Long, amountSpent: Long) extends CborSerializable
 
-  def apply(): Behavior[Message] = running(RunningTotal(0, 0))
+  def shardingInit(system: ActorSystem[_]): ActorRef[ShardingEnvelope[SequencedMessage[Message]]] = {
+    val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
+    val entity: Entity[SequencedMessage[Message], ShardingEnvelope[SequencedMessage[Message]]] = Entity[SequencedMessage[Message]](TypeKey)(_ => {
+                                                   ShardingConsumerController(controller => UserEvents(controller))
+                                                 })
+    val entityWithExtractor = 
+        entity
+        .withAllocationStrategy(new ExternalShardAllocationStrategy(system, TypeKey.name))
+          .withMessageExtractor(new Murmur2MessageExtractor[SequencedMessage[Message]](processorConfig.nrPartitions))
+        .withSettings(ClusterShardingSettings(system))
 
-  private def running(runningTotal: RunningTotal): Behavior[Message] = {
+    ClusterSharding(system).init(entityWithExtractor)
+  }
+
+  def apply(controller: ActorRef[ConsumerController.Start[Message]]): Behavior[UserEventDelivery] = {
     Behaviors.setup { ctx =>
-      Behaviors.receiveMessage[Message] {
-        case UserAction(_, desc, ack) =>
-          ctx.log.info("user event {}", desc)
-          ack.tell(Done)
-          Behaviors.same
-        case UserPurchase(id, product, quantity, price, ack) =>
-          ctx.log.info("user {} purchase {}, quantity {}, price {}", id, product, quantity, price)
-          ack.tell(Done)
-          running(
-            runningTotal.copy(
-              totalPurchases = runningTotal.totalPurchases + 1,
-              amountSpent = runningTotal.amountSpent + (quantity * price)))
-        case GetRunningTotal(_, replyTo) =>
-          replyTo ! runningTotal
-          Behaviors.same
+      val messageAdapter: ActorRef[ConsumerController.Delivery[Message]] =
+        ctx.messageAdapter(d => UserEventDelivery(d.msg, d.confirmTo, d.seqNr))
+      controller ! Start(messageAdapter)
+      running(RunningTotal(0, 0))
+    }
+  }
+
+  private def running(runningTotal: RunningTotal): Behavior[UserEventDelivery] = {
+    Behaviors.setup { ctx =>
+      Behaviors.receiveMessage {
+        case UserEventDelivery(msg, confirmTo, seqNr) =>
+          msg match {
+            case UserAction(_, desc) =>
+              ctx.log.info("user event {}", desc)
+              confirmTo ! Confirmed(seqNr)
+              Behaviors.same
+            case UserPurchase(id, product, quantity, price) =>
+              ctx.log.info("user {} purchase {}, quantity {}, price {}", id, product, quantity, price)
+              confirmTo ! Confirmed(seqNr)
+              running(
+                runningTotal.copy(
+                  totalPurchases = runningTotal.totalPurchases + 1,
+                  amountSpent = runningTotal.amountSpent + (quantity * price)
+                )
+              )
+            case GetRunningTotal(_, replyTo) =>
+              replyTo ! runningTotal
+              confirmTo ! Confirmed(seqNr)
+              Behaviors.same
+          }
       }
     }
   }
@@ -58,20 +95,20 @@ object UserEvents {
    * have keys that are strings
    */
   class UserIdMessageExtractor(nrKafkaPartitions: Int)
-      extends Murmur2NoEnvelopeMessageExtractor[Message](nrKafkaPartitions) {
-    override def entityId(message: Message): String = message.userId
+      extends Murmur2NoEnvelopeMessageExtractor[SequencedMessage[Message]](nrKafkaPartitions) {
+    override def entityId(message: SequencedMessage[Message]): String = message.msg.userId
   }
 
+   /* 
   def init(system: ActorSystem[_]): ActorRef[Message] = {
     val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
     ClusterSharding(system).init(
       Entity(TypeKey)(createBehavior = _ => UserEvents())
         .withAllocationStrategy(new ExternalShardAllocationStrategy(system, TypeKey.name))
         .withMessageExtractor(new UserIdMessageExtractor(processorConfig.nrPartitions))
-        .withSettings(ClusterShardingSettings(system)))
+        .withSettings(ClusterShardingSettings(system))
+    )
   }
+    */
 
-  def querySide(system: ActorSystem[_]): ActorRef[UserQuery] = {
-    init(system).narrow[UserQuery]
-  }
 }

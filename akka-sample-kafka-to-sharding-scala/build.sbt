@@ -1,4 +1,4 @@
-val AkkaVersion = "2.6.3"
+val AkkaVersion = "2.6.3+135-0a7adf56+20200301-1347"
 // TODO upgrade to 2.0.0
 val AlpakkaKafkaVersion = "1.1.0"
 val AkkaManagementVersion = "1.0.5"

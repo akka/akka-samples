@@ -45,7 +45,6 @@ object Main {
           .receiveMessage[MemberUp] {
             case MemberUp(member) if member.uniqueAddress == cluster.selfMember.uniqueAddress =>
               ctx.log.info("Joined the cluster. Starting sharding and kafka processor")
-              UserEvents.init(ctx.system)
               val eventProcessor = ctx.spawn[Nothing](UserEventsKafkaProcessor(), "kafka-event-processor")
               ctx.watch(eventProcessor)
               Behaviors.same
