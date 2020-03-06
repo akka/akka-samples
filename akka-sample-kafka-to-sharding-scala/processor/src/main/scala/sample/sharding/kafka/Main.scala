@@ -1,24 +1,22 @@
 package sample.sharding.kafka
 
-import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.adapter._
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior, Terminated}
-import akka.cluster.ClusterEvent.MemberUp
-import akka.cluster.sharding.typed.ShardingMessageExtractor
-import akka.cluster.typed.{Cluster, Subscribe}
+import akka.cluster.typed.{Cluster, SelfUp, Subscribe}
 import akka.http.scaladsl._
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.management.scaladsl.AkkaManagement
 import akka.stream.Materializer
 import com.typesafe.config.{Config, ConfigFactory}
+import sample.sharding.kafka.UserEvents.Message
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 sealed trait Command
 case object NodeMemberUp extends Command
-case object StartProcessor extends Command
-final case class MessageExtractor(extractor: ShardingMessageExtractor[UserEvents.Message, UserEvents.Message]) extends Command
+final case class ShardingStarted(region: ActorRef[Message]) extends Command
 
 object Main {
   def main(args: Array[String]): Unit = {
@@ -38,35 +36,38 @@ object Main {
     ActorSystem(Behaviors.setup[Command] {
       ctx =>
         AkkaManagement(ctx.system.toClassic).start()
-
         val cluster = Cluster(ctx.system)
-        val subscriber = ctx.spawn(clusterUpSubscriber(cluster, ctx.self), "cluster-subscriber")
-        cluster.subscriptions.tell(Subscribe(subscriber, classOf[MemberUp]))
-
-        ctx.pipeToSelf(UserEvents.messageExtractor(ctx.system)) {
-          case Success(extractor) => MessageExtractor(extractor)
-          case Failure(ex) => throw new Exception(ex)
+        val upAdapter = ctx.messageAdapter[SelfUp](_ => NodeMemberUp)
+        cluster.subscriptions ! Subscribe(upAdapter, classOf[SelfUp])
+        val settings = ProcessorSettings("kafka-to-sharding-processor", ctx.system.toClassic)
+        ctx.pipeToSelf(UserEvents.init(ctx.system, settings)) {
+          case Success(extractor) => ShardingStarted(extractor)
+          case Failure(ex) => throw ex
         }
-
-        starting()
+        starting(ctx, None, joinedCluster = false, settings)
     }, "KafkaToSharding", config(remotingPort, akkaManagementPort))
 
-    def starting(extractor: Option[ShardingMessageExtractor[UserEvents.Message, UserEvents.Message]] = None): Behavior[Command] = Behaviors
+    def start(ctx: ActorContext[Command], region: ActorRef[Message],  settings: ProcessorSettings): Behavior[Command] = {
+      ctx.log.info("Sharding started and joine cluster. Starting event processor")
+      val eventProcessor = ctx.spawn[Nothing](UserEventsKafkaProcessor(region, settings), "kafka-event-processor")
+      val binding: Future[Http.ServerBinding] = startGrpc(ctx.system, frontEndPort, region)
+      running(binding, eventProcessor)
+    }
+
+    def starting(ctx: ActorContext[Command], sharding: Option[ActorRef[Message]], joinedCluster: Boolean = false, settings: ProcessorSettings): Behavior[Command] = Behaviors
       .receive[Command] {
-        case (ctx, MessageExtractor(extractor)) =>
-          ctx.self.tell(StartProcessor)
-          starting(Some(extractor))
-        case (ctx, StartProcessor) if extractor.isDefined =>
-          val messageExtractor = extractor.get
-          val processorSettings = ProcessorConfig(ctx.system.settings.config.getConfig("kafka-to-sharding-processor"))
-          UserEvents.init(ctx.system, messageExtractor, processorSettings.groupId)
-          val eventProcessor = ctx.spawn[Nothing](UserEventsKafkaProcessor(messageExtractor), "kafka-event-processor")
-          ctx.watch(eventProcessor)
-          ctx.log.info("Processor started.")
-          val binding: Future[Http.ServerBinding] = startGrpc(ctx.system, frontEndPort, messageExtractor)
-          running(binding, eventProcessor)
-        case (ctx, StartProcessor) =>
-          Behaviors.same
+        case (ctx, ShardingStarted(region)) if joinedCluster =>
+          ctx.log.info("Sharding has started")
+          start(ctx, region, settings)
+        case (_, ShardingStarted(region)) =>
+          ctx.log.info("Sharding has started")
+          starting(ctx, Some(region), joinedCluster, settings)
+        case (ctx, NodeMemberUp) if sharding.isDefined =>
+          ctx.log.info("Member has joined the cluster")
+          start(ctx, sharding.get, settings)
+        case (_, NodeMemberUp)  =>
+          ctx.log.info("Member has joined the cluster")
+          starting(ctx, sharding, joinedCluster = true, settings)
       }
 
     def running(binding: Future[Http.ServerBinding], processor: ActorRef[Nothing]): Behavior[Command] = Behaviors
@@ -77,24 +78,11 @@ object Main {
           Behaviors.stopped
       }
 
-    def clusterUpSubscriber(cluster: Cluster, parent: ActorRef[Command]): Behavior[MemberUp] = Behaviors.setup[MemberUp] {
-      ctx =>
-        Behaviors
-          .receiveMessage[MemberUp] {
-            case MemberUp(member) if member.uniqueAddress == cluster.selfMember.uniqueAddress =>
-              ctx.log.info("Joined the cluster. Starting sharding and kafka processor")
-              parent.tell(StartProcessor)
-              Behaviors.same
-            case MemberUp(member) =>
-              ctx.log.info("Member up {}", member)
-              Behaviors.same
-          }
-    }
 
-    def startGrpc(system: ActorSystem[_], frontEndPort: Int, extractor: ShardingMessageExtractor[UserEvents.Message, UserEvents.Message]): Future[Http.ServerBinding] = {
+    def startGrpc(system: ActorSystem[_], frontEndPort: Int, region: ActorRef[Message]): Future[Http.ServerBinding] = {
       val mat = Materializer.createMaterializer(system.toClassic)
       val service: HttpRequest => Future[HttpResponse] =
-        UserServiceHandler(new UserGrpcService(system, extractor))(mat, system.toClassic)
+        UserServiceHandler(new UserGrpcService(system, region))(mat, system.toClassic)
       Http()(system.toClassic).bindAndHandleAsync(
         service,
         interface = "127.0.0.1",

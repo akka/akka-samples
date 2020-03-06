@@ -1,5 +1,6 @@
 # Aligning Kafka Partitions with Akka Cluster Sharding 
 
+
 It is common to consume a Kafka topic and forward the messages to sharded actors. 
 
 The Kafka consumer can be started on each node with the same group id
@@ -50,7 +51,7 @@ In the Kafka server window you'll see the following when the server is ready:
 12:06:59.711 INFO  [run-main-0          ] s.s.embeddedkafka.KafkaBroker$        Topic 'user-events' with 128 partitions created
 ```
 
-If you want to use a different Kafka cluster then then update the `applications.conf`s in each project to point to your 
+If you want to use a different Kafka cluster then update the `applications.conf`s in each project to point to your 
 Kafka broker if not running on `localhost:9092`.
 
 

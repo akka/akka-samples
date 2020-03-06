@@ -2,18 +2,30 @@ package sample.sharding.kafka
 
 import akka.Done
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.scaladsl.adapter._
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.sharding.external.ExternalShardAllocationStrategy
-import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingMessageExtractor}
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityTypeKey}
-import akka.kafka.{ConsumerSettings, KafkaClusterSharding}
-import org.apache.kafka.common.serialization.StringDeserializer
+import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingMessageExtractor}
+import akka.kafka.cluster.sharding.KafkaClusterSharding
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
 object UserEvents {
+  val TypeKey: EntityTypeKey[Message] = EntityTypeKey[UserEvents.Message]("UserEvents")
+
+  def init(system: ActorSystem[_], settings: ProcessorSettings): Future[ActorRef[Message]] = {
+    import system.executionContext
+    messageExtractor(settings).map(messageExtractor => {
+      system.log.info("Message extractor created. Initializing sharding")
+      ClusterSharding(system).init(
+        Entity(TypeKey)(createBehavior = _ => UserEvents())
+          .withAllocationStrategy(new ExternalShardAllocationStrategy(system, TypeKey.name))
+          .withMessageExtractor(messageExtractor)
+          .withSettings(ClusterShardingSettings(system)))
+    })
+  }
+
   sealed trait Message extends CborSerializable {
     def userId: String
   }
@@ -24,7 +36,6 @@ object UserEvents {
 
   sealed trait UserQuery extends Message
   case class GetRunningTotal(userId: String, replyTo: ActorRef[RunningTotal]) extends UserQuery
-
   case class RunningTotal(totalPurchases: Long, amountSpent: Long) extends CborSerializable
 
   def apply(): Behavior[Message] = running(RunningTotal(0, 0))
@@ -51,32 +62,12 @@ object UserEvents {
     }
   }
 
-  /**
-   * Asynchronously get the Akka Cluster Sharding [[ShardingMessageExtractor]]. Given a topic we can automatically
-   * retrieve the number of partitions and use the same hashing algorithm used by the Apache Kafka
-   * [[org.apache.kafka.clients.producer.internals.DefaultPartitioner]] (murmur2) with Akka Cluster Sharding.
-   */
-  def messageExtractor(system: ActorSystem[_]): Future[KafkaClusterSharding.KafkaShardingNoEnvelopeExtractor[Message]] = {
-    val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
-    KafkaClusterSharding(system.toClassic).messageExtractorNoEnvelope(
+  private def messageExtractor(settings: ProcessorSettings): Future[KafkaClusterSharding.KafkaShardingNoEnvelopeExtractor[Message]] = {
+    KafkaClusterSharding(settings.system).messageExtractorNoEnvelope(
       timeout = 10.seconds,
-      topic = processorConfig.topics.head,
+      topic = settings.topics.head,
       entityIdExtractor = (msg: Message) => msg.userId,
-      settings = ConsumerSettings(system.toClassic, new StringDeserializer, new StringDeserializer)
-        .withBootstrapServers(processorConfig.bootstrapServers)
+      settings = settings.kafkaConsumerSettings()
     )
   }
-
-  def init(system: ActorSystem[_], messageExtractor: ShardingMessageExtractor[Message, Message], groupId: String): ActorRef[Message] = {
-    // create an Akka Cluster Sharding `EntityTypeKey` for `UserEvents` for this Kafka consumer group
-    val typeKey = EntityTypeKey[UserEvents.Message](groupId)
-    ClusterSharding(system).init(
-      Entity(typeKey)(createBehavior = _ => UserEvents())
-        .withAllocationStrategy(new ExternalShardAllocationStrategy(system, typeKey.name))
-        .withMessageExtractor(messageExtractor)
-        .withSettings(ClusterShardingSettings(system)))
-  }
-
-  def querySide(system: ActorSystem[_], messageExtractor: ShardingMessageExtractor[Message, Message], groupId: String): ActorRef[UserQuery] =
-    init(system, messageExtractor, groupId).narrow[UserQuery]
 }
