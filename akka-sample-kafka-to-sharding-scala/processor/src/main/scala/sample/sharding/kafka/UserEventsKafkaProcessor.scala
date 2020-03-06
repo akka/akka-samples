@@ -30,11 +30,12 @@ object UserEventsKafkaProcessor {
         implicit val ec: ExecutionContextExecutor = ctx.executionContext
         implicit val scheduler: Scheduler = classic.scheduler
 
-        val rebalanceListener  = KafkaClusterSharding(classic).rebalanceListener(classic, UserEvents.TypeKey.name)
+        val rebalanceListener = KafkaClusterSharding(classic).rebalanceListener(ctx.system, processorSettings.entityTypeKey)
 
         val subscription = Subscriptions
           .topics(processorSettings.topics: _*)
-          .withRebalanceListener(rebalanceListener)
+          // convert rebalance listener to classic ActorRef
+          .withRebalanceListener(rebalanceListener.toClassic)
 
         val stream: Future[Done] = Consumer.sourceWithOffsetContext(processorSettings.kafkaConsumerSettings(), subscription)
           // MapAsync and Retries will be replaced by reliable delivery in the next 2.6 version

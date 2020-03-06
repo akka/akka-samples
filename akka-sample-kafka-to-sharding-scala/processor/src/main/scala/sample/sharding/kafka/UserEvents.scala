@@ -4,23 +4,21 @@ import akka.Done
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.sharding.external.ExternalShardAllocationStrategy
-import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityTypeKey}
-import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingMessageExtractor}
+import akka.cluster.sharding.typed.ClusterShardingSettings
+import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity}
 import akka.kafka.cluster.sharding.KafkaClusterSharding
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
 object UserEvents {
-  val TypeKey: EntityTypeKey[Message] = EntityTypeKey[UserEvents.Message]("UserEvents")
-
   def init(system: ActorSystem[_], settings: ProcessorSettings): Future[ActorRef[Message]] = {
     import system.executionContext
     messageExtractor(settings).map(messageExtractor => {
       system.log.info("Message extractor created. Initializing sharding")
       ClusterSharding(system).init(
-        Entity(TypeKey)(createBehavior = _ => UserEvents())
-          .withAllocationStrategy(new ExternalShardAllocationStrategy(system, TypeKey.name))
+        Entity(settings.entityTypeKey)(createBehavior = _ => UserEvents())
+          .withAllocationStrategy(new ExternalShardAllocationStrategy(system, settings.entityTypeKey.name))
           .withMessageExtractor(messageExtractor)
           .withSettings(ClusterShardingSettings(system)))
     })

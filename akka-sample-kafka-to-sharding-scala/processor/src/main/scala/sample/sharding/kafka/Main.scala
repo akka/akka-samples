@@ -54,7 +54,7 @@ object Main {
       running(binding, eventProcessor)
     }
 
-    def starting(ctx: ActorContext[Command], sharding: Option[ActorRef[Message]], joinedCluster: Boolean = false, settings: ProcessorSettings): Behavior[Command] = Behaviors
+    def starting(ctx: ActorContext[Command], sharding: Option[ActorRef[Message]], joinedCluster: Boolean, settings: ProcessorSettings): Behavior[Command] = Behaviors
       .receive[Command] {
         case (ctx, ShardingStarted(region)) if joinedCluster =>
           ctx.log.info("Sharding has started")

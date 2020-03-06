@@ -1,5 +1,5 @@
 val AkkaVersion = "2.6.3"
-val AlpakkaKafkaVersion = "2.0.2+10-f4b15ee3"
+val AlpakkaKafkaVersion = "2.0.2+4-30f1536b"
 val AkkaManagementVersion = "1.0.5"
 val AkkaHttpVersion = "10.1.11"
 val KafkaVersion = "2.4.0"
@@ -16,7 +16,10 @@ ThisBuild / scalacOptions in Compile ++= Seq(
 ThisBuild / javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation")
 ThisBuild / testOptions in Test += Tests.Argument("-oDF")
 ThisBuild / licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
-ThisBuild / resolvers += "Akka Snapshots" at "https://repo.akka.io/snapshots"
+ThisBuild / resolvers ++= Seq(
+  "Akka Snapshots" at "https://repo.akka.io/snapshots",
+  Resolver.bintrayRepo("akka", "snapshots")
+)
 
 Global / cancelable := true // ctrl-c
 

@@ -1,6 +1,5 @@
 # Aligning Kafka Partitions with Akka Cluster Sharding 
 
-
 It is common to consume a Kafka topic and forward the messages to sharded actors. 
 
 The Kafka consumer can be started on each node with the same group id
@@ -23,6 +22,9 @@ Imagine a scenario that processes all events for users with following constraint
 Then we can enforce that the kafka partition == the akka cluster shard id and use the external 
 sharding allocation strategy to move shards to the node that is consuming that partition, resulting
 in no cross node traffic.
+
+Read the following documentation to learn more about [Akka Cluster External Shard Allocation](https://doc.akka.io/docs/akka/current/typed/cluster-sharding.html#external-shard-allocation) 
+and its support for Kafka in [Alpakka Kafka Cluster Sharding](https://doc.akka.io/docs/alpakka-kafka/current/cluster-sharding.html).
 
 # Running the sample 
 
