@@ -4,7 +4,6 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
-
 import akka.Done
 import akka.NotUsed
 import akka.actor.typed.ActorSystem
@@ -12,9 +11,9 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.PostStop
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.adapter._
-import akka.cluster.sharding.typed.scaladsl.ClusterSharding
-import akka.cluster.sharding.typed.scaladsl.Entity
-import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
+import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardedDaemonProcessSettings}
+import akka.cluster.sharding.typed.scaladsl.ShardedDaemonProcess
+import akka.cluster.typed.Cluster
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
 import akka.persistence.query.Offset
 import akka.persistence.query.PersistenceQuery
@@ -37,28 +36,26 @@ object EventProcessor {
 
   case object Ping extends CborSerializable
 
-  def entityKey(eventProcessorId: String): EntityTypeKey[Ping.type] = EntityTypeKey[Ping.type](eventProcessorId)
-
   def init[Event](
       system: ActorSystem[_],
       settings: EventProcessorSettings,
       eventProcessorStream: String => EventProcessorStream[Event]): Unit = {
-    val eventProcessorEntityKey = entityKey(settings.id)
-
-    ClusterSharding(system).init(Entity(eventProcessorEntityKey)(entityContext =>
-      EventProcessor(eventProcessorStream(entityContext.entityId))).withRole("read-model"))
-
-    KeepAlive.init(system, eventProcessorEntityKey)
+      val shardedDaemonSettings = ShardedDaemonProcessSettings(system)
+          .withKeepAliveInterval(settings.keepAliveInterval)
+          .withShardingSettings(ClusterShardingSettings(system).withRole("read-model"))
+      ShardedDaemonProcess(system)
+        .init(s"event-processors-${settings.id}", settings.parallelism, i => EventProcessor(eventProcessorStream(s"${settings.tagPrefix}-$i")), shardedDaemonSettings, None)
   }
 
   def apply(eventProcessorStream: EventProcessorStream[_]): Behavior[Ping.type] = {
 
-    Behaviors.setup { context =>
+    Behaviors.setup { ctx  =>
+
+      ctx.log.info("Event processor running {}", eventProcessorStream)
       val killSwitch = KillSwitches.shared("eventProcessorSwitch")
       eventProcessorStream.runQueryStream(killSwitch)
-
       Behaviors
-        .receiveMessage[Ping.type] { ping =>
+        .receiveMessage[Ping.type] { _ =>
           Behaviors.same
         }
         .receiveSignal {
@@ -66,7 +63,6 @@ object EventProcessor {
             killSwitch.shutdown()
             Behaviors.same
         }
-
     }
   }
 
