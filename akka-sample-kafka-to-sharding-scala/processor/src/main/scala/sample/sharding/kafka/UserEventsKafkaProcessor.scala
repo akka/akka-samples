@@ -10,7 +10,6 @@ import akka.kafka.cluster.sharding.KafkaClusterSharding
 import akka.kafka.scaladsl.{Committer, Consumer}
 import akka.kafka.{CommitterSettings, Subscriptions}
 import akka.pattern.retry
-import sample.sharding.kafka.UserEvents.Message
 import sample.sharding.kafka.serialization.UserPurchaseProto
 
 import scala.concurrent.duration._
@@ -23,22 +22,21 @@ object UserEventsKafkaProcessor {
 
   private case class KafkaConsumerStopped(reason: Try[Any]) extends Command
 
-  def apply(shardRegion: ActorRef[Message], processorSettings: ProcessorSettings): Behavior[Nothing] = {
+  def apply(shardRegion: ActorRef[UserEvents.Command], processorSettings: ProcessorSettings): Behavior[Nothing] = {
     Behaviors
       .setup[Command] { ctx =>
         implicit val classic: ActorSystem = ctx.system.toClassic
         implicit val ec: ExecutionContextExecutor = ctx.executionContext
         implicit val scheduler: Scheduler = classic.scheduler
 
-        val rebalanceListener = KafkaClusterSharding(classic).rebalanceListener(ctx.system, processorSettings.entityTypeKey)
+        val rebalanceListener = KafkaClusterSharding(classic).rebalanceListener(processorSettings.entityTypeKey)
 
         val subscription = Subscriptions
           .topics(processorSettings.topics: _*)
-          // convert rebalance listener to classic ActorRef
           .withRebalanceListener(rebalanceListener.toClassic)
 
         val stream: Future[Done] = Consumer.sourceWithOffsetContext(processorSettings.kafkaConsumerSettings(), subscription)
-          // MapAsync and Retries will be replaced by reliable delivery in the next 2.6 version
+          // MapAsync and Retries can be replaced by reliable delivery
           .mapAsync(20) { record =>
             ctx.log.info(s"user id consumed kafka partition ${record.key()}->${record.partition()}")
             retry(() =>
