@@ -1,7 +1,5 @@
 package sharding.kafka.producer
 
-import java.nio.charset.StandardCharsets
-
 import akka.Done
 import akka.actor.ActorSystem
 import akka.event.Logging
@@ -10,9 +8,7 @@ import akka.kafka.scaladsl.Producer
 import akka.stream.scaladsl.Source
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization.ByteArraySerializer
-import org.apache.kafka.common.serialization.StringSerializer
-import org.apache.kafka.common.utils.Utils
+import org.apache.kafka.common.serialization.{ByteArraySerializer, StringSerializer}
 import sample.sharding.kafka.serialization.user_events.UserPurchaseProto
 
 import scala.concurrent.Future
@@ -52,23 +48,9 @@ object UserEventProducer extends App {
         val product = products(Random.nextInt(products.size))
         val message = UserPurchaseProto(randomEntityId, product, quantity, price).toByteArray
         log.info("Sending message to user {}", randomEntityId)
-        producerRecord(randomEntityId, message)
-
-      })
-      .runWith(Producer.plainSink(producerSettings))
-
-  def producerRecord(entityId: String, message: Array[Byte]): ProducerRecord[String, Array[Byte]] = {
-    producerConfig.partitioning match {
-      case Default =>
         // rely on the default kafka partitioner to hash the key and distribute among shards
         // the logic of the default partitioner must be replicated in MessageExtractor entityId -> shardId function
-        new ProducerRecord[String, Array[Byte]](producerConfig.topic, entityId, message)
-      case Explicit =>
-        // this logic MUST be replicated in the MessageExtractor entityId -> shardId function!
-        val shardAndPartition = (Utils.toPositive(Utils.murmur2(entityId.getBytes(StandardCharsets.UTF_8))) % producerConfig.nrPartitions)
-        log.info(s"entityId->partition ${entityId}->${shardAndPartition}")
-        new ProducerRecord[String, Array[Byte]](producerConfig.topic, shardAndPartition, entityId, message)
-    }
-  }
-
+        new ProducerRecord[String, Array[Byte]](producerConfig.topic, randomEntityId, message)
+      })
+      .runWith(Producer.plainSink(producerSettings))
 }
