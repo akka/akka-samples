@@ -1,21 +1,28 @@
 package sample.sharding.kafka
 
 import akka.Done
-import akka.actor.typed.ActorRef
-import akka.actor.typed.ActorSystem
-import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.sharding.external.ExternalShardAllocationStrategy
 import akka.cluster.sharding.typed.ClusterShardingSettings
-import akka.cluster.sharding.typed.Murmur2NoEnvelopeMessageExtractor
-import akka.cluster.sharding.typed.scaladsl.ClusterSharding
-import akka.cluster.sharding.typed.scaladsl.Entity
-import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
+import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity}
+import akka.kafka.cluster.sharding.KafkaClusterSharding
+
+import scala.concurrent.Future
+import scala.concurrent.duration._
 
 object UserEvents {
-
-  val TypeKey: EntityTypeKey[UserEvents.Message] =
-    EntityTypeKey[UserEvents.Message]("user-processing")
+  def init(system: ActorSystem[_], settings: ProcessorSettings): Future[ActorRef[Message]] = {
+    import system.executionContext
+    messageExtractor(settings).map(messageExtractor => {
+      system.log.info("Message extractor created. Initializing sharding")
+      ClusterSharding(system).init(
+        Entity(settings.entityTypeKey)(createBehavior = _ => UserEvents())
+          .withAllocationStrategy(new ExternalShardAllocationStrategy(system, settings.entityTypeKey.name))
+          .withMessageExtractor(messageExtractor)
+          .withSettings(ClusterShardingSettings(system)))
+    })
+  }
 
   sealed trait Message extends CborSerializable {
     def userId: String
@@ -27,7 +34,6 @@ object UserEvents {
 
   sealed trait UserQuery extends Message
   case class GetRunningTotal(userId: String, replyTo: ActorRef[RunningTotal]) extends UserQuery
-
   case class RunningTotal(totalPurchases: Long, amountSpent: Long) extends CborSerializable
 
   def apply(): Behavior[Message] = running(RunningTotal(0, 0))
@@ -46,32 +52,20 @@ object UserEvents {
             runningTotal.copy(
               totalPurchases = runningTotal.totalPurchases + 1,
               amountSpent = runningTotal.amountSpent + (quantity * price)))
-        case GetRunningTotal(_, replyTo) =>
+        case GetRunningTotal(id, replyTo) =>
+          ctx.log.info("user {} running total queried", id)
           replyTo ! runningTotal
           Behaviors.same
       }
     }
   }
 
-  /*
-   * The murmur2 message extractor matches kafka's default partitioning when messages
-   * have keys that are strings
-   */
-  class UserIdMessageExtractor(nrKafkaPartitions: Int)
-      extends Murmur2NoEnvelopeMessageExtractor[Message](nrKafkaPartitions) {
-    override def entityId(message: Message): String = message.userId
-  }
-
-  def init(system: ActorSystem[_]): ActorRef[Message] = {
-    val processorConfig = ProcessorConfig(system.settings.config.getConfig("kafka-to-sharding-processor"))
-    ClusterSharding(system).init(
-      Entity(TypeKey)(createBehavior = _ => UserEvents())
-        .withAllocationStrategy(new ExternalShardAllocationStrategy(system, TypeKey.name))
-        .withMessageExtractor(new UserIdMessageExtractor(processorConfig.nrPartitions))
-        .withSettings(ClusterShardingSettings(system)))
-  }
-
-  def querySide(system: ActorSystem[_]): ActorRef[UserQuery] = {
-    init(system).narrow[UserQuery]
+  private def messageExtractor(settings: ProcessorSettings): Future[KafkaClusterSharding.KafkaShardingNoEnvelopeExtractor[Message]] = {
+    KafkaClusterSharding(settings.system).messageExtractorNoEnvelope(
+      timeout = 10.seconds,
+      topic = settings.topics.head,
+      entityIdExtractor = (msg: Message) => msg.userId,
+      settings = settings.kafkaConsumerSettings()
+    )
   }
 }

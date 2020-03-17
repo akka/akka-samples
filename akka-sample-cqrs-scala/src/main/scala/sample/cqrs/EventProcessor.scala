@@ -13,7 +13,6 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.adapter._
 import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardedDaemonProcessSettings}
 import akka.cluster.sharding.typed.scaladsl.ShardedDaemonProcess
-import akka.cluster.typed.Cluster
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
 import akka.persistence.query.Offset
 import akka.persistence.query.PersistenceQuery
@@ -50,7 +49,6 @@ object EventProcessor {
   def apply(eventProcessorStream: EventProcessorStream[_]): Behavior[Ping.type] = {
 
     Behaviors.setup { ctx  =>
-
       ctx.log.info("Event processor running {}", eventProcessorStream)
       val killSwitch = KillSwitches.shared("eventProcessorSwitch")
       eventProcessorStream.runQueryStream(killSwitch)

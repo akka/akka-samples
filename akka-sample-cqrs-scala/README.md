@@ -2,7 +2,8 @@ This tutorial contains a sample illustrating an CQRS design with [Akka Cluster S
 
 ## Overview
 
-This sample application implements a CQRS-ES design that will side-effect in the read model on selected events persisted to Cassandra by the write model. In this sample, the side-effect is logging a line. A more practical example would be to send a message to a Kafka topic or update a relational database.
+This sample application implements a CQRS-ES design that will side-effect in the read model on selected events persisted to Cassandra by the write model. In this sample, the side-effect is logging a line. 
+A more practical example would be to send a message to a Kafka topic or update a relational database.
 
 ## Write model
 
@@ -15,8 +16,8 @@ Events from the shopping carts are tagged and consumed by the read model.
 ## Read model
 
 The read model is implemented in such a way that 'load' is sharded over a number of processors. This number is `event-processor.parallelism`.
+This is implemented using the 
 
-The implementation is resilient: it uses an *Demon thingy* 
 
 ## Running the sample code
 

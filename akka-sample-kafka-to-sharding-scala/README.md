@@ -23,6 +23,9 @@ Then we can enforce that the kafka partition == the akka cluster shard id and us
 sharding allocation strategy to move shards to the node that is consuming that partition, resulting
 in no cross node traffic.
 
+Read the following documentation to learn more about [Akka Cluster External Shard Allocation](https://doc.akka.io/docs/akka/current/typed/cluster-sharding.html#external-shard-allocation) 
+and its support for Kafka in [Alpakka Kafka Cluster Sharding](https://doc.akka.io/docs/alpakka-kafka/current/cluster-sharding.html).
+
 # Running the sample 
 
 The sample is made up of three applications:
@@ -30,17 +33,32 @@ The sample is made up of three applications:
 * `processor` An Akka Cluster Sharding application that reads the Kafka topic and forwards the messages to a sharded
               entity that represents a user and a gRPC front end for accessing the sharded actors state
 * `client` A gRPC client for interacting with the cluster
+* `kafka` A local Kafka server
               
-The sample demonstrates how the external shard allocation strategy can used so messages are processed locally.
+The sample demonstrates how the external shard allocation strategy can be used so messages are processed locally.
 
-The sample depends on a Kafka broker running locally on port `9092` with a topic with 128 partitions called `user-events.`
-[Kafka can be run in Docker](https://github.com/wurstmeister/kafka-docker) or run locally following [these instructions](https://kafka.apache.org/quickstart).
+The sample depends on a Kafka broker running locally on port `9092` with a topic with 128 partitions called `user-events`. 
+[Kafka can be run in Docker](https://github.com/wurstmeister/kafka-docker) or run locally using the optional `kafka` project.
 
-Update the `applications.conf`s in each project to point to your Kafka broker if not running on `localhost:9092`
+* Run the local Kafka server. This project will also create the `user-events` topic.
+
+```
+sbt "kafka / run"
+```
+
+In the Kafka server window you'll see the following when the server is ready:
+
+```
+12:06:59.711 INFO  [run-main-0          ] s.s.embeddedkafka.KafkaBroker$        Kafka running: localhost:9092
+12:06:59.711 INFO  [run-main-0          ] s.s.embeddedkafka.KafkaBroker$        Topic 'user-events' with 128 partitions created
+```
+
+If you want to use a different Kafka cluster then update the `applications.conf`s in each project to point to your 
+Kafka broker if not running on `localhost:9092`.
 
 
-* Create a topic with 128 partitions, or update application.conf with the desired number of
-  partitions e.g. a command from your Kafka installation:
+* _(Optional)_ If you do not run the local Kafka server then you must create a topic with 128 partitions, or update 
+  application.conf with the desired number of partitions e.g. a command from your Kafka installation:
   
 ```
   bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 128 --topic user-events
@@ -104,7 +122,7 @@ As there is only one node we get 100% locality, each forwarded message is proces
 Now let's see that remain true once we add more nodes to the Akka Cluster, add another with different ports:
 
 ```
- sbt "processor / run 2552 8552 8082"
+sbt "processor / run 2552 8552 8082"
 ```
 
 When this starts up we'll see Kafka assign partitions to the new node (it is in the same consumer group):
@@ -137,18 +155,20 @@ Each forwarding messaging is followed by log for the same entity on the current 
 Using Akka management we can see the shard allocations and the number of entities per shard (uses `curl` and `jq`):
 
 ```
+# Node 1:
+curl -v localhost:8551/cluster/shards/user-processing | jq
 
-// Node 1:
- curl -v localhost:8551/cluster/shards/user-processing  | jq
-
-// Node 2:
- curl -v localhost:8552/cluster/shards/user-processing  | jq
+# Node 2:
+curl -v localhost:8552/cluster/shards/user-processing | jq
 ```
 
 We can count the number of shards on each:
 
 ```
-curl -v localhost:8551/cluster/shards/user-processing  | jq -r "." | grep shardId  | wc
+# Node 1:
+curl -s localhost:8551/cluster/shards/user-processing | jq -r "." | grep shardId | wc -l
+# Node 2:
+curl -s localhost:8552/cluster/shards/user-processing | jq -r "." | grep shardId | wc -l
 ```
 
 The number of shards will depend on which entities have received messages.
@@ -166,7 +186,7 @@ the correct node even if that moves due to a kafka rebalance.
 A gRPC client is included which can be started with...
 
 ```
- sbt "client/run"
+sbt "client / run"
 ```
 
 It assumes there is one of the nodes running its front end port on 8081. 

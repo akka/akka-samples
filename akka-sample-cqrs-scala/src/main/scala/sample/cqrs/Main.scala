@@ -93,6 +93,7 @@ object Guardian {
       ShoppingCart.init(system, settings)
 
       if (Cluster(system).selfMember.hasRole("read-model")) {
+        // FIXME, the tables may not be created yet, send a start message they're done
         EventProcessor.init(
           system,
           settings,
