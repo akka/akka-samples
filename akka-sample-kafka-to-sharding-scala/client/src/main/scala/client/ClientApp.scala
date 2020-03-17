@@ -15,7 +15,7 @@ object ClientApp extends App {
   implicit val system: ActorSystem = ActorSystem("UserClient")
   implicit val mat: Materializer = Materializer.createMaterializer(system)
   implicit val ec: ExecutionContextExecutor = system.dispatcher
-  val clientSettings = GrpcClientSettings.connectToServiceAt("localhost", 8081).withTls(false)
+  val clientSettings = GrpcClientSettings.connectToServiceAt("127.0.0.1", 8081).withTls(false)
   val client = UserServiceClient(clientSettings)
 
   var userId = ""

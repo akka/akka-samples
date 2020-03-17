@@ -16,6 +16,7 @@ import scala.util.{Failure, Success}
 sealed trait Command
 case object NodeMemberUp extends Command
 final case class ShardingStarted(region: ActorRef[UserEvents.Command]) extends Command
+final case class BindingFailed(reason: Throwable) extends Command
 
 object Main {
   def main(args: Array[String]): Unit = {
@@ -50,10 +51,17 @@ object Main {
     }, "KafkaToSharding", config(remotingPort, akkaManagementPort))
 
     def start(ctx: ActorContext[Command], region: ActorRef[UserEvents.Command], settings: ProcessorSettings): Behavior[Command] = {
+      import ctx.executionContext
       ctx.log.info("Sharding started and joined cluster. Starting event processor")
       val eventProcessor = ctx.spawn[Nothing](UserEventsKafkaProcessor(region, settings), "kafka-event-processor")
       val binding: Future[Http.ServerBinding] = startGrpc(ctx.system, frontEndPort, region)
-      running(binding, eventProcessor)
+      binding.onComplete {
+        case Success(bound) =>
+          ctx.log.info("Bound: {}", bound)
+        case Failure(t) =>
+          ctx.self ! BindingFailed(t)
+      }
+      running(ctx, binding, eventProcessor)
     }
 
     def starting(ctx: ActorContext[Command], sharding: Option[ActorRef[UserEvents.Command]], joinedCluster: Boolean, settings: ProcessorSettings): Behavior[Command] = Behaviors
@@ -72,8 +80,12 @@ object Main {
           starting(ctx, sharding, joinedCluster = true, settings)
       }
 
-    def running(binding: Future[Http.ServerBinding], processor: ActorRef[Nothing]): Behavior[Command] = Behaviors
-      .receiveSignal {
+    def running(ctx: ActorContext[Command], binding: Future[Http.ServerBinding], processor: ActorRef[Nothing]): Behavior[Command] =
+      Behaviors.receiveMessagePartial[Command] {
+        case BindingFailed(t) =>
+          ctx.log.error("Failed to bind front end", t)
+          Behaviors.stopped
+      }.receiveSignal {
         case (ctx, Terminated(`processor`)) =>
           ctx.log.warn("Kafka event processor stopped. Shutting down")
           binding.map(_.unbind())(ctx.executionContext)

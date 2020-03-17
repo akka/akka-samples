@@ -49,7 +49,7 @@ object UserEventsKafkaProcessor {
                   purchaseProto.price,
                   replyTo)
               })(processorSettings.askTimeout, ctx.system.scheduler),
-              attempts = 3,
+              attempts = 5,
               delay = 1.second
             )
           }
