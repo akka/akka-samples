@@ -31,7 +31,7 @@ public class EventProcessor {
             .init(Void.class, "event-processors-" + settings.id, settings.parallelism, i -> EventProcessor.create(eventProcessorStream.apply(settings.tagPrefix + "-" + i)), shardedDaemonSettings, Optional.empty());
   }
 
-  private static Behavior<Void> create(EventProcessorStream<?> eventProcessorStream) {
+  public static Behavior<Void> create(EventProcessorStream<?> eventProcessorStream) {
     return Behaviors.setup(context -> {
       SharedKillSwitch killSwitch = KillSwitches.shared("eventProcessorSwitch");
       eventProcessorStream.runQueryStream(killSwitch);
