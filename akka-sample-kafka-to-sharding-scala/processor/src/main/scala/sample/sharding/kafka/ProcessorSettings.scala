@@ -36,5 +36,5 @@ final class ProcessorSettings(val bootstrapServers: String, val topics: List[Str
    * By using the same consumer group id as our entity type key name we can setup multiple consumer groups and connect
    * each with a different sharded entity coordinator.
    */
-  val entityTypeKey: EntityTypeKey[UserEvents.Message] = EntityTypeKey(groupId)
+  val entityTypeKey: EntityTypeKey[UserEvents.Command] = EntityTypeKey(groupId)
 }
