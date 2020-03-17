@@ -33,8 +33,6 @@ import org.slf4j.LoggerFactory
  */
 object EventProcessor {
 
-  case object Ping extends CborSerializable
-
   def init[Event](
       system: ActorSystem[_],
       settings: EventProcessorSettings,
@@ -43,27 +41,22 @@ object EventProcessor {
           .withKeepAliveInterval(settings.keepAliveInterval)
           .withShardingSettings(ClusterShardingSettings(system).withRole("read-model"))
       ShardedDaemonProcess(system)
-        .init(s"event-processors-${settings.id}", settings.parallelism, i => EventProcessor(eventProcessorStream(s"${settings.tagPrefix}-$i")), shardedDaemonSettings, None)
+        .init[Nothing](s"event-processors-${settings.id}", settings.parallelism, i => EventProcessor(eventProcessorStream(s"${settings.tagPrefix}-$i")), shardedDaemonSettings, None)
   }
 
-  def apply(eventProcessorStream: EventProcessorStream[_]): Behavior[Ping.type] = {
-
-    Behaviors.setup { ctx  =>
+  def apply(eventProcessorStream: EventProcessorStream[_]): Behavior[Nothing] = {
+    Behaviors.setup[Nothing] { ctx  =>
       ctx.log.info("Event processor running {}", eventProcessorStream)
       val killSwitch = KillSwitches.shared("eventProcessorSwitch")
       eventProcessorStream.runQueryStream(killSwitch)
       Behaviors
-        .receiveMessage[Ping.type] { _ =>
-          Behaviors.same
-        }
-        .receiveSignal {
+        .receiveSignal[Nothing] {
           case (_, PostStop) =>
             killSwitch.shutdown()
             Behaviors.same
         }
     }
   }
-
 }
 
 abstract class EventProcessorStream[Event: ClassTag](

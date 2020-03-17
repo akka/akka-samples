@@ -16,7 +16,7 @@ Events from the shopping carts are tagged and consumed by the read model.
 
 The read model is implemented in such a way that 'load' is sharded over a number of processors. This number is `event-processor.parallelism`.
 
-The implementation is resilient: it uses an *Akka Cluster Singleton* in combination with *Akka Cluster Sharding* to always keep the event processors alive.
+This is implemented using a [Sharded Daemon Process](https://doc.akka.io/docs/akka/current/typed/cluster-sharded-daemon-process.html)
 
 ## Running the sample code
 
