@@ -43,13 +43,13 @@ object Main {
     //startCassandraDatabase()
     // two backend nodes
     start(2551, "back-end")
-    //start(2552, "back-end")
+    start(2552, "back-end")
     // two front-end nodes
     start(3000, "front-end")
-    //start(3001, "front-end")
+    start(3001, "front-end")
     // two worker nodes with two worker actors each
-    start(5001, "worker", 1)
-    //start(5002, "worker", 2)
+    start(5001, "worker", 2)
+    start(5002, "worker", 2)
   }
 
   def start(port: Int, role: String, workers: Int = 2): Unit = {
