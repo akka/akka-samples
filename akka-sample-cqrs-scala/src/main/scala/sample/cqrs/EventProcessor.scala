@@ -11,7 +11,7 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.PostStop
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.adapter._
-import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardedDaemonProcessSettings}
+import akka.cluster.sharding.typed.{ ClusterShardingSettings, ShardedDaemonProcessSettings }
 import akka.cluster.sharding.typed.scaladsl.ShardedDaemonProcess
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
 import akka.persistence.query.Offset
@@ -37,24 +37,26 @@ object EventProcessor {
       system: ActorSystem[_],
       settings: EventProcessorSettings,
       eventProcessorStream: String => EventProcessorStream[Event]): Unit = {
-      val shardedDaemonSettings = ShardedDaemonProcessSettings(system)
-          .withKeepAliveInterval(settings.keepAliveInterval)
-          .withShardingSettings(ClusterShardingSettings(system).withRole("read-model"))
-      ShardedDaemonProcess(system)
-        .init[Nothing](s"event-processors-${settings.id}", settings.parallelism, i => EventProcessor(eventProcessorStream(s"${settings.tagPrefix}-$i")), shardedDaemonSettings, None)
+    val shardedDaemonSettings = ShardedDaemonProcessSettings(system)
+      .withKeepAliveInterval(settings.keepAliveInterval)
+      .withShardingSettings(ClusterShardingSettings(system).withRole("read-model"))
+    ShardedDaemonProcess(system).init[Nothing](
+      s"event-processors-${settings.id}",
+      settings.parallelism,
+      i => EventProcessor(eventProcessorStream(s"${settings.tagPrefix}-$i")),
+      shardedDaemonSettings,
+      None)
   }
 
   def apply(eventProcessorStream: EventProcessorStream[_]): Behavior[Nothing] = {
-    Behaviors.setup[Nothing] { ctx  =>
-      ctx.log.info("Event processor running {}", eventProcessorStream)
+    Behaviors.setup[Nothing] { ctx =>
       val killSwitch = KillSwitches.shared("eventProcessorSwitch")
       eventProcessorStream.runQueryStream(killSwitch)
-      Behaviors
-        .receiveSignal[Nothing] {
-          case (_, PostStop) =>
-            killSwitch.shutdown()
-            Behaviors.same
-        }
+      Behaviors.receiveSignal[Nothing] {
+        case (_, PostStop) =>
+          killSwitch.shutdown()
+          Behaviors.same
+      }
     }
   }
 }

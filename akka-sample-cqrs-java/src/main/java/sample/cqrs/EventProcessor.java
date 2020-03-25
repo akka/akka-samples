@@ -23,12 +23,15 @@ public class EventProcessor {
     EventProcessorSettings settings,
     Function<String, EventProcessorStream<Event>> eventProcessorStream) {
 
-    ShardedDaemonProcessSettings shardedDaemonSettings = ShardedDaemonProcessSettings.create(system)
-            .withKeepAliveInterval(settings.keepAliveInterval)
-            .withShardingSettings(ClusterShardingSettings.create(system).withRole("read-model"));
+    ShardedDaemonProcessSettings shardedDaemonSettings =
+      ShardedDaemonProcessSettings.create(system)
+        .withKeepAliveInterval(settings.keepAliveInterval)
+        .withShardingSettings(ClusterShardingSettings.create(system).withRole("read-model"));
 
     ShardedDaemonProcess.get(system)
-            .init(Void.class, "event-processors-" + settings.id, settings.parallelism, i -> EventProcessor.create(eventProcessorStream.apply(settings.tagPrefix + "-" + i)), shardedDaemonSettings, Optional.empty());
+      .init(Void.class, "event-processors-" + settings.id, settings.parallelism,
+        i -> EventProcessor.create(eventProcessorStream.apply(settings.tagPrefix + "-" + i)),
+        shardedDaemonSettings, Optional.empty());
   }
 
   public static Behavior<Void> create(EventProcessorStream<?> eventProcessorStream) {
