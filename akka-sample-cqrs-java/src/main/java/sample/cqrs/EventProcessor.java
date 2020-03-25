@@ -4,12 +4,13 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
 import akka.actor.typed.javadsl.Behaviors;
-import akka.cluster.sharding.typed.javadsl.ClusterSharding;
-import akka.cluster.sharding.typed.javadsl.Entity;
-import akka.cluster.sharding.typed.javadsl.EntityTypeKey;
+import akka.cluster.sharding.typed.ClusterShardingSettings;
+import akka.cluster.sharding.typed.ShardedDaemonProcessSettings;
+import akka.cluster.sharding.typed.javadsl.ShardedDaemonProcess;
 import akka.stream.KillSwitches;
 import akka.stream.SharedKillSwitch;
 
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -17,34 +18,24 @@ import java.util.function.Function;
  */
 public class EventProcessor {
 
-  public enum Ping implements CborSerializable {
-    INSTANCE
-  }
-
-  public static EntityTypeKey<Ping> entityKey(String eventProcessorId) {
-    return EntityTypeKey.create(Ping.class, eventProcessorId);
-  }
-
   public static <Event> void init(
     ActorSystem<?> system,
     EventProcessorSettings settings,
     Function<String, EventProcessorStream<Event>> eventProcessorStream) {
 
-    EntityTypeKey<Ping> eventProcessorEntityKey = entityKey(settings.id);
+    ShardedDaemonProcessSettings shardedDaemonSettings = ShardedDaemonProcessSettings.create(system)
+            .withKeepAliveInterval(settings.keepAliveInterval)
+            .withShardingSettings(ClusterShardingSettings.create(system).withRole("read-model"));
 
-    ClusterSharding.get(system).init(Entity.of(eventProcessorEntityKey, entityContext ->
-      EventProcessor.create(eventProcessorStream.apply(entityContext.getEntityId()))).withRole("read-model"));
-
-    KeepAlive.init(system, eventProcessorEntityKey);
+    ShardedDaemonProcess.get(system)
+            .init(Void.class, "event-processors-" + settings.id, settings.parallelism, i -> EventProcessor.create(eventProcessorStream.apply(settings.tagPrefix + "-" + i)), shardedDaemonSettings, Optional.empty());
   }
 
-  public static Behavior<Ping> create(EventProcessorStream<?> eventProcessorStream) {
+  public static Behavior<Void> create(EventProcessorStream<?> eventProcessorStream) {
     return Behaviors.setup(context -> {
       SharedKillSwitch killSwitch = KillSwitches.shared("eventProcessorSwitch");
       eventProcessorStream.runQueryStream(killSwitch);
-
-      return Behaviors.receive(Ping.class)
-        .onMessage(Ping.class, msg -> Behaviors.same())
+      return Behaviors.receive(Void.class)
         .onSignal(PostStop.class, sig -> {
           killSwitch.shutdown();
           return Behaviors.same();

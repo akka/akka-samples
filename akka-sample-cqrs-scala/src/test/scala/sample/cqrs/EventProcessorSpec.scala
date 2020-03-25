@@ -58,9 +58,10 @@ class EventProcessorSpec extends ScalaTestWithActorTestKit(ConfigFactory.parseSt
       val eventProbe = testKit.createTestProbe[ShoppingCart.Event]()
       testKit.system.eventStream ! EventStream.Subscribe(eventProbe.ref)
 
-      testKit.spawn(
+      testKit.spawn[Nothing](
         EventProcessor(
           new ShoppingCartEventProcessorStream(system, system.executionContext, "EventProcessor", "tag-0")))
+
       cart1 ! ShoppingCart.AddItem("foo", 42, probe.ref)
       probe.expectMessageType[ShoppingCart.Accepted]
       eventProbe.expectMessage(ShoppingCart.ItemAdded("cart-1", "foo", 42))
