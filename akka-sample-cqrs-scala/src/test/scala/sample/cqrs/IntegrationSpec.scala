@@ -97,14 +97,14 @@ class IntegrationSpec
       CassandraLauncher.classpathForResources("logback-test.xml"))
 
     // avoid concurrent creation of keyspace and tables
-    iniitalizePersistence()
+    initializePersistence()
     Main.createTables(testKit1.system)
 
     super.beforeAll()
   }
 
   // FIXME use Akka's initializePlugins instead when released https://github.com/akka/akka/issues/28808
-  private def iniitalizePersistence(): Unit = {
+  private def initializePersistence(): Unit = {
     val persistenceId = PersistenceId.ofUniqueId(s"persistenceInit-${UUID.randomUUID()}")
     val ref = testKit1.spawn(
       EventSourcedBehavior[String, String, String](
