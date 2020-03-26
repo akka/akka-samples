@@ -4,6 +4,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
+
 import akka.Done
 import akka.NotUsed
 import akka.actor.typed.ActorSystem
@@ -11,8 +12,9 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.PostStop
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.adapter._
-import akka.cluster.sharding.typed.{ ClusterShardingSettings, ShardedDaemonProcessSettings }
 import akka.cluster.sharding.typed.scaladsl.ShardedDaemonProcess
+import akka.cluster.sharding.typed.ClusterShardingSettings
+import akka.cluster.sharding.typed.ShardedDaemonProcessSettings
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
 import akka.persistence.query.Offset
 import akka.persistence.query.PersistenceQuery
@@ -20,11 +22,11 @@ import akka.persistence.query.TimeBasedUUID
 import akka.persistence.typed.PersistenceId
 import akka.stream.KillSwitches
 import akka.stream.SharedKillSwitch
+import akka.stream.alpakka.cassandra.scaladsl.CassandraSessionRegistry
 import akka.stream.scaladsl.RestartSource
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
-import com.datastax.driver.core.PreparedStatement
-import com.datastax.driver.core.Row
+import com.datastax.oss.driver.api.core.cql.Row
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -73,7 +75,7 @@ abstract class EventProcessorStream[Event: ClassTag](
 
   private val query =
     PersistenceQuery(system.toClassic).readJournalFor[CassandraReadJournal](CassandraReadJournal.Identifier)
-  private val session = CassandraSessionExtension(system).session
+  private val session = CassandraSessionRegistry(system).sessionFor("alpakka.cassandra")
 
   protected def processEvent(event: Event, persistenceId: PersistenceId, sequenceNr: Long): Future[Done]
 
@@ -118,7 +120,7 @@ abstract class EventProcessorStream[Event: ClassTag](
   private def extractOffset(maybeRow: Option[Row]): Offset = {
     maybeRow match {
       case Some(row) =>
-        val uuid = row.getUUID("timeUuidOffset")
+        val uuid = row.getUuid("timeUuidOffset")
         if (uuid == null) {
           startOffset()
         } else {
@@ -133,16 +135,14 @@ abstract class EventProcessorStream[Event: ClassTag](
     query.timeBasedUUIDFrom(System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000))
   }
 
-  private def prepareWriteOffset(): Future[PreparedStatement] = {
-    session.prepare("INSERT INTO akka_cqrs_sample.offsetStore (eventProcessorId, tag, timeUuidOffset) VALUES (?, ?, ?)")
-  }
-
-  private def writeOffset(offset: Offset)(implicit ec: ExecutionContext): Future[Done] = {
+  private def writeOffset(offset: Offset): Future[Done] = {
     offset match {
       case t: TimeBasedUUID =>
-        prepareWriteOffset().map(stmt => stmt.bind(eventProcessorId, tag, t.value)).flatMap { boundStmt =>
-          session.executeWrite(boundStmt)
-        }
+        session.executeWrite(
+          "INSERT INTO akka_cqrs_sample.offsetStore (eventProcessorId, tag, timeUuidOffset) VALUES (?, ?, ?)",
+          eventProcessorId,
+          tag,
+          t.value)
 
       case _ =>
         throw new IllegalArgumentException(s"Unexpected offset type $offset")

@@ -5,12 +5,7 @@
         </encoder>
     </appender>
 
-    <!--
-    <logger name="com.datastax.driver.core.QueryLogger.NORMAL" level="INFO"/>
-    <logger name="com.datastax.driver.core.QueryLogger.ERROR" level="DEBUG"/>
-    <logger name="com.datastax.driver.core.QueryLogger.SLOW" level="DEBUG"/>
-    -->
-    <logger name="com.datastax.driver.core.Connection" level="WARN"/>
+    <logger name="com.datastax.oss.driver" level="WARN"/>
     <logger name="com.codahale.metrics" level="INFO"/>
 
     <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
