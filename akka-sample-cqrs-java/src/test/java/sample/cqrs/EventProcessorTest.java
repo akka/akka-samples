@@ -26,17 +26,21 @@ public class EventProcessorTest {
   public static final TestKitJunitResource testKit = new TestKitJunitResource(
     ConfigFactory.parseString(
       "akka.actor.provider = local \n" +
-      "cassandra-journal { \n" +
-      "  port = 19042  \n" +
-      "} \n" +
-      "cassandra-snapshot-store { \n" +
-      "  port = 19042 \n" +
-      "} \n" +
-      "cassandra-query-journal { \n" +
-      "  refresh-interval = 500 ms \n" +
+      "akka.persistence.cassandra { \n" +
       "  events-by-tag { \n" +
-      "    eventual-consistency-delay = 200 ms \n" +
+      "    eventual-consistency-delay = 200ms \n" +
       "  } \n" +
+      "  query { \n" +
+      "    refresh-interval = 500 ms \n" +
+      "  } \n" +
+      "  journal.keyspace-autocreate = on \n" +
+      "  journal.tables-autocreate = on \n" +
+      "  snapshot.keyspace-autocreate = on \n" +
+      "  snapshot.tables-autocreate = on \n" +
+      "} \n" +
+      "datastax-java-driver { \n" +
+      "  basic.contact-points = [\"127.0.0.1:19042\"] \n" +
+      "  basic.load-balancing-policy.local-datacenter = datacenter1 \n" +
       "} \n" +
       "akka.actor.testkit.typed.single-expect-default = 5s \n" +
       "# For LoggingTestKit \n" +

@@ -1,7 +1,6 @@
 package sample.cqrs
 
 import scala.concurrent.Future
-import scala.concurrent.duration._
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem

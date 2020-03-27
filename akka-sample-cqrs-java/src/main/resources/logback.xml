@@ -1,16 +1,11 @@
 <configuration>
     <appender name="STDOUT" target="System.out" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>[%date{ISO8601}] [%level] [%logger] [{%mdc}] [%marker] [%thread] - %msg %n</pattern>
+            <pattern>[%date{ISO8601}] [%level] [%logger] [%marker] [%thread] - %msg {%mdc}%n</pattern>
         </encoder>
     </appender>
 
-    <!--
-    <logger name="com.datastax.driver.core.QueryLogger.NORMAL" level="INFO"/>
-    <logger name="com.datastax.driver.core.QueryLogger.ERROR" level="DEBUG"/>
-    <logger name="com.datastax.driver.core.QueryLogger.SLOW" level="DEBUG"/>
-    -->
-    <logger name="com.datastax.driver.core.Connection" level="WARN"/>
+    <logger name="com.datastax.oss.driver" level="WARN"/>
     <logger name="com.codahale.metrics" level="INFO"/>
 
     <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
