@@ -32,7 +32,7 @@ object App {
       """).withFallback(ConfigFactory.load())
 
     // Create an Akka system
-    val system = ActorSystem[Nothing](RootBehavior(), "ClusterSystem", config)
+    ActorSystem[Nothing](RootBehavior(), "ClusterSystem", config)
   }
 
 }

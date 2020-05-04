@@ -18,21 +18,24 @@ object App {
       val cluster = Cluster(ctx.system)
       if (cluster.selfMember.hasRole("compute")) {
         // on every compute node there is one service instance that delegates to N local workers
-        val numberOfWorkers = ctx.system.settings.config.getInt("stats-service.workers-per-node")
-        val workers = ctx.spawn(Routers.pool(numberOfWorkers)(StatsWorker()), "WorkerRouter")
-        val service = ctx.spawn(StatsService(workers),"StatsService")
+        val numberOfWorkers =
+          ctx.system.settings.config.getInt("stats-service.workers-per-node")
+        val workers = ctx
+          .spawn(Routers.pool(numberOfWorkers)(StatsWorker()), "WorkerRouter")
+        val service = ctx.spawn(StatsService(workers), "StatsService")
 
         // published through the receptionist to the other nodes in the cluster
-        ctx.system.receptionist ! Receptionist.Register(StatsServiceKey, service)
+        ctx.system.receptionist ! Receptionist
+          .Register(StatsServiceKey, service)
       }
       if (cluster.selfMember.hasRole(("client"))) {
-        val serviceRouter = ctx.spawn(Routers.group(App.StatsServiceKey), "ServiceRouter")
+        val serviceRouter =
+          ctx.spawn(Routers.group(App.StatsServiceKey), "ServiceRouter")
         ctx.spawn(StatsClient(serviceRouter), "Client")
       }
       Behaviors.empty[Nothing]
     }
   }
-
 
   def main(args: Array[String]): Unit = {
     if (args.isEmpty) {
@@ -49,13 +52,13 @@ object App {
   private def startup(role: String, port: Int): Unit = {
 
     // Override the configuration of the port when specified as program argument
-    val config = ConfigFactory.parseString(s"""
+    val config = ConfigFactory
+      .parseString(s"""
       akka.remote.artery.canonical.port=$port
       akka.cluster.roles = [$role]
       """)
       .withFallback(ConfigFactory.load("stats"))
 
-    val system = ActorSystem[Nothing](RootBehavior(), "ClusterSystem", config)
+    ActorSystem[Nothing](RootBehavior(), "ClusterSystem", config)
   }
 }
-
