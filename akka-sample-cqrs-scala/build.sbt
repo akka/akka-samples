@@ -1,5 +1,5 @@
-val AkkaVersion = "2.6.1"
-val AkkaPersistenceCassandraVersion = "0.102"
+val AkkaVersion = "2.6.4"
+val AkkaPersistenceCassandraVersion = "1.0.0-RC1"
 val AkkaHttpVersion = "10.1.10"
 
 lazy val `akka-sample-cqrs-scala` = project
@@ -22,7 +22,7 @@ lazy val `akka-sample-cqrs-scala` = project
         "com.typesafe.akka" %% "akka-slf4j" % AkkaVersion,
         "ch.qos.logback" % "logback-classic" % "1.2.3",
         "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
-        "org.scalatest" %% "scalatest" % "3.0.8" % Test,
+        "org.scalatest" %% "scalatest" % "3.1.0" % Test,
         "commons-io" % "commons-io" % "2.4" % Test),
     fork in run := false,
     Global / cancelable := false, // ctrl-c

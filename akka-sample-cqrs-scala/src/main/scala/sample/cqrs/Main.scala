@@ -11,6 +11,7 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import akka.cluster.typed.Cluster
 import akka.persistence.cassandra.testkit.CassandraLauncher
+import akka.stream.alpakka.cassandra.scaladsl.CassandraSessionRegistry
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 
@@ -58,7 +59,7 @@ object Main {
   }
 
   def createTables(system: ActorSystem[_]): Unit = {
-    val session = CassandraSessionExtension(system).session
+    val session = CassandraSessionRegistry(system).sessionFor("alpakka.cassandra")
 
     // TODO use real replication strategy in real application
     val keyspaceStmt = """
@@ -93,6 +94,7 @@ object Guardian {
       ShoppingCart.init(system, settings)
 
       if (Cluster(system).selfMember.hasRole("read-model")) {
+        // FIXME, the tables may not be created yet, send a start message they're done
         EventProcessor.init(
           system,
           settings,

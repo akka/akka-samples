@@ -4,7 +4,6 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
-import sample.Chopstick.Answer;
 
 import java.time.Duration;
 
@@ -23,10 +22,10 @@ class Hakker {
       INSTANCE
    }
 
-   static class AdaptedAnswer implements Command {
-      final Answer msg;
+   static class HandleChopstickAnswer implements Command {
+      final Chopstick.Answer msg;
 
-      public AdaptedAnswer(Answer msg) {
+      public HandleChopstickAnswer(Chopstick.Answer msg) {
          this.msg = msg;
       }
    }
@@ -40,19 +39,19 @@ class Hakker {
    private final String name;
    private final ActorRef<Chopstick.Command> left;
    private final ActorRef<Chopstick.Command> right;
-   private final ActorRef<Answer> adapter;
+   private final ActorRef<Chopstick.Answer> adapter;
 
    private Hakker(ActorContext<Command> ctx, String name, ActorRef<Chopstick.Command> left, ActorRef<Chopstick.Command> right) {
       this.ctx = ctx;
       this.name = name;
       this.left = left;
       this.right = right;
-      this.adapter = ctx.messageAdapter(Answer.class, AdaptedAnswer::new);
+      this.adapter = ctx.messageAdapter(Chopstick.Answer.class, HandleChopstickAnswer::new);
    }
 
    private Behavior<Command> waiting() {
       return Behaviors.receive(Command.class)
-         .onMessage(Think.class, (msg) -> {
+         .onMessage(Think.class, msg -> {
             ctx.getLog().info("{} starts to think", name);
             return startThinking(Duration.ofSeconds(5));
          })
@@ -77,14 +76,14 @@ class Hakker {
    //it starts to wait for the response of the other grab
    private Behavior<Command> hungry() {
       return Behaviors.receive(Command.class)
-         .onMessage(AdaptedAnswer.class, m -> m.msg.chopstick.equals(left), (msg) ->
+         .onMessage(HandleChopstickAnswer.class, m -> m.msg.isBusy(), (msg) ->
+            firstChopstickDenied()
+         )
+         .onMessage(HandleChopstickAnswer.class, m -> m.msg.chopstick.equals(left), (msg) ->
             waitForOtherChopstick(right, left)
          )
-         .onMessage(AdaptedAnswer.class, m -> m.msg.chopstick.equals(right), (msg) ->
+         .onMessage(HandleChopstickAnswer.class, m -> m.msg.chopstick.equals(right), (msg) ->
             waitForOtherChopstick(left, right)
-         )
-         .onMessage(AdaptedAnswer.class, m -> m.msg.isBusy(), (msg) ->
-            firstChopstickDenied()
          )
          .build();
    }
@@ -95,12 +94,12 @@ class Hakker {
    private Behavior<Command> waitForOtherChopstick(ActorRef<Chopstick.Command> chopstickToWaitFor,
                                                    ActorRef<Chopstick.Command> takenChopstick) {
       return Behaviors.receive(Command.class)
-         .onMessage(AdaptedAnswer.class, m -> m.msg.chopstick.equals(chopstickToWaitFor), msg -> {
+          .onMessage(HandleChopstickAnswer.class, m -> m.msg.isTaken() & m.msg.chopstick.equals(chopstickToWaitFor), msg -> {
             ctx.getLog().info("{} has picked up {} and{} and starts to eat",
                name, left.path().name(), right.path().name());
             return startEating(ctx, Duration.ofSeconds(5));
          })
-         .onMessage(AdaptedAnswer.class, m -> m.msg.chopstick.equals(chopstickToWaitFor), msg -> {
+         .onMessage(HandleChopstickAnswer.class, m -> m.msg.isBusy() && m.msg.chopstick.equals(chopstickToWaitFor), msg -> {
             takenChopstick.tell(new Chopstick.Put(adapter));
             return startThinking(Duration.ofMillis(10));
          })
@@ -124,11 +123,11 @@ class Hakker {
    //Then go back and think and try to grab the chopsticks again
    private Behavior<Command> firstChopstickDenied() {
       return Behaviors.receive(Command.class)
-         .onMessage(AdaptedAnswer.class, m -> m.msg.isTaken(), msg -> {
+         .onMessage(HandleChopstickAnswer.class, m -> m.msg.isTaken(), msg -> {
             msg.msg.chopstick.tell(new Chopstick.Put(adapter));
             return startThinking(Duration.ofMillis(10));
          })
-         .onMessage(AdaptedAnswer.class, m -> m.msg.isBusy(), (msg) ->
+         .onMessage(HandleChopstickAnswer.class, m -> m.msg.isBusy(), (msg) ->
             startThinking(Duration.ofMillis(10))
          )
          .build();

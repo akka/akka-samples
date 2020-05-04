@@ -8,26 +8,34 @@ import akka.actor.typed.eventstream.EventStream
 import akka.persistence.cassandra.testkit.CassandraLauncher
 import com.typesafe.config.ConfigFactory
 import org.apache.commons.io.FileUtils
-import org.scalatest.WordSpecLike
+import org.scalatest.wordspec.AnyWordSpecLike
 
 class EventProcessorSpec extends ScalaTestWithActorTestKit(ConfigFactory.parseString(s"""
       akka.actor.provider = local
-      cassandra-journal {
-        port = 19042
-      }
-      cassandra-snapshot-store {
-        port = 19042
-      }
-      cassandra-query-journal {
-        refresh-interval = 500 ms
+      
+      akka.persistence.cassandra {
         events-by-tag {
-          eventual-consistency-delay = 200 ms
+          eventual-consistency-delay = 200ms
         }
+      
+        query {
+          refresh-interval = 500 ms
+        }
+      
+        journal.keyspace-autocreate = on
+        journal.tables-autocreate = on
+        snapshot.keyspace-autocreate = on
+        snapshot.tables-autocreate = on
       }
+      datastax-java-driver {
+        basic.contact-points = ["127.0.0.1:19042"]
+        basic.load-balancing-policy.local-datacenter = "datacenter1"
+      }
+      
       akka.actor.testkit.typed.single-expect-default = 5s
       # For LoggingTestKit
       akka.actor.testkit.typed.filter-leeway = 5s
-    """).withFallback(ConfigFactory.load())) with WordSpecLike {
+    """).withFallback(ConfigFactory.load())) with AnyWordSpecLike {
 
   val databaseDirectory = new File("target/cassandra-EventProcessorSpec")
 
@@ -58,9 +66,10 @@ class EventProcessorSpec extends ScalaTestWithActorTestKit(ConfigFactory.parseSt
       val eventProbe = testKit.createTestProbe[ShoppingCart.Event]()
       testKit.system.eventStream ! EventStream.Subscribe(eventProbe.ref)
 
-      testKit.spawn(
+      testKit.spawn[Nothing](
         EventProcessor(
           new ShoppingCartEventProcessorStream(system, system.executionContext, "EventProcessor", "carts-slice-0")))
+
       cart1 ! ShoppingCart.AddItem("foo", 42, probe.ref)
       probe.expectMessageType[ShoppingCart.Accepted]
       eventProbe.expectMessage(ShoppingCart.ItemAdded("cart-1", "foo", 42))

@@ -3,14 +3,20 @@ package sample.cqrs;
 import akka.actor.testkit.typed.javadsl.ActorTestKit;
 import akka.actor.testkit.typed.javadsl.TestKitJunitResource;
 import akka.actor.testkit.typed.javadsl.TestProbe;
+import akka.actor.typed.ActorRef;
 import akka.actor.typed.ActorSystem;
 import akka.actor.typed.eventstream.EventStream;
+import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.MemberStatus;
 import akka.cluster.sharding.typed.javadsl.ClusterSharding;
 import akka.cluster.sharding.typed.javadsl.EntityRef;
 import akka.cluster.typed.Cluster;
 import akka.cluster.typed.Join;
 import akka.persistence.cassandra.testkit.CassandraLauncher;
+import akka.persistence.typed.PersistenceId;
+import akka.persistence.typed.javadsl.CommandHandler;
+import akka.persistence.typed.javadsl.EventHandler;
+import akka.persistence.typed.javadsl.EventSourcedBehavior;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.apache.commons.io.FileUtils;
@@ -25,6 +31,7 @@ import java.io.File;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 import static junit.framework.TestCase.assertEquals;
 
@@ -37,17 +44,21 @@ public class IntegrationTest {
       "akka.cluster { \n" +
       "  seed-nodes = [] \n" +
       "} \n" +
-      "cassandra-journal { \n" +
-      "  port = 19042  \n" +
-      "} \n" +
-      "cassandra-snapshot-store { \n" +
-      "  port = 19042 \n" +
-      "} \n" +
-      "cassandra-query-journal { \n" +
-      "  refresh-interval = 500 ms \n" +
+      "akka.persistence.cassandra { \n" +
       "  events-by-tag { \n" +
-      "    eventual-consistency-delay = 200 ms \n" +
+      "    eventual-consistency-delay = 200ms \n" +
       "  } \n" +
+      "  query { \n" +
+      "    refresh-interval = 500 ms \n" +
+      "  } \n" +
+      "  journal.keyspace-autocreate = on \n" +
+      "  journal.tables-autocreate = on \n" +
+      "  snapshot.keyspace-autocreate = on \n" +
+      "  snapshot.tables-autocreate = on \n" +
+      "} \n" +
+      "datastax-java-driver { \n" +
+      "  basic.contact-points = [\"127.0.0.1:19042\"] \n" +
+      "  basic.load-balancing-policy.local-datacenter = datacenter1 \n" +
       "} \n" +
       "akka.actor.testkit.typed.single-expect-default = 5s \n" +
       "# For LoggingTestKit \n" +
@@ -86,7 +97,34 @@ public class IntegrationTest {
       19042, // default is 9042, but use different for test
       CassandraLauncher.classpathForResources("logback-test.xml"));
 
+    // avoid concurrent creation of keyspace and tables
+    initializePersistence();
     Main.createTables(testKit1.system());
+
+  }
+
+  // FIXME use Akka's initializePlugins instead when released https://github.com/akka/akka/issues/28808
+  private static void initializePersistence() {
+    PersistenceId persistenceId = PersistenceId.ofUniqueId("persistenceId-" + UUID.randomUUID());
+    ActorRef<String> ref = testKit1.spawn(Behaviors.setup(context -> new EventSourcedBehavior<String, String, String>(persistenceId) {
+      @Override
+      public String emptyState() {
+        return "";
+      }
+
+      @Override
+      public CommandHandler<String, String, String> commandHandler() {
+        return newCommandHandlerBuilder()
+          .forAnyState().onAnyCommand(cmd -> Effect().stop());
+      }
+
+      @Override
+      public EventHandler<String, String> eventHandler() {
+        return newEventHandlerBuilder().forAnyState().build();
+      }
+    }));
+    ref.tell("start");
+    testKit1.createTestProbe().expectTerminated(ref, Duration.ofSeconds(10));
   }
 
   @AfterClass

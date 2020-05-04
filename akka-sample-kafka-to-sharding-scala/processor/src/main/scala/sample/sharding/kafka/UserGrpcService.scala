@@ -1,22 +1,18 @@
 package sample.sharding.kafka
 
-import akka.actor.typed.ActorRef
-import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.{ActorRef, ActorSystem, Scheduler}
 import akka.util.Timeout
-import sample.sharding.kafka.UserEvents.GetRunningTotal
-import sample.sharding.kafka.UserEvents.RunningTotal
+import sample.sharding.kafka.UserEvents.{GetRunningTotal, Command, RunningTotal}
 
-import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContextExecutor, Future}
 
-class UserGrpcService(system: ActorSystem[_]) extends UserService {
+class UserGrpcService(system: ActorSystem[_], shardRegion: ActorRef[Command]) extends UserService {
 
-  implicit val timeout = Timeout(5.seconds)
-  implicit val sched = system.scheduler
-  implicit val ec = system.executionContext
-
-  private val shardRegion: ActorRef[UserEvents.UserQuery] = UserEvents.querySide(system)
+  implicit val timeout: Timeout = Timeout(5.seconds)
+  implicit val sched: Scheduler = system.scheduler
+  implicit val ec: ExecutionContextExecutor = system.executionContext
 
   override def userStats(in: UserStatsRequest): Future[UserStatsResponse] = {
     shardRegion

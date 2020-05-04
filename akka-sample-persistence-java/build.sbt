@@ -3,7 +3,7 @@ name := "akka-sample-persistence-java"
 version := "1.0"
 
 scalaVersion := "2.13.1"
-def akkaVersion = "2.6.1"
+def akkaVersion = "2.6.4"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-persistence-typed" % akkaVersion,

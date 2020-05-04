@@ -1,21 +1,22 @@
 package sample.sharding.kafka
 
-import akka.actor.typed.ActorSystem
-import akka.actor.typed.Terminated
-import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.scaladsl.adapter._
-import akka.cluster.ClusterEvent.MemberUp
-import akka.cluster.typed.Cluster
-import akka.cluster.typed.Subscribe
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior, Terminated}
+import akka.cluster.typed.{Cluster, SelfUp, Subscribe}
 import akka.http.scaladsl._
-import akka.http.scaladsl.model.HttpRequest
-import akka.http.scaladsl.model.HttpResponse
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.management.scaladsl.AkkaManagement
 import akka.stream.Materializer
-import com.typesafe.config.Config
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
+
+sealed trait Command
+case object NodeMemberUp extends Command
+final case class ShardingStarted(region: ActorRef[UserEvents.Command]) extends Command
+final case class BindingFailed(reason: Throwable) extends Command
 
 object Main {
   def main(args: Array[String]): Unit = {
@@ -23,47 +24,79 @@ object Main {
     def isInt(s: String): Boolean = s.matches("""\d+""")
 
     args.toList match {
+      case single :: Nil if isInt(single) =>
+        val nr = single.toInt
+        init(2550 + nr, 8550 + nr, 8080 + nr)
       case portString :: managementPort :: frontEndPort :: Nil
           if isInt(portString) && isInt(managementPort) && isInt(frontEndPort) =>
-        startNode(portString.toInt, managementPort.toInt, frontEndPort.toInt)
+        init(portString.toInt, managementPort.toInt, frontEndPort.toInt)
       case _ =>
         throw new IllegalArgumentException("usage: <remotingPort> <managementPort> <frontEndPort>")
     }
   }
 
-  def startNode(remotingPort: Int, akkaManagementPort: Int, frontEndPort: Int): Unit = {
-    ActorSystem(Behaviors.setup[MemberUp] {
+  def init(remotingPort: Int, akkaManagementPort: Int, frontEndPort: Int): Unit = {
+    ActorSystem(Behaviors.setup[Command] {
       ctx =>
-        implicit val mat = Materializer.createMaterializer(ctx.system.toClassic)
-        implicit val ec = ctx.executionContext
         AkkaManagement(ctx.system.toClassic).start()
-        // maybe don't start until part of the cluster, or add health check
-        val binding = startGrpc(ctx.system, mat, frontEndPort)
         val cluster = Cluster(ctx.system)
-        cluster.subscriptions.tell(Subscribe(ctx.self, classOf[MemberUp]))
-        Behaviors
-          .receiveMessage[MemberUp] {
-            case MemberUp(member) if member.uniqueAddress == cluster.selfMember.uniqueAddress =>
-              ctx.log.info("Joined the cluster. Starting sharding and kafka processor")
-              UserEvents.init(ctx.system)
-              val eventProcessor = ctx.spawn[Nothing](UserEventsKafkaProcessor(), "kafka-event-processor")
-              ctx.watch(eventProcessor)
-              Behaviors.same
-            case MemberUp(member) =>
-              ctx.log.info("Member up {}", member)
-              Behaviors.same
-          }
-          .receiveSignal {
-            case (ctx, Terminated(_)) =>
-              ctx.log.warn("Kafka event processor stopped. Shutting down")
-              binding.map(_.unbind())
-              Behaviors.stopped
-          }
+        val upAdapter = ctx.messageAdapter[SelfUp](_ => NodeMemberUp)
+        cluster.subscriptions ! Subscribe(upAdapter, classOf[SelfUp])
+        val settings = ProcessorSettings("kafka-to-sharding-processor", ctx.system.toClassic)
+        ctx.pipeToSelf(UserEvents.init(ctx.system, settings)) {
+          case Success(extractor) => ShardingStarted(extractor)
+          case Failure(ex) => throw ex
+        }
+        starting(ctx, None, joinedCluster = false, settings)
     }, "KafkaToSharding", config(remotingPort, akkaManagementPort))
 
-    def startGrpc(system: ActorSystem[_], mat: Materializer, frontEndPort: Int): Future[Http.ServerBinding] = {
+    def start(ctx: ActorContext[Command], region: ActorRef[UserEvents.Command], settings: ProcessorSettings): Behavior[Command] = {
+      import ctx.executionContext
+      ctx.log.info("Sharding started and joined cluster. Starting event processor")
+      val eventProcessor = ctx.spawn[Nothing](UserEventsKafkaProcessor(region, settings), "kafka-event-processor")
+      val binding: Future[Http.ServerBinding] = startGrpc(ctx.system, frontEndPort, region)
+      binding.onComplete {
+        case Success(bound) =>
+          ctx.log.info("Bound: {}", bound)
+        case Failure(t) =>
+          ctx.self ! BindingFailed(t)
+      }
+      running(ctx, binding, eventProcessor)
+    }
+
+    def starting(ctx: ActorContext[Command], sharding: Option[ActorRef[UserEvents.Command]], joinedCluster: Boolean, settings: ProcessorSettings): Behavior[Command] = Behaviors
+      .receive[Command] {
+        case (ctx, ShardingStarted(region)) if joinedCluster =>
+          ctx.log.info("Sharding has started")
+          start(ctx, region, settings)
+        case (_, ShardingStarted(region)) =>
+          ctx.log.info("Sharding has started")
+          starting(ctx, Some(region), joinedCluster, settings)
+        case (ctx, NodeMemberUp) if sharding.isDefined =>
+          ctx.log.info("Member has joined the cluster")
+          start(ctx, sharding.get, settings)
+        case (_, NodeMemberUp)  =>
+          ctx.log.info("Member has joined the cluster")
+          starting(ctx, sharding, joinedCluster = true, settings)
+      }
+
+    def running(ctx: ActorContext[Command], binding: Future[Http.ServerBinding], processor: ActorRef[Nothing]): Behavior[Command] =
+      Behaviors.receiveMessagePartial[Command] {
+        case BindingFailed(t) =>
+          ctx.log.error("Failed to bind front end", t)
+          Behaviors.stopped
+      }.receiveSignal {
+        case (ctx, Terminated(`processor`)) =>
+          ctx.log.warn("Kafka event processor stopped. Shutting down")
+          binding.map(_.unbind())(ctx.executionContext)
+          Behaviors.stopped
+      }
+
+
+    def startGrpc(system: ActorSystem[_], frontEndPort: Int, region: ActorRef[UserEvents.Command]): Future[Http.ServerBinding] = {
+      val mat = Materializer.createMaterializer(system.toClassic)
       val service: HttpRequest => Future[HttpResponse] =
-        UserServiceHandler(new UserGrpcService(system))(mat, system.toClassic)
+        UserServiceHandler(new UserGrpcService(system, region))(mat, system.toClassic)
       Http()(system.toClassic).bindAndHandleAsync(
         service,
         interface = "127.0.0.1",
@@ -79,5 +112,4 @@ object Main {
        """).withFallback(ConfigFactory.load())
 
   }
-
 }

@@ -4,8 +4,9 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.typed.Cluster;
-import akka.persistence.cassandra.session.javadsl.CassandraSession;
 import akka.persistence.cassandra.testkit.CassandraLauncher;
+import akka.stream.alpakka.cassandra.javadsl.CassandraSession;
+import akka.stream.alpakka.cassandra.javadsl.CassandraSessionRegistry;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
@@ -56,7 +57,7 @@ public class Main {
   }
 
   static void createTables(ActorSystem<?> system) {
-    CassandraSession session = CassandraSessionExtension.Id.get(system).session;
+    CassandraSession session = CassandraSessionRegistry.get(system).sessionFor("alpakka.cassandra");
 
     // TODO use real replication strategy in real application
     String keyspaceStmt =
