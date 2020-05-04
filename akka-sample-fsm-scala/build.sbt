@@ -1,7 +1,7 @@
 organization := "com.lightbend.akka.samples"
 name := "akka-sample-fsm-scala"
 
-val akkaVersion = "2.6.4"
+val akkaVersion = "2.6.5"
 
 scalaVersion := "2.13.1"
 libraryDependencies ++= Seq(
