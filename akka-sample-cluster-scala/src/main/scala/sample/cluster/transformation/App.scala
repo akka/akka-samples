@@ -12,7 +12,8 @@ object App {
       val cluster = Cluster(ctx.system)
 
       if (cluster.selfMember.hasRole("backend")) {
-        val workersPerNode = ctx.system.settings.config.getInt("transformation.workers-per-node")
+        val workersPerNode =
+          ctx.system.settings.config.getInt("transformation.workers-per-node")
         (1 to workersPerNode).foreach { n =>
           ctx.spawn(Worker(), s"Worker$n")
         }
@@ -40,13 +41,14 @@ object App {
 
   def startup(role: String, port: Int): Unit = {
     // Override the configuration of the port and role
-    val config = ConfigFactory.parseString(s"""
+    val config = ConfigFactory
+      .parseString(s"""
         akka.remote.artery.canonical.port=$port
         akka.cluster.roles = [$role]
         """)
       .withFallback(ConfigFactory.load("transformation"))
 
-    val system = ActorSystem[Nothing](RootBehavior(), "ClusterSystem", config)
+    ActorSystem[Nothing](RootBehavior(), "ClusterSystem", config)
 
   }
 
