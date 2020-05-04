@@ -9,7 +9,7 @@ val `akka-sample-distributed-data-java` = project
   .settings(
     organization := "com.lightbend.akka.samples",
     version := "1.0",
-    scalaVersion := "2.12.8", // TODO: 2.13.1
+    scalaVersion := "2.13.2",
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-parameters", "-Xlint:unchecked", "-Xlint:deprecation", "-Xdiags:verbose"),
     javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m"),
