@@ -6,7 +6,7 @@ lazy val `akka-sample-cluster-client-grpc-java` = project
   .enablePlugins(AkkaGrpcPlugin)
   .settings(
     organization := "com.typesafe.akka",
-    scalaVersion := "2.12.8",
+    scalaVersion := "2.13.2",
     javacOptions ++= Seq("-Xlint:unchecked", "-Xlint:deprecation", "-parameters"),
     akkaGrpcGeneratedLanguages := Seq(AkkaGrpc.Java),
     // javaAgents += "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime",

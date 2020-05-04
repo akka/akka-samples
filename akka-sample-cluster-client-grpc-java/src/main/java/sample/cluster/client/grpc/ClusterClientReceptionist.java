@@ -13,8 +13,8 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.http.javadsl.ConnectHttp;
 import akka.http.javadsl.Http;
-import akka.http.javadsl.UseHttp2;
 import akka.stream.Materializer;
+import akka.stream.SystemMaterializer;
 
 import java.util.Optional;
 
@@ -60,12 +60,12 @@ final class ClusterClientReceptionist implements Extension {
 
     ClusterClientSerialization serialization = new ClusterClientSerialization(system);
 
-    Materializer materializer = Materializer.createMaterializer(system);
+    Materializer materializer = SystemMaterializer.get(system).materializer();
 
     Http.get(system).bindAndHandleAsync(
       ClusterClientReceptionistServiceHandlerFactory.create(
         new ClusterClientReceptionistGrpcImpl(settings, pubSubMediator(), serialization, materializer, log),
-        materializer, system),
+        system),
       ConnectHttp.toHost(settings.hostPort.hostname, settings.hostPort.port),
       materializer)
       .whenComplete((result, exc) -> {

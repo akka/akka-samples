@@ -1,52 +1,45 @@
 package sample.cluster.client.grpc
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
-import scala.concurrent.Promise
-import scala.concurrent.duration._
-
 import akka.NotUsed
-import akka.actor.Actor
-import akka.actor.ActorLogging
-import akka.actor.ActorRef
-import akka.actor.ActorSystem
-import akka.actor.Props
-import akka.actor.Terminated
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props, Terminated}
 import akka.event.LoggingAdapter
 import akka.grpc.GrpcClientSettings
-import akka.stream.Materializer
-import akka.stream.KillSwitches
-import akka.stream.OverflowStrategy
-import akka.stream.SharedKillSwitch
-import akka.stream.WatchedActorTerminatedException
+import akka.stream._
 import akka.stream.scaladsl.Source
+
+import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 object ClusterClient {
 
   /**
-   * Factory method for `ClusterClient` [[akka.actor.Props]].
-   */
-  def props(settings: ClusterClientSettings)(implicit materializer: Materializer): Props =
+    * Factory method for `ClusterClient` [[akka.actor.Props]].
+    */
+  def props(
+    settings: ClusterClientSettings
+  )(implicit materializer: Materializer): Props =
     Props(new ClusterClient(settings))
 
   sealed trait Command
 
-  final case class Send(path: String, msg: Any, localAffinity: Boolean) extends Command {
+  final case class Send(path: String, msg: Any, localAffinity: Boolean)
+      extends Command {
 
     /**
-     * Convenience constructor with `localAffinity` false
-     */
+      * Convenience constructor with `localAffinity` false
+      */
     def this(path: String, msg: Any) = this(path, msg, localAffinity = false)
   }
 
   /**
-   * More efficient than `Send` for single request-reply interaction
-   */
-  final case class SendAsk(path: String, msg: Any, localAffinity: Boolean) extends Command {
+    * More efficient than `Send` for single request-reply interaction
+    */
+  final case class SendAsk(path: String, msg: Any, localAffinity: Boolean)
+      extends Command {
 
     /**
-     * Convenience constructor with `localAffinity` false
-     */
+      * Convenience constructor with `localAffinity` false
+      */
     def this(path: String, msg: Any) = this(path, msg, localAffinity = false)
   }
 
@@ -54,30 +47,42 @@ object ClusterClient {
 
   final case class Publish(topic: String, msg: Any) extends Command
 
-  private def createClientStub(settings: ClusterClientSettings)(
-      implicit mat: Materializer): ClusterClientReceptionistServiceClient = {
+  private def createClientStub(
+    settings: ClusterClientSettings
+  )(implicit mat: Materializer): ClusterClientReceptionistServiceClient = {
     implicit val ec: ExecutionContext = mat.executionContext
     ClusterClientReceptionistServiceClient(settings.grpcClientSettings)
   }
 
   private def newSession(
-      settings: ClusterClientSettings,
-      receptionistServiceClient: ClusterClientReceptionistServiceClient,
-      sender: ActorRef,
-      killSwitch: SharedKillSwitch,
-      log: LoggingAdapter,
-      serialization: ClusterClientSerialization)(implicit mat: Materializer): Future[ActorRef] = {
+    settings: ClusterClientSettings,
+    receptionistServiceClient: ClusterClientReceptionistServiceClient,
+    sender: ActorRef,
+    killSwitch: SharedKillSwitch,
+    log: LoggingAdapter,
+    serialization: ClusterClientSerialization
+  )(implicit mat: Materializer): Future[ActorRef] = {
     val sessionReqRefPromise = Promise[ActorRef]()
     log.info("New session for {}", sender)
     receptionistServiceClient
       .newSession(
         Source
-          .actorRef[Any](bufferSize = settings.bufferSize, overflowStrategy = OverflowStrategy.dropNew)
+          .actorRef[Any](
+            bufferSize = settings.bufferSize,
+            overflowStrategy = OverflowStrategy.dropNew,
+            // never complete from stream element
+            completionMatcher = PartialFunction.empty,
+            // never fail from stream element
+            failureMatcher = PartialFunction.empty
+          )
+          // .actorRef[Any](bufferSize = settings.bufferSize, overflowStrategy = OverflowStrategy.dropNew)
           .via(killSwitch.flow)
           .map {
             case send: Send =>
               val payload = serialization.serializePayload(send.msg)
-              Req().withSend(SendReq(send.path, send.localAffinity, Some(payload)))
+              Req().withSend(
+                SendReq(send.path, send.localAffinity, Some(payload))
+              )
             case sendToAll: SendToAll =>
               val payload = serialization.serializePayload(sendToAll.msg)
               Req().withSendToAll(SendToAllReq(sendToAll.path, Some(payload)))
@@ -88,9 +93,12 @@ object ClusterClient {
           .mapMaterializedValue(sessionReqRef => {
             sessionReqRefPromise.success(sessionReqRef)
             NotUsed
-          }))
+          })
+      )
       .watch(sender) // end session when original sender terminates
-      .recoverWithRetries(-1, { case _: WatchedActorTerminatedException => Source.empty })
+      .recoverWithRetries(-1, {
+        case _: WatchedActorTerminatedException => Source.empty
+      })
       .map { rsp =>
         serialization.deserializePayload(rsp.payload.get)
       }
@@ -103,9 +111,10 @@ object ClusterClient {
   }
 
   private def askSend(
-      receptionistServiceClient: ClusterClientReceptionistServiceClient,
-      send: SendAsk,
-      serialization: ClusterClientSerialization)(implicit ec: ExecutionContext): Future[Any] = {
+    receptionistServiceClient: ClusterClientReceptionistServiceClient,
+    send: SendAsk,
+    serialization: ClusterClientSerialization
+  )(implicit ec: ExecutionContext): Future[Any] = {
     val payload = serialization.serializePayload(send.msg)
     val sendReq = SendReq(send.path, send.localAffinity, Some(payload))
     receptionistServiceClient.askSend(sendReq).map { rsp =>
@@ -115,52 +124,54 @@ object ClusterClient {
 }
 
 /**
- * This actor is intended to be used on an external node that is not member
- * of the cluster. It acts like a gateway for sending messages to actors
- * somewhere in the cluster. With service discovery and Akka gRPC it will establish
- * a connection to a [[ClusterClientReceptionist]] somewhere in the cluster.
- *
- * You can send messages via the `ClusterClient` to any actor in the cluster
- * that is registered in the [[ClusterClientReceptionist]].
- * Messages are wrapped in [[ClusterClient#Send]], [[ClusterClient#SendToAll]]
- * or [[ClusterClient#Publish]].
- *
- * 1. [[ClusterClient#Send]] -
- * The message will be delivered to one recipient with a matching path, if any such
- * exists. If several entries match the path the message will be delivered
- * to one random destination. The sender of the message can specify that local
- * affinity is preferred, i.e. the message is sent to an actor in the same local actor
- * system as the used receptionist actor, if any such exists, otherwise random to any other
- * matching entry.
- *
- * 2. [[ClusterClient#SendToAll]] -
- * The message will be delivered to all recipients with a matching path.
- *
- * 3. [[ClusterClient#Publish]] -
- * The message will be delivered to all recipients Actors that have been registered as subscribers to
- * to the named topic.
- *
- * Use the factory method [[ClusterClient#props]]) to create the
- * [[akka.actor.Props]] for the actor.
- *
- * If the receptionist is not currently available, the client will buffer the messages
- * and then deliver them when the connection to the receptionist has been established.
- * The size of the buffer is configurable and it can be disabled by using a buffer size
- * of 0. When the buffer is full old messages will be dropped when new messages are sent
- * via the client.
- *
- * Note that this is a best effort implementation: messages can always be lost due to the distributed
- * nature of the actors involved.
- */
-final class ClusterClient(settings: ClusterClientSettings)(implicit materializer: Materializer)
-    extends Actor
+  * This actor is intended to be used on an external node that is not member
+  * of the cluster. It acts like a gateway for sending messages to actors
+  * somewhere in the cluster. With service discovery and Akka gRPC it will establish
+  * a connection to a [[ClusterClientReceptionist]] somewhere in the cluster.
+  *
+  * You can send messages via the `ClusterClient` to any actor in the cluster
+  * that is registered in the [[ClusterClientReceptionist]].
+  * Messages are wrapped in [[ClusterClient#Send]], [[ClusterClient#SendToAll]]
+  * or [[ClusterClient#Publish]].
+  *
+  * 1. [[ClusterClient#Send]] -
+  * The message will be delivered to one recipient with a matching path, if any such
+  * exists. If several entries match the path the message will be delivered
+  * to one random destination. The sender of the message can specify that local
+  * affinity is preferred, i.e. the message is sent to an actor in the same local actor
+  * system as the used receptionist actor, if any such exists, otherwise random to any other
+  * matching entry.
+  *
+  * 2. [[ClusterClient#SendToAll]] -
+  * The message will be delivered to all recipients with a matching path.
+  *
+  * 3. [[ClusterClient#Publish]] -
+  * The message will be delivered to all recipients Actors that have been registered as subscribers to
+  * to the named topic.
+  *
+  * Use the factory method [[ClusterClient#props]]) to create the
+  * [[akka.actor.Props]] for the actor.
+  *
+  * If the receptionist is not currently available, the client will buffer the messages
+  * and then deliver them when the connection to the receptionist has been established.
+  * The size of the buffer is configurable and it can be disabled by using a buffer size
+  * of 0. When the buffer is full old messages will be dropped when new messages are sent
+  * via the client.
+  *
+  * Note that this is a best effort implementation: messages can always be lost due to the distributed
+  * nature of the actors involved.
+  */
+final class ClusterClient(settings: ClusterClientSettings)(
+  implicit materializer: Materializer
+) extends Actor
     with ActorLogging {
 
   import ClusterClient._
 
   val serialization = new ClusterClientSerialization(context.system)
 
-  private val receptionistServiceClient: ClusterClientReceptionistServiceClient = createClientStub(settings)
+  private val receptionistServiceClient
+    : ClusterClientReceptionistServiceClient = createClientStub(settings)
 
   // Original sender -> stream Source.actorRef of the session
   private var sessionRef: Map[ActorRef, Future[ActorRef]] = Map.empty
@@ -184,7 +195,14 @@ final class ClusterClient(settings: ClusterClientSettings)(implicit materializer
       val session = sessionRef.get(originalSender) match {
         case Some(ses) => ses
         case None =>
-          val ses = newSession(settings, receptionistServiceClient, originalSender, killSwitch, log, serialization)
+          val ses = newSession(
+            settings,
+            receptionistServiceClient,
+            originalSender,
+            killSwitch,
+            log,
+            serialization
+          )
           sessionRef = sessionRef.updated(originalSender, ses)
           ses
       }
@@ -203,9 +221,9 @@ final class ClusterClient(settings: ClusterClientSettings)(implicit materializer
 object ClusterClientSettings {
 
   /**
-   * Create settings from the default configuration
-   * `sample.cluster.client.grpc`.
-   */
+    * Create settings from the default configuration
+    * `sample.cluster.client.grpc`.
+    */
   def apply(system: ActorSystem): ClusterClientSettings = {
     val config = system.settings.config.getConfig("sample.cluster.client.grpc")
     val grpcClientSettings = GrpcClientSettings
@@ -214,9 +232,13 @@ object ClusterClientSettings {
       .withDeadline(3.second) // FIXME config
       .withTls(false)
 
-    new ClusterClientSettings(bufferSize = config.getInt("buffer-size"), grpcClientSettings)
+    new ClusterClientSettings(
+      bufferSize = config.getInt("buffer-size"),
+      grpcClientSettings
+    )
   }
 
 }
 
-final case class ClusterClientSettings(bufferSize: Int, grpcClientSettings: GrpcClientSettings)
+final case class ClusterClientSettings(bufferSize: Int,
+                                       grpcClientSettings: GrpcClientSettings)
