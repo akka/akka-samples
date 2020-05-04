@@ -1,21 +1,14 @@
 package sample.cluster.client.grpc
 
 import akka.NotUsed
-import akka.actor.{
-  Actor,
-  ActorLogging,
-  ActorRef,
-  ActorSystem,
-  Props,
-  Terminated
-}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props, Terminated}
 import akka.event.LoggingAdapter
 import akka.grpc.GrpcClientSettings
-import akka.stream.scaladsl.Source
 import akka.stream._
+import akka.stream.scaladsl.Source
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 object ClusterClient {
 
