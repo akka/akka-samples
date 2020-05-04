@@ -17,6 +17,7 @@ object WorkState {
   case class WorkCompleted(workId: String) extends WorkDomainEvent
   case class WorkerFailed(workId: String) extends WorkDomainEvent
   case class WorkerTimedOut(workId: String) extends WorkDomainEvent
+  case object WorkInProgressReset extends WorkDomainEvent
 }
 
 case class WorkState private (
@@ -50,6 +51,10 @@ case class WorkState private (
 
     case WorkerTimedOut(workId) =>
       copy(pendingWork = pendingWork.enqueue(workInProgress(workId)), workInProgress = workInProgress - workId)
+
+    case WorkInProgressReset =>
+      copy(pendingWork = pendingWork.enqueueAll(workInProgress.values), workInProgress = Map.empty)
+
   }
 
 }

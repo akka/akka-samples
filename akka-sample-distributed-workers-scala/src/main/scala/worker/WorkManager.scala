@@ -6,10 +6,10 @@ import akka.actor.typed.delivery.{ConsumerController, WorkPullingProducerControl
 import akka.actor.typed.receptionist.ServiceKey
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import akka.persistence.typed.PersistenceId
+import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
 import akka.util.Timeout
-import worker.WorkState.{WorkAccepted, WorkCompleted, WorkDomainEvent, WorkStarted}
+import worker.WorkState.{WorkAccepted, WorkCompleted, WorkDomainEvent, WorkStarted, WorkInProgressReset}
 
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.util.{Failure, Success}
@@ -37,7 +37,8 @@ object WorkManager {
   private case class RequestNextWrapper(ask: RequestNext[WorkerCommand]) extends Command
   final case class WorkIsDone(id: String) extends Command
   final case class WorkFailed(id: String, t: Throwable) extends Command
-  private final case class TryStartWork() extends Command
+  private case object TryStartWork extends Command
+  private case object ResetWorkInProgress extends Command
 
   def apply(workTimeout: FiniteDuration): Behavior[Command] =
     Behaviors.setup { ctx =>
@@ -83,8 +84,10 @@ object WorkManager {
                 }
                 requestNext = Some(rn)
                 tryStartWork(workState)
-              case TryStartWork() =>
+              case TryStartWork =>
                 tryStartWork(workState)
+              case ResetWorkInProgress =>
+                Effect.persist(WorkInProgressReset)
               case WorkIsDone(workId) =>
                  Effect.persist[WorkDomainEvent, WorkState](WorkCompleted(workId)).thenRun { newState =>
                    ctx.log.info("Work is done {}. New state {}", workId, newState)
@@ -103,13 +106,17 @@ object WorkManager {
                   Effect.persist(WorkAccepted(work.work)).thenRun { _ =>
                     // Ack back to original sender
                     work.replyTo ! WorkManager.Ack(work.work.workId)
-                    ctx.self ! TryStartWork()
+                    ctx.self ! TryStartWork
                   }
                 }
             }
           },
           eventHandler = (workState, event) => workState.updated(event)
-        )
+        ).receiveSignal {
+          case (state, RecoveryCompleted) =>
+            // Any in progress work from the previous incarnation is retried
+            ctx.self ! ResetWorkInProgress
+        }
       }
 
 }
