@@ -1,6 +1,7 @@
 package sample.cqrs
 
 import java.io.File
+import java.util.UUID
 
 import scala.concurrent.duration._
 
@@ -11,41 +12,54 @@ import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.typed.Cluster
 import akka.cluster.typed.Join
 import akka.persistence.cassandra.testkit.CassandraLauncher
+import akka.persistence.typed.PersistenceId
+import akka.persistence.typed.scaladsl.Effect
+import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import org.apache.commons.io.FileUtils
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.Matchers
 import org.scalatest.TestSuite
-import org.scalatest.WordSpecLike
 import org.scalatest.concurrent.Eventually
 import org.scalatest.concurrent.PatienceConfiguration
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.Span
+import org.scalatest.wordspec.AnyWordSpecLike
 
 object IntegrationSpec {
   val config: Config = ConfigFactory.parseString(s"""
       akka.cluster {
          seed-nodes = []
       }
-      cassandra-journal {
-        port = 19042
-      }
-      cassandra-snapshot-store {
-        port = 19042
-      }
-      cassandra-query-journal {
-        refresh-interval = 500 ms
+      
+      akka.persistence.cassandra {
         events-by-tag {
-          eventual-consistency-delay = 200 ms
+          eventual-consistency-delay = 200ms
         }
+      
+        query {
+          refresh-interval = 500 ms
+        }
+      
+        journal.keyspace-autocreate = on
+        journal.tables-autocreate = on
+        snapshot.keyspace-autocreate = on
+        snapshot.tables-autocreate = on
       }
+      datastax-java-driver {
+        basic.contact-points = ["127.0.0.1:19042"]
+        basic.load-balancing-policy.local-datacenter = "datacenter1"
+      }
+      
       event-processor {
         keep-alive-interval = 1 seconds
       }
+      akka.loglevel = DEBUG
       akka.actor.testkit.typed.single-expect-default = 5s
       # For LoggingTestKit
       akka.actor.testkit.typed.filter-leeway = 5s
+      akka.actor.testkit.typed.throw-on-shutdown-timeout = off
     """).withFallback(ConfigFactory.load())
 }
 
@@ -53,7 +67,7 @@ class IntegrationSpec
     extends TestSuite
     with Matchers
     with BeforeAndAfterAll
-    with WordSpecLike
+    with AnyWordSpecLike
     with ScalaFutures
     with Eventually {
 
@@ -82,9 +96,24 @@ class IntegrationSpec
       port = 19042, // default is 9042, but use different for test
       CassandraLauncher.classpathForResources("logback-test.xml"))
 
+    // avoid concurrent creation of keyspace and tables
+    initializePersistence()
     Main.createTables(testKit1.system)
 
     super.beforeAll()
+  }
+
+  // FIXME use Akka's initializePlugins instead when released https://github.com/akka/akka/issues/28808
+  private def initializePersistence(): Unit = {
+    val persistenceId = PersistenceId.ofUniqueId(s"persistenceInit-${UUID.randomUUID()}")
+    val ref = testKit1.spawn(
+      EventSourcedBehavior[String, String, String](
+        persistenceId,
+        "",
+        commandHandler = (_, _) => Effect.stop(),
+        eventHandler = (_, _) => ""))
+    ref ! "start"
+    testKit1.createTestProbe().expectTerminated(ref, 10.seconds)
   }
 
   override protected def afterAll(): Unit = {

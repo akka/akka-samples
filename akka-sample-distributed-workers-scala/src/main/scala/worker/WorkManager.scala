@@ -15,23 +15,25 @@ import scala.concurrent.duration.{FiniteDuration, _}
 import scala.util.{Failure, Success}
 
 /**
- * The work manager actor keep tracks of all available workers, and all scheduled and ongoing work items
- */
+  * The work manager actor keep tracks of all available workers, and all scheduled and ongoing work items
+  */
 object WorkManager {
 
   val ManagerServiceKey = ServiceKey[ConsumerController.Command[WorkerCommand]]("worker-service-key")
 
-  val WorkerServiceKey: ServiceKey[WorkerCommand] = ServiceKey[WorkerCommand]("workerService")
+  val WorkerServiceKey: ServiceKey[WorkerCommand] =
+    ServiceKey[WorkerCommand]("workerService")
   val ResultsTopic = "results"
 
   final case class Ack(workId: String) extends CborSerializable
 
   // Responses to requests from workers
-  sealed trait WorkerCommand
+  sealed trait WorkerCommand extends CborSerializable
   final case class DoWork(work: Work) extends WorkerCommand with CborSerializable
 
   sealed trait Command
-  final case class SubmitWork(work: Work, replyTo: ActorRef[WorkManager.Ack]) extends Command with CborSerializable
+  final case class SubmitWork(work: Work, replyTo: ActorRef[WorkManager.Ack])
+      extends Command with CborSerializable
   private case class RequestNextWrapper(ask: RequestNext[WorkerCommand]) extends Command
   final case class WorkIsDone(id: String) extends Command
   final case class WorkFailed(id: String, t: Throwable) extends Command
@@ -106,7 +108,8 @@ object WorkManager {
                 }
             }
           },
-          eventHandler = (workState, event) => workState.updated(event))
+          eventHandler = (workState, event) => workState.updated(event)
+        )
       }
 
 }

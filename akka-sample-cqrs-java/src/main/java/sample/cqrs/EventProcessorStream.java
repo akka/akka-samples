@@ -5,17 +5,17 @@ import akka.NotUsed;
 import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.Adapter;
 import akka.persistence.cassandra.query.javadsl.CassandraReadJournal;
-import akka.persistence.cassandra.session.javadsl.CassandraSession;
 import akka.persistence.query.Offset;
 import akka.persistence.query.PersistenceQuery;
 import akka.persistence.query.TimeBasedUUID;
 import akka.persistence.typed.PersistenceId;
 import akka.stream.SharedKillSwitch;
+import akka.stream.alpakka.cassandra.javadsl.CassandraSession;
+import akka.stream.alpakka.cassandra.javadsl.CassandraSessionRegistry;
 import akka.stream.javadsl.RestartSource;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.Row;
+import com.datastax.oss.driver.api.core.cql.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +43,7 @@ public abstract class EventProcessorStream<Event> {
 
     query = PersistenceQuery.get(Adapter.toClassic(system))
       .getReadJournalFor(CassandraReadJournal.class, CassandraReadJournal.Identifier());
-    session = CassandraSessionExtension.Id.get(system).session;
+    session = CassandraSessionRegistry.get(system).sessionFor("alpakka.cassandra");
   }
 
   protected abstract CompletionStage<Object> processEvent(Event event, PersistenceId persistenceId, long sequenceNr);
@@ -73,16 +73,12 @@ public abstract class EventProcessorStream<Event> {
       });
   }
 
-  private CompletionStage<PreparedStatement> prepareWriteOffset() {
-    return session.prepare("INSERT INTO akka_cqrs_sample.offsetStore (eventProcessorId, tag, timeUuidOffset) VALUES (?, ?, ?)");
-  }
-
   private CompletionStage<Done> writeOffset(Offset offset) {
     if (offset instanceof TimeBasedUUID) {
       UUID uuidOffset = ((TimeBasedUUID) offset).value();
-      return prepareWriteOffset()
-        .thenApply(stmt -> stmt.bind(eventProcessorId, tag, uuidOffset))
-        .thenCompose(session::executeWrite);
+      return session.executeWrite(
+        "INSERT INTO akka_cqrs_sample.offsetStore (eventProcessorId, tag, timeUuidOffset) VALUES (?, ?, ?)",
+        eventProcessorId, tag, uuidOffset);
     } else {
       throw new IllegalArgumentException("Unexpected offset type " + offset);
     }
@@ -99,7 +95,7 @@ public abstract class EventProcessorStream<Event> {
 
   private Offset extractOffset(Optional<Row> maybeRow) {
       if (maybeRow.isPresent()) {
-        UUID uuid = maybeRow.get().getUUID("timeUuidOffset");
+        UUID uuid = maybeRow.get().getUuid("timeUuidOffset");
         if (uuid == null) {
           return startOffset();
         } else {
