@@ -5,6 +5,7 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.Behaviors;
+import akka.actor.typed.javadsl.GroupRouter;
 import akka.actor.typed.javadsl.Routers;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
@@ -35,8 +36,13 @@ public class AppOneMaster {
               .withRole("compute");
         SingletonActor<StatsService.Command> serviceSingleton =
             SingletonActor.of(Behaviors.<StatsService.Command>setup(singletonContext -> {
+
+              // The worker has a per word cache, so send the same word to the same local worker child
+              GroupRouter<StatsWorker.Process> workerGroupBehavior =
+                      Routers.group(WORKER_SERVICE_KEY).withConsistentHashingRouting(1, process -> process.word);
+
               ActorRef<StatsWorker.Process> workersRouter =
-                  singletonContext.spawn(Routers.group(WORKER_SERVICE_KEY), "WorkersRouter");
+                  singletonContext.spawn(workerGroupBehavior, "WorkersRouter");
               return StatsService.create(workersRouter);
             }),
             "StatsService")
