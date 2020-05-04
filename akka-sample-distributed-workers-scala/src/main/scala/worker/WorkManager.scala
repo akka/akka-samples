@@ -6,7 +6,7 @@ import akka.actor.typed.delivery.{ConsumerController, WorkPullingProducerControl
 import akka.actor.typed.receptionist.ServiceKey
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
+import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
 import akka.util.Timeout
 import worker.WorkState.{WorkAccepted, WorkCompleted, WorkDomainEvent, WorkStarted}
@@ -28,10 +28,10 @@ object WorkManager {
 
   // Responses to requests from workers
   sealed trait WorkerCommand
-  final case class DoWork(work: Work) extends WorkerCommand
+  final case class DoWork(work: Work) extends WorkerCommand with CborSerializable
 
-  sealed trait Command extends CborSerializable
-  final case class SubmitWork(work: Work, replyTo: ActorRef[WorkManager.Ack]) extends Command
+  sealed trait Command
+  final case class SubmitWork(work: Work, replyTo: ActorRef[WorkManager.Ack]) extends Command with CborSerializable
   private case class RequestNextWrapper(ask: RequestNext[WorkerCommand]) extends Command
   final case class WorkIsDone(id: String) extends Command
   final case class WorkFailed(id: String, t: Throwable) extends Command
@@ -75,7 +75,7 @@ object WorkManager {
           commandHandler = (workState, command) => {
             command match {
               case RequestNextWrapper(rn) =>
-                ctx.log.info("work request: {}. Current: {}", rn, requestNext.size)
+                ctx.log.info("work request: {}")
                 if (requestNext.isDefined) {
                   throw new IllegalStateException(s"Request next when there is already demand ${rn}, ${requestNext}")
                 }
@@ -85,11 +85,6 @@ object WorkManager {
                 tryStartWork(workState)
               case WorkIsDone(workId) =>
                  Effect.persist[WorkDomainEvent, WorkState](WorkCompleted(workId)).thenRun { newState =>
-                   // FIXME, how to get the result back?
-                   // publish it from the worker?
-                   // Ack back to original sender
-                   //
-                   // No need to ack back to the worker any more
                    ctx.log.info("Work is done {}. New state {}", workId, newState)
                  }
 
@@ -112,7 +107,6 @@ object WorkManager {
             }
           },
           eventHandler = (workState, event) => workState.updated(event))
-        // TODO resubmit work that hasn't been acked on startup
       }
 
 }

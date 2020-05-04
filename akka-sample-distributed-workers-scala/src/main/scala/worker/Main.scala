@@ -66,7 +66,6 @@ object Main {
             if (cluster.selfMember.hasRole("front-end")) {
               val workManagerProxy = WorkManagerSingleton.init(ctx.system)
               ctx.spawn(FrontEnd(workManagerProxy), "front-end")
-              ctx.spawn(WorkResultConsumer(), "consumer")
             }
             if (cluster.selfMember.hasRole("worker")) {
               (1 to workers).foreach(n => ctx.spawn(Worker(), s"worker-$n"))

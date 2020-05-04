@@ -1,6 +1,5 @@
 package worker
 
-import java.util.UUID
 
 import akka.actor.typed._
 import akka.actor.typed.scaladsl._
@@ -14,27 +13,25 @@ import akka.actor.typed.delivery.ConsumerController
  */
 object Worker {
 
-  sealed trait Message extends CborSerializable
+  sealed trait Message
   case class DeliveredMessage(confirmTo: ActorRef[ConsumerController.Confirmed], message: WorkManager.WorkerCommand, seqNr: Long) extends Message
   case class WorkComplete(result: String) extends Message
   case class WorkTimeout() extends Message
 
   def apply(
-      workerId: String = UUID.randomUUID().toString,
       workExecutorFactory: () => Behavior[ExecuteWork] = () => WorkExecutor()): Behavior[Message] =
     Behaviors.setup[Message] { ctx =>
         val consumerController = ctx.spawn(ConsumerController[WorkManager.WorkerCommand](WorkManager.ManagerServiceKey), "consumer-controller")
         val deliverAdapter = ctx.messageAdapter[ConsumerController.Delivery[WorkManager.WorkerCommand]](d => DeliveredMessage(d.confirmTo, d.message, d.seqNr))
         consumerController ! ConsumerController.Start(deliverAdapter)
         Behaviors
-          .supervise(new Worker(workerId, ctx, workExecutorFactory).idle())
+          .supervise(new Worker(ctx, workExecutorFactory).idle())
           .onFailure[Exception](SupervisorStrategy.restart)
     }
 
 }
 
 class Worker private (
-    workerId: String,
     ctx: ActorContext[Worker.Message],
     workExecutorFactory: () => Behavior[ExecuteWork]) {
 
@@ -51,14 +48,14 @@ class Worker private (
       Behaviors.receiveMessagePartial[Worker.Message] {
         case DeliveredMessage(confirmTo, message, _) =>
           message match {
-            case WorkManager.DoWork(w@Work(workId, job: Int)) =>
+            case WorkManager.DoWork(w@Work(workId, job)) =>
               ctx.log.info("Got work: {}", w)
               workExecutor ! WorkExecutor.ExecuteWork(job, ctx.self)
-              working(workId, workExecutor, confirmTo)
+              working(workExecutor, confirmTo)
           }
       }
 
-  def working(workId: String, workExecutor: ActorRef[ExecuteWork], confirmTo: ActorRef[ConsumerController.Confirmed]): Behavior[Worker.Message] =
+  def working(workExecutor: ActorRef[ExecuteWork], confirmTo: ActorRef[ConsumerController.Confirmed]): Behavior[Worker.Message] =
       Behaviors
         .receiveMessagePartial[Worker.Message] {
           case Worker.WorkComplete(result) =>
