@@ -21,7 +21,13 @@ object App {
         val numberOfWorkers =
           ctx.system.settings.config.getInt("stats-service.workers-per-node")
         val workers = ctx
-          .spawn(Routers.pool(numberOfWorkers)(StatsWorker()), "WorkerRouter")
+          .spawn(
+            Routers
+              .pool(numberOfWorkers)(StatsWorker().narrow[StatsWorker.Process])
+              // the worker has a per word cache, so send the same word to the same local worker child
+              .withConsistentHashingRouting(1, _.word),
+            "WorkerRouter"
+          )
         val service = ctx.spawn(StatsService(workers), "StatsService")
 
         // published through the receptionist to the other nodes in the cluster

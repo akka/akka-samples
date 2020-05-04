@@ -26,7 +26,14 @@ object AppOneMaster {
         Behaviors.setup[StatsService.Command] { ctx =>
           // the service singleton accesses available workers through a group router
           val workersRouter =
-            ctx.spawn(Routers.group(WorkerServiceKey), "WorkersRouter")
+            ctx.spawn(
+              Routers
+                .group(WorkerServiceKey)
+                // the worker has a per word cache, so send the same word to the same worker
+                .withConsistentHashingRouting(1, _.word),
+              "WorkersRouter"
+            )
+
           StatsService(workersRouter)
         },
         "StatsService"
@@ -69,7 +76,7 @@ object AppOneMaster {
     val config = ConfigFactory
       .parseString(s"""
       akka.remote.artery.canonical.port=$port
-      akka.cluster.roles = [compute]
+      akka.cluster.roles = [$role]
       """)
       .withFallback(ConfigFactory.load("stats"))
 
