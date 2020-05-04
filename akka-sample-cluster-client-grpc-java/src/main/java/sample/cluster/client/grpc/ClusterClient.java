@@ -17,6 +17,7 @@ import akka.stream.javadsl.Source;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -150,7 +151,14 @@ public class ClusterClient extends AbstractLoggingActor {
     receptionistServiceClient
       .newSession(
         Source
-          .actorRef(settings.bufferSize, OverflowStrategy.dropNew())
+          .actorRef(
+            // never complete from stream element
+            elem -> Optional.empty(),
+            // never fail from stream element
+            elem -> Optional.empty(),
+            settings.bufferSize,
+            OverflowStrategy.dropNew()
+            )
           .via(killSwitch.flow())
           .map(msg -> {
             if (msg instanceof Send) {
