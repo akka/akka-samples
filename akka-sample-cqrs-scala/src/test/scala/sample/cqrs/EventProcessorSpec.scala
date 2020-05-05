@@ -60,7 +60,7 @@ class EventProcessorSpec extends ScalaTestWithActorTestKit(ConfigFactory.parseSt
 
   "The events from the Shopping Cart" should {
     "be consumed by the event processor" in {
-      val cart1 = testKit.spawn(ShoppingCart("cart-1", Set("tag-0")))
+      val cart1 = testKit.spawn(ShoppingCart("cart-1", Set("carts-slice-0")))
       val probe = testKit.createTestProbe[ShoppingCart.Confirmation]
 
       val eventProbe = testKit.createTestProbe[ShoppingCart.Event]()
@@ -68,7 +68,7 @@ class EventProcessorSpec extends ScalaTestWithActorTestKit(ConfigFactory.parseSt
 
       testKit.spawn[Nothing](
         EventProcessor(
-          new ShoppingCartEventProcessorStream(system, system.executionContext, "EventProcessor", "tag-0")))
+          new ShoppingCartEventProcessorStream(system, system.executionContext, "EventProcessor", "carts-slice-0")))
 
       cart1 ! ShoppingCart.AddItem("foo", 42, probe.ref)
       probe.expectMessageType[ShoppingCart.Accepted]
@@ -81,7 +81,7 @@ class EventProcessorSpec extends ScalaTestWithActorTestKit(ConfigFactory.parseSt
       probe.expectMessageType[ShoppingCart.Accepted]
       eventProbe.expectMessage(ShoppingCart.ItemQuantityAdjusted("cart-1", "bar", 18))
 
-      val cart2 = testKit.spawn(ShoppingCart("cart-2", Set("tag-0")))
+      val cart2 = testKit.spawn(ShoppingCart("cart-2", Set("carts-slice-0")))
       // also verify that EventProcessor is logging
       LoggingTestKit.info("consumed ItemAdded(cart-2,another,1)").expect {
         cart2 ! ShoppingCart.AddItem("another", 1, probe.ref)

@@ -76,7 +76,7 @@ public class EventProcessorTest {
   public void shouldConsumeEventsFromShoppingCart() {
     ActorSystem<Void> system = testKit.system();
     ActorRef<ShoppingCart.Command> cart1 =
-      testKit.spawn(ShoppingCart.create("cart-1", Collections.singleton("tag-0")));
+      testKit.spawn(ShoppingCart.create("cart-1", Collections.singleton("carts-slice-0")));
     TestProbe<ShoppingCart.Confirmation> probe = testKit.createTestProbe();
 
     TestProbe<ShoppingCart.Event> eventProbe = testKit.createTestProbe();
@@ -84,7 +84,7 @@ public class EventProcessorTest {
 
     testKit.spawn(
       EventProcessor.create(
-        new ShoppingCartEventProcessorStream(system, "EventProcessor", "tag-0")));
+        new ShoppingCartEventProcessorStream(system, "EventProcessor", "carts-slice-0")));
 
     cart1.tell(new ShoppingCart.AddItem("foo", 42, probe.getRef()));
     probe.expectMessageClass(ShoppingCart.Accepted.class);
@@ -106,7 +106,7 @@ public class EventProcessorTest {
     assertEquals(18, event3.quantity);
 
     ActorRef<ShoppingCart.Command> cart2 =
-      testKit.spawn(ShoppingCart.create("cart-2", Collections.singleton("tag-0")));
+      testKit.spawn(ShoppingCart.create("cart-2", Collections.singleton("carts-slice-0")));
 
     // also verify that EventProcessor is logging
     LoggingTestKit.info("consumed ItemAdded(cart-2,another,1)").expect(system, () -> {

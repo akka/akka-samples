@@ -20,7 +20,7 @@ The small program together with its configuration starts an ActorSystem with the
 
 You can read more about the cluster concepts in the [documentation](https://doc.akka.io/docs/akka/2.6/typed/cluster.html).
 
-To run this sample, type `mvn exec:java -Dexec.mainClass="sample.cluster.simple.App"`.
+To run this sample, first make sure everything is compiled using `mvn compile`, then run using `mvn exec:java -Dexec.mainClass="sample.cluster.simple.App"`.
 
 `sample.cluster.simple.App` starts three actor systems (cluster members) in the same JVM process. It can be more interesting to run them in separate processes. Stop the application and then open three terminal windows.
 

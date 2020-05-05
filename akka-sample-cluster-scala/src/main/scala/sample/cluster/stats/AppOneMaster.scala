@@ -25,7 +25,15 @@ object AppOneMaster {
       val serviceSingleton = SingletonActor(
         Behaviors.setup[StatsService.Command] { ctx =>
           // the service singleton accesses available workers through a group router
-          val workersRouter = ctx.spawn(Routers.group(WorkerServiceKey), "WorkersRouter")
+          val workersRouter =
+            ctx.spawn(
+              Routers
+                .group(WorkerServiceKey)
+                // the worker has a per word cache, so send the same word to the same worker
+                .withConsistentHashingRouting(1, _.word),
+              "WorkersRouter"
+            )
+
           StatsService(workersRouter)
         },
         "StatsService"
@@ -35,11 +43,13 @@ object AppOneMaster {
 
       if (cluster.selfMember.hasRole("compute")) {
         // on every compute node N local workers, which a cluster singleton stats service delegates work to
-        val numberOfWorkers = ctx.system.settings.config.getInt("stats-service.workers-per-node")
+        val numberOfWorkers =
+          ctx.system.settings.config.getInt("stats-service.workers-per-node")
         ctx.log.info("Starting {} workers", numberOfWorkers)
         (0 to numberOfWorkers).foreach { n =>
           val worker = ctx.spawn(StatsWorker(), s"StatsWorker$n")
-          ctx.system.receptionist ! Receptionist.Register(WorkerServiceKey, worker)
+          ctx.system.receptionist ! Receptionist
+            .Register(WorkerServiceKey, worker)
         }
       }
       if (cluster.selfMember.hasRole("client")) {
@@ -63,15 +73,14 @@ object AppOneMaster {
 
   def startup(role: String, port: Int): Unit = {
     // Override the configuration of the port when specified as program argument
-    val config = ConfigFactory.parseString(s"""
+    val config = ConfigFactory
+      .parseString(s"""
       akka.remote.artery.canonical.port=$port
-      akka.cluster.roles = [compute]
+      akka.cluster.roles = [$role]
       """)
       .withFallback(ConfigFactory.load("stats"))
 
-    val system = ActorSystem[Nothing](RootBehavior(), "ClusterSystem", config)
+    ActorSystem[Nothing](RootBehavior(), "ClusterSystem", config)
   }
 
 }
-
-

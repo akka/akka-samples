@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.6.4"
+val akkaVersion = "2.6.5"
 
 lazy val `akka-sample-cluster-client-grpc-scala` = project
   .in(file("."))
@@ -10,7 +10,7 @@ lazy val `akka-sample-cluster-client-grpc-scala` = project
   .settings(multiJvmSettings: _*)
   .settings(
     organization := "com.typesafe.akka",
-    scalaVersion := "2.12.8",
+    scalaVersion := "2.13.2",
     scalacOptions in Compile ++= Seq(
       "-deprecation",
       "-feature",
@@ -26,7 +26,7 @@ lazy val `akka-sample-cluster-client-grpc-scala` = project
       "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
       "com.typesafe.akka" %% "akka-discovery" % akkaVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion % Test,
-      "org.scalatest" %% "scalatest" % "3.0.1" % Test
+      "org.scalatest" %% "scalatest" % "3.1.1" % Test
     )
   )
   .configs(MultiJvm)

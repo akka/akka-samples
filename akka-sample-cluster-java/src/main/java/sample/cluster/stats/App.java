@@ -5,6 +5,7 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.Behaviors;
+import akka.actor.typed.javadsl.PoolRouter;
 import akka.actor.typed.javadsl.Routers;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
@@ -30,8 +31,12 @@ public class App {
         if (cluster.selfMember().hasRole("compute")) {
           // on every compute node there is one service instance that delegates to N local workers
           final int numberOfWorkers = context.getSystem().settings().config().getInt("stats-service.workers-per-node");
-          ActorRef<StatsWorker.Command> workers =
-              context.spawn(Routers.pool(numberOfWorkers, StatsWorker.create()), "WorkerRouter");
+          // The worker has a per word cache, so send the same word to the same local worker child
+          Behavior<StatsWorker.Process> workerPoolBehavior =
+              Routers.pool(numberOfWorkers, StatsWorker.create().<StatsWorker.Process>narrow())
+                .withConsistentHashingRouting(1, process -> process.word);
+          ActorRef<StatsWorker.Process> workers =
+              context.spawn(workerPoolBehavior, "WorkerRouter");
           ActorRef<StatsService.Command> service =
               context.spawn(StatsService.create(workers.narrow()), "StatsService");
 
