@@ -66,7 +66,7 @@ public final class StatsWorker extends AbstractBehavior<StatsWorker.Command> {
   }
 
   private Behavior<Command> process(Process command) {
-    getContext().getLog().info("Worker processing request");
+    getContext().getLog().info("Worker processing request [{}]", command.word);
     if (!cache.containsKey(command.word)) {
       int length = command.word.length();
       cache.put(command.word, length);
