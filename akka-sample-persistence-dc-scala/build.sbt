@@ -19,7 +19,6 @@ resolvers += Resolver.url("com-ivy",
 libraryDependencies ++= Seq(
   "com.lightbend.akka" %% "akka-persistence-multi-dc" % AkkaAddOnsVersion,
   "com.lightbend.akka" %% "akka-persistence-multi-dc-testkit" % AkkaAddOnsVersion,
-  "com.lightbend.akka" %% "akka-split-brain-resolver" % AkkaAddOnsVersion,
   "com.lightbend.akka" %% "akka-diagnostics" % AkkaAddOnsVersion,
   "com.typesafe.akka" %% "akka-cluster-sharding" % AkkaVersion,
   "com.typesafe.akka" %% "akka-persistence-query" % AkkaVersion,
