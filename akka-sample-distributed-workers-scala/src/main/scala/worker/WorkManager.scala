@@ -1,29 +1,25 @@
 package worker
 
-import java.util
-
-import akka.actor.typed.Behavior
+import akka.Done
+import akka.actor.typed.delivery.WorkPullingProducerController.{MessageWithConfirmation, RequestNext}
+import akka.actor.typed.delivery.{ConsumerController, WorkPullingProducerController}
+import akka.actor.typed.receptionist.ServiceKey
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.ActorRef
-import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
-import akka.cluster.pubsub.{DistributedPubSub, DistributedPubSubMediator}
-import akka.persistence.typed.PersistenceId
-import akka.persistence.typed.scaladsl.Effect
-import akka.persistence.typed.scaladsl.EventSourcedBehavior
-import worker.WorkState.WorkAccepted
-import worker.WorkState.WorkDomainEvent
-import akka.actor.typed.scaladsl.adapter._
-import worker.WorkState.WorkCompleted
-import worker.WorkState.WorkStarted
-import worker.WorkState.WorkerFailed
+import akka.actor.typed.{ActorRef, Behavior}
+import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
+import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
+import akka.util.Timeout
+import worker.WorkState.{WorkAccepted, WorkCompleted, WorkDomainEvent, WorkStarted, WorkInProgressReset}
 
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration.{Deadline, FiniteDuration, _}
+import scala.concurrent.duration.{FiniteDuration, _}
+import scala.util.{Failure, Success}
 
 /**
   * The work manager actor keep tracks of all available workers, and all scheduled and ongoing work items
   */
 object WorkManager {
+
+  val ManagerServiceKey = ServiceKey[ConsumerController.Command[WorkerCommand]]("worker-service-key")
 
   val WorkerServiceKey: ServiceKey[WorkerCommand] =
     ServiceKey[WorkerCommand]("workerService")
@@ -31,118 +27,75 @@ object WorkManager {
 
   final case class Ack(workId: String) extends CborSerializable
 
-  sealed trait WorkerStatus
-  case object Idle extends WorkerStatus
-  final case class Busy(workId: String, deadline: Deadline) extends WorkerStatus
-  final case class WorkerState(ref: ActorRef[WorkerCommand],
-                               status: WorkerStatus)
-
-  sealed trait Command extends CborSerializable
-  private final case class UpdatedWorkers(workers: Receptionist.Listing)
-      extends Command
-
-  // Messages from Workers
-  final case class WorkerRequestsWork(workerId: String,
-                                      replyTo: ActorRef[WorkerCommand])
-      extends Command
-  final case class WorkIsDone(workerId: String,
-                              workId: String,
-                              result: Any,
-                              replyTo: ActorRef[WorkerCommand])
-      extends Command
-  final case class WorkFailed(worker: ActorRef[WorkerCommand], workId: String)
-      extends Command
-
   // Responses to requests from workers
   sealed trait WorkerCommand extends CborSerializable
-  final case class DoWork(work: Work) extends WorkerCommand
-  final case class WorkAck(id: String) extends WorkerCommand
-  case object WorkAvailable extends WorkerCommand
+  final case class DoWork(work: Work) extends WorkerCommand with CborSerializable
 
-  // External commands
+  sealed trait Command
   final case class SubmitWork(work: Work, replyTo: ActorRef[WorkManager.Ack])
-      extends Command
+      extends Command with CborSerializable
+  private case class RequestNextWrapper(ask: RequestNext[WorkerCommand]) extends Command
+  final case class WorkIsDone(id: String) extends Command
+  final case class WorkFailed(id: String, t: Throwable) extends Command
+  private case object TryStartWork extends Command
+  private case object ResetWorkInProgress extends Command
 
   def apply(workTimeout: FiniteDuration): Behavior[Command] =
     Behaviors.setup { ctx =>
-      Behaviors.withTimers { timers =>
-        // FIXME use typed pub sub once https://github.com/akka/akka/issues/26338 is done
-        val mediator = DistributedPubSub(ctx.system.toClassic).mediator
+        implicit val timeout = Timeout(5.seconds)
+        val producerController = ctx.spawn(WorkPullingProducerController[WorkerCommand]("work-manager", ManagerServiceKey, None), "producer-controller")
+        val requestNextAdapter = ctx.messageAdapter(RequestNextWrapper)
+        producerController ! WorkPullingProducerController.Start(requestNextAdapter)
 
-        // the set of available workers is not event sourced as it depends on the current set of workers
-        var workers = Map[ActorRef[WorkerCommand], WorkerState]()
+        var requestNext: Option[RequestNext[WorkerCommand]] = None
 
-        def notifyWorkers(workState: WorkState): Unit =
+        def tryStartWork(workState: WorkState): Effect[WorkDomainEvent, WorkState] = {
+
           if (workState.hasWork) {
-            workers.foreach {
-              case (_, WorkerState(ref, Idle)) =>
-                ref ! WorkAvailable
-              case _ => // busy
+            requestNext match {
+              case Some(next) =>
+                val work = workState.nextWork
+                ctx.ask[MessageWithConfirmation[WorkerCommand], Done](next.askNextTo, done => MessageWithConfirmation(DoWork(work), done)) {
+                  case Success(Done) =>
+                    WorkIsDone(work.workId)
+                  case Failure(t) =>
+                    ctx.log.error("Work failed", t)
+                    WorkFailed(work.workId, t)
+                }
+                requestNext = None
+                Effect.persist(WorkStarted(work.workId))
+              case _ =>
+                Effect.none
             }
+          } else {
+            Effect.none
           }
-
-        def changeWorkerToIdle(worker: ActorRef[WorkerCommand],
-                               workId: String): Unit =
-          workers.get(worker) match {
-            case Some(workerState @ WorkerState(_, Busy(`workId`, _))) =>
-              val newWorkerState = workerState.copy(status = Idle)
-              workers += (worker -> newWorkerState)
-            case _ =>
-            // ok, might happen after standby recovery, worker state is not persisted
-          }
-
-        val listingResponseAdapter =
-          ctx.messageAdapter[Receptionist.Listing](UpdatedWorkers)
-        ctx.system.receptionist ! Receptionist.Subscribe(
-          WorkManager.WorkerServiceKey,
-          listingResponseAdapter
-        )
+        }
 
         EventSourcedBehavior[Command, WorkDomainEvent, WorkState](
           persistenceId = PersistenceId.ofUniqueId("master"),
           emptyState = WorkState.empty,
           commandHandler = (workState, command) => {
             command match {
-              case UpdatedWorkers(listing) =>
-                val newWorkerList: Set[ActorRef[WorkerCommand]] =
-                  listing.allServiceInstances(WorkManager.WorkerServiceKey)
+              case RequestNextWrapper(rn) =>
+                ctx.log.info("work request: {}")
+                if (requestNext.isDefined) {
+                  throw new IllegalStateException(s"Request next when there is already demand ${rn}, ${requestNext}")
+                }
+                requestNext = Some(rn)
+                tryStartWork(workState)
+              case TryStartWork =>
+                tryStartWork(workState)
+              case ResetWorkInProgress =>
+                Effect.persist(WorkInProgressReset)
+              case WorkIsDone(workId) =>
+                 Effect.persist[WorkDomainEvent, WorkState](WorkCompleted(workId)).thenRun { newState =>
+                   ctx.log.info("Work is done {}. New state {}", workId, newState)
+                 }
 
-                var events = ListBuffer.empty[WorkDomainEvent]
-                val removedWorkers = workers.keySet.diff(newWorkerList)
-                val newWorkers = newWorkerList.diff(workers.keySet)
-                // for each removed, check if they had work in progress
-                removedWorkers.foreach { removedWorkers =>
-                  workers(removedWorkers) match {
-                    case WorkerState(_, Idle) =>
-                    // that's fine, nothing in progress
-                    case WorkerState(_, Busy(workId, _)) =>
-                      // work considered failed
-                      events += WorkerFailed(workId)
-                  }
-                  workers -= removedWorkers
-                }
-
-                // update the current members
-                newWorkers.foreach { newWorker =>
-                  workers += (newWorker -> WorkerState(newWorker, Idle))
-                }
-                ctx.log.info(
-                  "Workers updated. Removed workers: {}. New workers: {}",
-                  removedWorkers,
-                  newWorkers
-                )
-                ctx.log.info("All workers: {}", workers)
-
-                if (workState.hasWork) {
-                  newWorkers.foreach { newWorker =>
-                    newWorker ! WorkAvailable
-                  }
-                }
-                if (events.nonEmpty) {
-                  Effect.persist(events.toList).thenRun(notifyWorkers)
-                } else {
-                  Effect.none
-                }
+              case WorkFailed(id, reason) =>
+                ctx.log.info("Work failed {} {}", id, reason)
+                tryStartWork(workState)
               case work: SubmitWork =>
                 // idempotent
                 if (workState.isAccepted(work.work.workId)) {
@@ -153,81 +106,17 @@ object WorkManager {
                   Effect.persist(WorkAccepted(work.work)).thenRun { _ =>
                     // Ack back to original sender
                     work.replyTo ! WorkManager.Ack(work.work.workId)
-                    notifyWorkers(workState)
+                    ctx.self ! TryStartWork
                   }
-                }
-              case WorkerRequestsWork(workerId, replyTo) =>
-                ctx.log.info("Worker {} requesting work", workerId)
-
-                if (workState.hasWork) {
-                  workers.get(replyTo) match {
-                    case Some(workerState @ WorkerState(_, Idle)) =>
-                      val work = workState.nextWork
-                      Effect
-                        .persist[WorkDomainEvent, WorkState](
-                          WorkStarted(work.workId)
-                        )
-                        .thenRun { _ =>
-                          ctx.log.info(
-                            "Giving worker {} some work {}",
-                            workerId,
-                            work.workId
-                          )
-                          val newWorkerState = workerState.copy(
-                            status =
-                              Busy(work.workId, Deadline.now + workTimeout)
-                          )
-                          workers += (replyTo -> newWorkerState)
-                          replyTo ! DoWork(work)
-                        }
-                    case _ =>
-                      Effect.none[WorkDomainEvent, WorkState]
-                  }
-                } else {
-                  Effect.none[WorkDomainEvent, WorkState]
-                }
-              case WorkIsDone(workerId, workId, result, replyTo) =>
-                // idempotent - redelivery from the worker may cause duplicates, so it needs to be
-                if (workState.isDone(workId)) {
-                  // previous Ack was lost, confirm again that this is done
-                  replyTo ! WorkAck(workId)
-                  Effect.none
-                } else if (!workState.isInProgress(workId)) {
-                  ctx.log.info(
-                    "Work {} not in progress, reported as done by worker {}",
-                    workId,
-                    workerId
-                  )
-                  Effect.none
-                } else {
-                  ctx.log.info("Work {} is done by worker {}", result, workerId)
-                  changeWorkerToIdle(replyTo, workId)
-                  Effect
-                    .persist[WorkDomainEvent, WorkState](
-                      WorkCompleted(workId, result)
-                    )
-                    .thenRun { _ =>
-                      mediator ! DistributedPubSubMediator
-                        .Publish(ResultsTopic, WorkResult(workId, result))
-                      // Ack back to original sender
-                      replyTo ! WorkAck(workId)
-                    }
-                }
-              case WorkFailed(workerId, workId) =>
-                if (workState.isInProgress(workId)) {
-                  ctx.log.info("Work {} failed by worker {}", workId, workerId)
-                  changeWorkerToIdle(workerId, workId)
-                  Effect
-                    .persist[WorkDomainEvent, WorkState](WorkerFailed(workId))
-                    .thenRun(notifyWorkers)
-                } else {
-                  Effect.none[WorkDomainEvent, WorkState]
                 }
             }
           },
           eventHandler = (workState, event) => workState.updated(event)
-        )
+        ).receiveSignal {
+          case (state, RecoveryCompleted) =>
+            // Any in progress work from the previous incarnation is retried
+            ctx.self ! ResetWorkInProgress
+        }
       }
-    }
 
 }
