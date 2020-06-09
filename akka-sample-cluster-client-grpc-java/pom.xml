@@ -6,8 +6,8 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <akka.version>2.6.4</akka.version>
-    <akka.grpc.version>0.7.2</akka.grpc.version>
+    <akka.version>2.6.5</akka.version>
+    <akka.grpc.version>0.8.4</akka.grpc.version>
   </properties>
 
   <groupId>com.lightbend.akka.samples</groupId>
@@ -18,37 +18,37 @@
   <dependencies>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-stream_2.12</artifactId>
+      <artifactId>akka-stream_2.13</artifactId>
       <version>${akka.version}</version>
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-cluster_2.12</artifactId>
+      <artifactId>akka-cluster_2.13</artifactId>
       <version>${akka.version}</version>
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-cluster-tools_2.12</artifactId>
+      <artifactId>akka-cluster-tools_2.13</artifactId>
       <version>${akka.version}</version>
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-serialization-jackson_2.12</artifactId>
+      <artifactId>akka-serialization-jackson_2.13</artifactId>
       <version>${akka.version}</version>
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-discovery_2.12</artifactId>
+      <artifactId>akka-discovery_2.13</artifactId>
       <version>${akka.version}</version>
     </dependency>
     <dependency>
       <groupId>com.lightbend.akka.grpc</groupId>
-      <artifactId>akka-grpc-runtime_2.12</artifactId>
+      <artifactId>akka-grpc-runtime_2.13</artifactId>
       <version>${akka.grpc.version}</version>
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-testkit_2.12</artifactId>
+      <artifactId>akka-testkit_2.13</artifactId>
       <version>${akka.version}</version>
       <scope>test</scope>
     </dependency>

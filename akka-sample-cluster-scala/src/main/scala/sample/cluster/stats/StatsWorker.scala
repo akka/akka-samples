@@ -12,7 +12,9 @@ import scala.concurrent.duration._
 object StatsWorker {
 
   trait Command
-  final case class Process(word: String, replyTo: ActorRef[Processed]) extends Command with CborSerializable
+  final case class Process(word: String, replyTo: ActorRef[Processed])
+      extends Command
+      with CborSerializable
   private case object EvictCache extends Command
 
   final case class Processed(word: String, length: Int) extends CborSerializable
@@ -26,21 +28,23 @@ object StatsWorker {
     }
   }
 
-  private def withCache(ctx: ActorContext[Command], cache: Map[String, Int]): Behavior[Command] = Behaviors.receiveMessage {
-    case Process(word, replyTo) =>
-      ctx.log.info("Worker processing request")
-      cache.get(word) match {
-        case Some(length) =>
-          replyTo ! Processed(word, length)
-          Behaviors.same
-        case None =>
-          val length = word.length
-          val updatedCache = cache + (word -> length)
-          replyTo ! Processed(word, length)
-          withCache(ctx, updatedCache)
-      }
-    case EvictCache =>
-      withCache(ctx, Map.empty)
-  }
+  private def withCache(ctx: ActorContext[Command],
+                        cache: Map[String, Int]): Behavior[Command] =
+    Behaviors.receiveMessage {
+      case Process(word, replyTo) =>
+        ctx.log.info("Worker processing request [{}]", word)
+        cache.get(word) match {
+          case Some(length) =>
+            replyTo ! Processed(word, length)
+            Behaviors.same
+          case None =>
+            val length = word.length
+            val updatedCache = cache + (word -> length)
+            replyTo ! Processed(word, length)
+            withCache(ctx, updatedCache)
+        }
+      case EvictCache =>
+        withCache(ctx, Map.empty)
+    }
 }
 //#worker

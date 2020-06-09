@@ -9,6 +9,7 @@ import akka.stream.Materializer;
 import akka.stream.OverflowStrategy;
 import akka.stream.javadsl.Source;
 
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -33,7 +34,13 @@ class ClusterClientReceptionistGrpcImpl implements ClusterClientReceptionistServ
     final String sessionId = UUID.randomUUID().toString();
     log.info("New session [{}]", sessionId);
     return Source
-      .actorRef(settings.bufferSize, OverflowStrategy.dropNew())
+      .actorRef(
+        // never complete from stream element
+        elem -> Optional.empty(),
+        // never fail from stream element
+        elem -> Optional.empty(),
+        settings.bufferSize,
+        OverflowStrategy.dropNew())
       .map( rsp -> {
         Payload payload = serialization.serializePayload(rsp);
         return Rsp.newBuilder().setPayload(payload).build();
