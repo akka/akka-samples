@@ -7,7 +7,9 @@ import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import akka.cluster.typed.Cluster
 import akka.persistence.cassandra.testkit.CassandraLauncher
-import com.typesafe.config.{ Config, ConfigFactory }
+import com.typesafe.config.{Config, ConfigFactory}
+import akka.cluster.typed.SelfUp
+import akka.cluster.typed.Subscribe
 
 object Main {
 
@@ -51,24 +53,29 @@ object Main {
   }
 
   def start(port: Int, role: String, workers: Int = 2): Unit = {
-    ActorSystem[Nothing](
-      Behaviors.setup[Nothing](ctx => {
+    ActorSystem(
+      Behaviors.setup[SelfUp](ctx => {
         val cluster = Cluster(ctx.system)
-        if (cluster.selfMember.hasRole("back-end")) {
-          WorkManagerSingleton.init(ctx.system)
+        cluster.subscriptions ! Subscribe(ctx.self, classOf[SelfUp])
+        Behaviors.receiveMessage {
+          case SelfUp(_) =>
+            ctx.log.info("Node is up")
+            if (cluster.selfMember.hasRole("back-end")) {
+              WorkManagerSingleton.init(ctx.system)
+            }
+            if (cluster.selfMember.hasRole("front-end")) {
+              val workManagerProxy = WorkManagerSingleton.init(ctx.system)
+              ctx.spawn(FrontEnd(workManagerProxy), "front-end")
+            }
+            if (cluster.selfMember.hasRole("worker")) {
+              (1 to workers).foreach(n => ctx.spawn(Worker(), s"worker-$n"))
+            }
+            Behaviors.same
         }
-        if (cluster.selfMember.hasRole("front-end")) {
-          ctx.spawn(FrontEnd(), "front-end")
-          ctx.spawn(WorkResultConsumer(), "consumer")
-        }
-        if (cluster.selfMember.hasRole("worker")) {
-          val workManagerProxy = WorkManagerSingleton.init(ctx.system)
-          (1 to workers).foreach(n => ctx.spawn(Worker(workManagerProxy), s"worker-$n"))
-        }
-        Behaviors.empty
       }),
       "ClusterSystem",
-      config(port, role))
+      config(port, role)
+    )
   }
 
   def config(port: Int, role: String): Config =
@@ -78,13 +85,18 @@ object Main {
     """).withFallback(ConfigFactory.load())
 
   /**
-   * To make the sample easier to run we kickstart a Cassandra instance to
-   * act as the journal. Cassandra is a great choice of backend for Akka Persistence but
-   * in a real application a pre-existing Cassandra cluster should be used.
-   */
+    * To make the sample easier to run we kickstart a Cassandra instance to
+    * act as the journal. Cassandra is a great choice of backend for Akka Persistence but
+    * in a real application a pre-existing Cassandra cluster should be used.
+    */
   def startCassandraDatabase(): Unit = {
     val databaseDirectory = new File("target/cassandra-db")
-    CassandraLauncher.start(databaseDirectory, CassandraLauncher.DefaultTestConfigResource, clean = false, port = 9042)
+    CassandraLauncher.start(
+      databaseDirectory,
+      CassandraLauncher.DefaultTestConfigResource,
+      clean = false,
+      port = 9042
+    )
 
     // shut the cassandra instance down when the JVM stops
     sys.addShutdownHook {
