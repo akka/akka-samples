@@ -4,6 +4,7 @@ version := "1.0"
 
 scalaVersion := "2.13.1"
 val akkaVersion = "2.6.6"
+
 val cassandraPluginVersion = "0.103"
 
 Global / cancelable := false

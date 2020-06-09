@@ -5,7 +5,7 @@ enablePlugins(ProtobufPlugin)
 
 scalaVersion := "2.13.1"
 
-val AkkaVersion = "2.6.5"
+val AkkaVersion = "2.6.6"
 val AkkaAddOnsVersion = "1.1.12"
 val AkkaPersistenceCassandraVersion = "0.100"
 val AkkaHttpVersion = "10.1.10"
@@ -19,7 +19,6 @@ resolvers += Resolver.url("com-ivy",
 libraryDependencies ++= Seq(
   "com.lightbend.akka" %% "akka-persistence-multi-dc" % AkkaAddOnsVersion,
   "com.lightbend.akka" %% "akka-persistence-multi-dc-testkit" % AkkaAddOnsVersion,
-  "com.lightbend.akka" %% "akka-split-brain-resolver" % AkkaAddOnsVersion,
   "com.lightbend.akka" %% "akka-diagnostics" % AkkaAddOnsVersion,
   "com.typesafe.akka" %% "akka-cluster-sharding" % AkkaVersion,
   "com.typesafe.akka" %% "akka-persistence-query" % AkkaVersion,
