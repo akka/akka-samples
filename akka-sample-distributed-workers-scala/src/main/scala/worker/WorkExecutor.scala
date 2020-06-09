@@ -18,19 +18,20 @@ object WorkExecutor {
   def apply(): Behavior[ExecuteWork] = {
     Behaviors.setup { ctx =>
       Behaviors.receiveMessage { doWork =>
+        ctx.log.info("Doing work {}", doWork)
         val n = doWork.n
         val n2 = n * n
         val result = s"$n * $n = $n2"
 
         // simulate that the processing time varies
-        val randomProcessingTime =
-          ThreadLocalRandom.current.nextInt(1, 3).seconds
+        val randomProcessingTime = ThreadLocalRandom.current.nextInt(1, 3).seconds
 
         ctx.scheduleOnce(
           randomProcessingTime,
           doWork.replyTo,
           WorkComplete(result)
         )
+
         Behaviors.same
       }
     }

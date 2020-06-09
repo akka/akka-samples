@@ -26,11 +26,10 @@ object FrontEnd {
 
   private def nextWorkId(): String = UUID.randomUUID().toString
 
-  def apply(): Behavior[Command] = Behaviors.setup { ctx =>
-    val masterProxy = WorkManagerSingleton.init(ctx.system)
+  def apply(workManager: ActorRef[SubmitWork]): Behavior[Command] = Behaviors.setup { ctx =>
     Behaviors.setup { ctx =>
       Behaviors.withTimers { timers =>
-        new FrontEnd(masterProxy, ctx, timers).idle(0)
+        new FrontEnd(workManager, ctx, timers).idle(0)
       }
     }
   }
@@ -38,7 +37,7 @@ object FrontEnd {
 }
 
 class FrontEnd private (
-    masterProxy: ActorRef[SubmitWork],
+    workManager: ActorRef[SubmitWork],
     ctx: ActorContext[FrontEnd.Command],
     timers: TimerScheduler[FrontEnd.Command]) {
   import FrontEnd._
@@ -57,7 +56,7 @@ class FrontEnd private (
   def busy(workCounter: Int, workInProgress: Work): Behavior[Command] = {
     def sendWork(work: Work): Unit = {
       implicit val timeout: Timeout = Timeout(5.seconds)
-      ctx.ask[SubmitWork, WorkManager.Ack](masterProxy, replyTo => SubmitWork(work, replyTo)) {
+      ctx.ask[SubmitWork, WorkManager.Ack](workManager, replyTo => SubmitWork(work, replyTo)) {
         case Success(_) => WorkAccepted
         case Failure(_) => Failed
       }
