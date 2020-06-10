@@ -3,14 +3,27 @@ package sample.cqrs;
 import akka.actor.typed.ActorSystem;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.Behaviors;
+import akka.cluster.sharding.typed.ClusterShardingSettings;
+import akka.cluster.sharding.typed.ShardedDaemonProcessSettings;
+import akka.cluster.sharding.typed.javadsl.ShardedDaemonProcess;
 import akka.cluster.typed.Cluster;
+import akka.persistence.cassandra.query.javadsl.CassandraReadJournal;
 import akka.persistence.cassandra.testkit.CassandraLauncher;
+import akka.persistence.query.Offset;
+import akka.projection.ProjectionBehavior;
+import akka.projection.ProjectionId;
+import akka.projection.cassandra.javadsl.AtLeastOnceCassandraProjection;
+import akka.projection.cassandra.javadsl.CassandraProjection;
+import akka.projection.eventsourced.EventEnvelope;
+import akka.projection.eventsourced.javadsl.EventSourcedProvider;
+import akka.projection.javadsl.SourceProvider;
 import akka.stream.alpakka.cassandra.javadsl.CassandraSession;
 import akka.stream.alpakka.cassandra.javadsl.CassandraSessionRegistry;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
 import java.io.File;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -65,17 +78,22 @@ public class Main {
       "WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 } \n";
 
     String offsetTableStmt =
-      "CREATE TABLE IF NOT EXISTS akka_cqrs_sample.offsetStore ( \n" +
-      "  eventProcessorId text, \n" +
-      "  tag text, \n" +
-      "  timeUuidOffset timeuuid, \n" +
-      "  PRIMARY KEY (eventProcessorId, tag) \n" +
+      "CREATE TABLE IF NOT EXISTS akka_cqrs_sample.offset_store ( \n" +
+      "  projection_name text, \n" +
+      "  partition int, \n" +
+      "  projection_key text, \n" +
+      "  offset text, \n" +
+      "  manifest text, \n" +
+      "  last_updated timestamp, \n" +
+      "  PRIMARY KEY ((projection_name, partition), projection_key) \n" +
       ") \n";
 
     // ok to block here, main thread
     try {
       session.executeDDL(keyspaceStmt).toCompletableFuture().get(30, TimeUnit.SECONDS);
+      system.log().info("Created akka_cqrs_sample keyspace");
       session.executeDDL(offsetTableStmt).toCompletableFuture().get(30, TimeUnit.SECONDS);
+      system.log().info("Created akka_cqrs_sample.offset_store table");
     } catch (Exception e) {
       throw new RuntimeException(e.getMessage(), e);
     }
@@ -92,15 +110,45 @@ class Guardian {
       ShoppingCart.init(system, settings);
 
       if (Cluster.get(system).selfMember().hasRole("read-model")) {
-        EventProcessor.init(
-          system,
-          settings,
-          tag -> new ShoppingCartEventProcessorStream(system, settings.id, tag));
+        // FIXME, the tables may not be created yet, send a start message they're done
+
+        // we only want to run the daemon processes on the read-model nodes
+        ClusterShardingSettings shardingSettings = ClusterShardingSettings.create(system);
+        ShardedDaemonProcessSettings shardedDaemonProcessSettings =
+                ShardedDaemonProcessSettings.create(system)
+                        .withShardingSettings(shardingSettings.withRole("read-model"));
+
+        ShardedDaemonProcess.get(system).init(
+                ProjectionBehavior.Command.class,
+                "ShoppingCartProjection",
+                settings.parallelism,
+                n -> {
+                  String tag = settings.tagPrefix + "-" + n;
+                  return ProjectionBehavior.create(createProjectionFor(system, tag));
+                },
+                shardedDaemonProcessSettings,
+                Optional.of(ProjectionBehavior.stopMessage())
+        );
       }
 
       ShoppingCartServer.startHttpServer(new ShoppingCartRoutes(system).shopping(), httpPort, system);
 
       return Behaviors.empty();
     });
+  }
+
+  static AtLeastOnceCassandraProjection<EventEnvelope<ShoppingCart.Event>> createProjectionFor(ActorSystem<?> system, String tag) {
+    SourceProvider<Offset, EventEnvelope<ShoppingCart.Event>> sourceProvider = EventSourcedProvider.
+            <ShoppingCart.Event>eventsByTag(
+                    system,
+                    CassandraReadJournal.Identifier(),
+                    tag
+            );
+
+    return CassandraProjection.atLeastOnce(
+            ProjectionId.of("shopping-carts", tag),
+            sourceProvider,
+            new ShoppingCartProjectionHandler(system, tag)
+        );
   }
 }

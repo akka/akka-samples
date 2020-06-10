@@ -84,7 +84,7 @@ public class EventProcessorTest {
 
     testKit.spawn(
       EventProcessor.create(
-        new ShoppingCartEventProcessorStream(system, "EventProcessor", "carts-slice-0")));
+        new ShoppingCartProjectionHandler(system, "EventProcessor", "carts-slice-0")));
 
     cart1.tell(new ShoppingCart.AddItem("foo", 42, probe.getRef()));
     probe.expectMessageClass(ShoppingCart.Accepted.class);
