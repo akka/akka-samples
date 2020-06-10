@@ -30,56 +30,69 @@ class ShoppingCartRoutes()(implicit system: ActorSystem[_]) {
       pathPrefix("carts") {
         concat(
           post {
-            entity(as[AddItem]) { data =>
-              val entityRef = sharding.entityRefFor(ShoppingCart.EntityKey, data.cartId)
-              val reply: Future[ShoppingCart.Confirmation] =
-                entityRef.ask(ShoppingCart.AddItem(data.itemId, data.quantity, _))
-              onSuccess(reply) {
-                case ShoppingCart.Accepted(summary) =>
-                  complete(StatusCodes.OK -> summary)
-                case ShoppingCart.Rejected(reason) =>
-                  complete(StatusCodes.BadRequest, reason)
-              }
+            entity(as[AddItem]) {
+              data =>
+                val entityRef =
+                  sharding.entityRefFor(ShoppingCart.EntityKey, data.cartId)
+                val reply: Future[ShoppingCart.Confirmation] =
+                  entityRef.ask(
+                    ShoppingCart.AddItem(data.itemId, data.quantity, _)
+                  )
+                onSuccess(reply) {
+                  case ShoppingCart.Accepted(summary) =>
+                    complete(StatusCodes.OK -> summary)
+                  case ShoppingCart.Rejected(reason) =>
+                    complete(StatusCodes.BadRequest -> reason)
+                }
             }
           },
           put {
             entity(as[UpdateItem]) {
               data =>
-                val entityRef = sharding.entityRefFor(ShoppingCart.EntityKey, data.cartId)
+                val entityRef =
+                  sharding.entityRefFor(ShoppingCart.EntityKey, data.cartId)
 
                 def command(replyTo: ActorRef[ShoppingCart.Confirmation]) =
-                  if (data.quantity == 0) ShoppingCart.RemoveItem(data.itemId, replyTo)
-                  else ShoppingCart.AdjustItemQuantity(data.itemId, data.quantity, replyTo)
+                  if (data.quantity == 0)
+                    ShoppingCart.RemoveItem(data.itemId, replyTo)
+                  else
+                    ShoppingCart
+                      .AdjustItemQuantity(data.itemId, data.quantity, replyTo)
 
-                val reply: Future[ShoppingCart.Confirmation] = entityRef.ask(command(_))
+                val reply: Future[ShoppingCart.Confirmation] =
+                  entityRef.ask(command(_))
                 onSuccess(reply) {
                   case ShoppingCart.Accepted(summary) =>
                     complete(StatusCodes.OK -> summary)
                   case ShoppingCart.Rejected(reason) =>
-                    complete(StatusCodes.BadRequest, reason)
+                    complete(StatusCodes.BadRequest -> reason)
                 }
             }
           },
           pathPrefix(Segment) { cartId =>
             concat(get {
-              val entityRef = sharding.entityRefFor(ShoppingCart.EntityKey, cartId)
+              val entityRef =
+                sharding.entityRefFor(ShoppingCart.EntityKey, cartId)
               onSuccess(entityRef.ask(ShoppingCart.Get)) { summary =>
                 if (summary.items.isEmpty) complete(StatusCodes.NotFound)
                 else complete(summary)
               }
             }, path("checkout") {
               post {
-                val entityRef = sharding.entityRefFor(ShoppingCart.EntityKey, cartId)
-                val reply: Future[ShoppingCart.Confirmation] = entityRef.ask(ShoppingCart.Checkout(_))
+                val entityRef =
+                  sharding.entityRefFor(ShoppingCart.EntityKey, cartId)
+                val reply: Future[ShoppingCart.Confirmation] =
+                  entityRef.ask(ShoppingCart.Checkout(_))
                 onSuccess(reply) {
                   case ShoppingCart.Accepted(summary) =>
                     complete(StatusCodes.OK -> summary)
                   case ShoppingCart.Rejected(reason) =>
-                    complete(StatusCodes.BadRequest, reason)
+                    complete(StatusCodes.BadRequest -> reason)
                 }
               }
             })
-          })
+          }
+        )
       }
     }
 
@@ -91,9 +104,11 @@ object JsonFormats {
   // import the default encoders for primitive types (Int, String, Lists etc)
   import spray.json.DefaultJsonProtocol._
 
-  implicit val summaryFormat: RootJsonFormat[ShoppingCart.Summary] = jsonFormat2(ShoppingCart.Summary)
-  implicit val addItemFormat: RootJsonFormat[ShoppingCartRoutes.AddItem] = jsonFormat3(ShoppingCartRoutes.AddItem)
-  implicit val updateItemFormat: RootJsonFormat[ShoppingCartRoutes.UpdateItem] = jsonFormat3(
-    ShoppingCartRoutes.UpdateItem)
+  implicit val summaryFormat: RootJsonFormat[ShoppingCart.Summary] =
+    jsonFormat2(ShoppingCart.Summary)
+  implicit val addItemFormat: RootJsonFormat[ShoppingCartRoutes.AddItem] =
+    jsonFormat3(ShoppingCartRoutes.AddItem)
+  implicit val updateItemFormat: RootJsonFormat[ShoppingCartRoutes.UpdateItem] =
+    jsonFormat3(ShoppingCartRoutes.UpdateItem)
 
 }
