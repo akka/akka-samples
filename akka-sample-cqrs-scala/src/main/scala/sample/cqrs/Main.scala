@@ -14,7 +14,8 @@ import akka.cluster.typed.Cluster
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
 import akka.persistence.cassandra.testkit.CassandraLauncher
 import akka.projection.{ ProjectionBehavior, ProjectionId }
-import akka.projection.cassandra.scaladsl.CassandraProjection
+import akka.projection.cassandra.scaladsl.{ AtLeastOnceCassandraProjection, CassandraProjection }
+import akka.projection.eventsourced.EventEnvelope
 import akka.projection.eventsourced.scaladsl.EventSourcedProvider
 import akka.stream.alpakka.cassandra.scaladsl.CassandraSessionRegistry
 import com.typesafe.config.Config
@@ -100,6 +101,21 @@ object Main {
 
 object Guardian {
 
+  def createProjectionFor(
+      system: ActorSystem[_],
+      settings: EventProcessorSettings,
+      index: Int): AtLeastOnceCassandraProjection[EventEnvelope[ShoppingCart.Event]] = {
+    val tag = s"${settings.tagPrefix}-$index"
+    val sourceProvider = EventSourcedProvider.eventsByTag[ShoppingCart.Event](
+      system = system,
+      readJournalPluginId = CassandraReadJournal.Identifier,
+      tag = tag)
+    CassandraProjection.atLeastOnce(
+      projectionId = ProjectionId("shopping-carts", tag),
+      sourceProvider,
+      handler = new ShoppingCartProjectionHandler(tag, system))
+  }
+
   def apply(): Behavior[Nothing] = {
     Behaviors.setup[Nothing] { context =>
       val system = context.system
@@ -111,17 +127,6 @@ object Guardian {
       ShoppingCart.init(system, settings)
 
       if (Cluster(system).selfMember.hasRole("read-model")) {
-        def createProjectionFor(index: Int) = {
-          val tag = s"${settings.tagPrefix}-$index"
-          val sourceProvider = EventSourcedProvider.eventsByTag[ShoppingCart.Event](
-            system = system,
-            readJournalPluginId = CassandraReadJournal.Identifier,
-            tag = tag)
-          CassandraProjection.atLeastOnce(
-            projectionId = ProjectionId("shopping-carts", tag),
-            sourceProvider,
-            handler = new ShoppingCartProjectionHandler(tag, system))
-        }
 
         // we only want to run the daemon processes on the read-model nodes
         val shardingSettings = ClusterShardingSettings(system)
@@ -131,7 +136,7 @@ object Guardian {
         ShardedDaemonProcess(system).init(
           name = "ShoppingCartProjection",
           settings.parallelism,
-          n => ProjectionBehavior(createProjectionFor(n)),
+          n => ProjectionBehavior(createProjectionFor(system, settings, n)),
           shardedDaemonProcessSettings,
           Some(ProjectionBehavior.Stop))
       }
