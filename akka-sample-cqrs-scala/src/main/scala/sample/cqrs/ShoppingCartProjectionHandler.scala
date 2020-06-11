@@ -13,17 +13,14 @@ class ShoppingCartProjectionHandler(tag: String, system: ActorSystem[_])
     extends Handler[EventEnvelope[ShoppingCart.Event]] {
   val log = LoggerFactory.getLogger(getClass)
 
-  override def process(
-    envelope: EventEnvelope[ShoppingCart.Event]
-  ): Future[Done] = {
+  override def process(envelope: EventEnvelope[ShoppingCart.Event]): Future[Done] = {
 
     log.info(
       "EventProcessor({}) consumed {} from {} with seqNr {}",
       tag,
       envelope.event,
       envelope.persistenceId,
-      envelope.sequenceNr
-    )
+      envelope.sequenceNr)
     system.eventStream ! EventStream.Publish(envelope.event)
     Future.successful(Done)
   }

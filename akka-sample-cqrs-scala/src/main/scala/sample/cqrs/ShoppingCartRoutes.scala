@@ -30,20 +30,17 @@ class ShoppingCartRoutes()(implicit system: ActorSystem[_]) {
       pathPrefix("carts") {
         concat(
           post {
-            entity(as[AddItem]) {
-              data =>
-                val entityRef =
-                  sharding.entityRefFor(ShoppingCart.EntityKey, data.cartId)
-                val reply: Future[ShoppingCart.Confirmation] =
-                  entityRef.ask(
-                    ShoppingCart.AddItem(data.itemId, data.quantity, _)
-                  )
-                onSuccess(reply) {
-                  case ShoppingCart.Accepted(summary) =>
-                    complete(StatusCodes.OK -> summary)
-                  case ShoppingCart.Rejected(reason) =>
-                    complete(StatusCodes.BadRequest -> reason)
-                }
+            entity(as[AddItem]) { data =>
+              val entityRef =
+                sharding.entityRefFor(ShoppingCart.EntityKey, data.cartId)
+              val reply: Future[ShoppingCart.Confirmation] =
+                entityRef.ask(ShoppingCart.AddItem(data.itemId, data.quantity, _))
+              onSuccess(reply) {
+                case ShoppingCart.Accepted(summary) =>
+                  complete(StatusCodes.OK -> summary)
+                case ShoppingCart.Rejected(reason) =>
+                  complete(StatusCodes.BadRequest -> reason)
+              }
             }
           },
           put {
@@ -56,8 +53,7 @@ class ShoppingCartRoutes()(implicit system: ActorSystem[_]) {
                   if (data.quantity == 0)
                     ShoppingCart.RemoveItem(data.itemId, replyTo)
                   else
-                    ShoppingCart
-                      .AdjustItemQuantity(data.itemId, data.quantity, replyTo)
+                    ShoppingCart.AdjustItemQuantity(data.itemId, data.quantity, replyTo)
 
                 val reply: Future[ShoppingCart.Confirmation] =
                   entityRef.ask(command(_))
@@ -91,8 +87,7 @@ class ShoppingCartRoutes()(implicit system: ActorSystem[_]) {
                 }
               }
             })
-          }
-        )
+          })
       }
     }
 

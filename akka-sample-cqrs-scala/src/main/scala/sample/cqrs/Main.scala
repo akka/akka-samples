@@ -8,15 +8,12 @@ import scala.concurrent.duration._
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
-import akka.cluster.sharding.typed.{
-  ClusterShardingSettings,
-  ShardedDaemonProcessSettings
-}
+import akka.cluster.sharding.typed.{ ClusterShardingSettings, ShardedDaemonProcessSettings }
 import akka.cluster.sharding.typed.scaladsl.ShardedDaemonProcess
 import akka.cluster.typed.Cluster
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
 import akka.persistence.cassandra.testkit.CassandraLauncher
-import akka.projection.{ProjectionBehavior, ProjectionId}
+import akka.projection.{ ProjectionBehavior, ProjectionId }
 import akka.projection.cassandra.scaladsl.CassandraProjection
 import akka.projection.eventsourced.scaladsl.EventSourcedProvider
 import akka.stream.alpakka.cassandra.scaladsl.CassandraSessionRegistry
@@ -39,9 +36,7 @@ object Main {
         new CountDownLatch(1).await()
 
       case None =>
-        throw new IllegalArgumentException(
-          "port number, or cassandra required argument"
-        )
+        throw new IllegalArgumentException("port number, or cassandra required argument")
     }
   }
 
@@ -60,18 +55,13 @@ object Main {
        """).withFallback(ConfigFactory.load())
 
   /**
-    * To make the sample easier to run we kickstart a Cassandra instance to
-    * act as the journal. Cassandra is a great choice of backend for Akka Persistence but
-    * in a real application a pre-existing Cassandra cluster should be used.
-    */
+   * To make the sample easier to run we kickstart a Cassandra instance to
+   * act as the journal. Cassandra is a great choice of backend for Akka Persistence but
+   * in a real application a pre-existing Cassandra cluster should be used.
+   */
   def startCassandraDatabase(): Unit = {
     val databaseDirectory = new File("target/cassandra-db")
-    CassandraLauncher.start(
-      databaseDirectory,
-      CassandraLauncher.DefaultTestConfigResource,
-      clean = false,
-      port = 9042
-    )
+    CassandraLauncher.start(databaseDirectory, CassandraLauncher.DefaultTestConfigResource, clean = false, port = 9042)
   }
 
   def createTables(system: ActorSystem[_]): Unit = {
@@ -122,26 +112,22 @@ object Guardian {
 
       if (Cluster(system).selfMember.hasRole("read-model")) {
         def createProjectionFor(tag: String) = {
-          val sourceProvider = EventSourcedProvider
-            .eventsByTag[ShoppingCart.Event](
-              system = system,
-              readJournalPluginId = CassandraReadJournal.Identifier,
-              tag = tag
-            )
+          val sourceProvider = EventSourcedProvider.eventsByTag[ShoppingCart.Event](
+            system = system,
+            readJournalPluginId = CassandraReadJournal.Identifier,
+            tag = tag)
           CassandraProjection
             .atLeastOnce(
               projectionId = ProjectionId("shopping-carts", tag),
               sourceProvider,
-              handler = new ShoppingCartProjectionHandler(tag, system)
-            )
+              handler = new ShoppingCartProjectionHandler(tag, system))
             .withSaveOffset(100, 500.millis)
         }
 
         // we only want to run the daemon processes on the read-model nodes
         val shardingSettings = ClusterShardingSettings(system)
         val shardedDaemonProcessSettings =
-          ShardedDaemonProcessSettings(system)
-            .withShardingSettings(shardingSettings.withRole("read-model"))
+          ShardedDaemonProcessSettings(system).withShardingSettings(shardingSettings.withRole("read-model"))
 
         ShardedDaemonProcess(system).init(
           name = "ShoppingCartProjection",
@@ -152,8 +138,7 @@ object Guardian {
             ProjectionBehavior(createProjectionFor(tag))
           },
           shardedDaemonProcessSettings,
-          Some(ProjectionBehavior.Stop)
-        )
+          Some(ProjectionBehavior.Stop))
       }
 
       val routes = new ShoppingCartRoutes()(context.system)
