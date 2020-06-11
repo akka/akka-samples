@@ -16,6 +16,7 @@ import akka.projection.cassandra.javadsl.AtLeastOnceCassandraProjection;
 import akka.projection.cassandra.javadsl.CassandraProjection;
 import akka.projection.eventsourced.EventEnvelope;
 import akka.projection.eventsourced.javadsl.EventSourcedProvider;
+import akka.projection.internal.ProjectionSettings;
 import akka.projection.javadsl.SourceProvider;
 import akka.stream.alpakka.cassandra.javadsl.CassandraSession;
 import akka.stream.alpakka.cassandra.javadsl.CassandraSessionRegistry;
@@ -110,8 +111,6 @@ class Guardian {
       ShoppingCart.init(system, settings);
 
       if (Cluster.get(system).selfMember().hasRole("read-model")) {
-        // FIXME, the tables may not be created yet, send a start message they're done
-
         // we only want to run the daemon processes on the read-model nodes
         ClusterShardingSettings shardingSettings = ClusterShardingSettings.create(system);
         ShardedDaemonProcessSettings shardedDaemonProcessSettings =
@@ -122,10 +121,7 @@ class Guardian {
                 ProjectionBehavior.Command.class,
                 "ShoppingCartProjection",
                 settings.parallelism,
-                n -> {
-                  String tag = settings.tagPrefix + "-" + n;
-                  return ProjectionBehavior.create(createProjectionFor(system, tag));
-                },
+                n -> ProjectionBehavior.create(createProjectionFor(system, settings, n)),
                 shardedDaemonProcessSettings,
                 Optional.of(ProjectionBehavior.stopMessage())
         );
@@ -137,14 +133,18 @@ class Guardian {
     });
   }
 
-  static AtLeastOnceCassandraProjection<EventEnvelope<ShoppingCart.Event>> createProjectionFor(ActorSystem<?> system, String tag) {
+  static AtLeastOnceCassandraProjection<EventEnvelope<ShoppingCart.Event>> createProjectionFor(
+          ActorSystem<?> system,
+          EventProcessorSettings settings,
+          int index) {
+
+    String tag = settings.tagPrefix + "-" + index;
     SourceProvider<Offset, EventEnvelope<ShoppingCart.Event>> sourceProvider = EventSourcedProvider.
             <ShoppingCart.Event>eventsByTag(
                     system,
                     CassandraReadJournal.Identifier(),
                     tag
             );
-
     return CassandraProjection.atLeastOnce(
             ProjectionId.of("shopping-carts", tag),
             sourceProvider,

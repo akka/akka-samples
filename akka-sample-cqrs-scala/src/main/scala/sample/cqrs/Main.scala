@@ -111,17 +111,16 @@ object Guardian {
       ShoppingCart.init(system, settings)
 
       if (Cluster(system).selfMember.hasRole("read-model")) {
-        def createProjectionFor(tag: String) = {
+        def createProjectionFor(index: Int) = {
+          val tag = s"${settings.tagPrefix}-$index"
           val sourceProvider = EventSourcedProvider.eventsByTag[ShoppingCart.Event](
             system = system,
             readJournalPluginId = CassandraReadJournal.Identifier,
             tag = tag)
-          CassandraProjection
-            .atLeastOnce(
-              projectionId = ProjectionId("shopping-carts", tag),
-              sourceProvider,
-              handler = new ShoppingCartProjectionHandler(tag, system))
-            .withSaveOffset(100, 500.millis)
+          CassandraProjection.atLeastOnce(
+            projectionId = ProjectionId("shopping-carts", tag),
+            sourceProvider,
+            handler = new ShoppingCartProjectionHandler(tag, system))
         }
 
         // we only want to run the daemon processes on the read-model nodes
@@ -132,11 +131,7 @@ object Guardian {
         ShardedDaemonProcess(system).init(
           name = "ShoppingCartProjection",
           settings.parallelism,
-          // factory for the behaviors
-          { n =>
-            val tag = s"${settings.tagPrefix}-$n"
-            ProjectionBehavior(createProjectionFor(tag))
-          },
+          n => ProjectionBehavior(createProjectionFor(n)),
           shardedDaemonProcessSettings,
           Some(ProjectionBehavior.Stop))
       }
