@@ -94,6 +94,19 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>com.lightbend.akka</groupId>
+      <artifactId>akka-projection-testkit_2.13</artifactId>
+      <version>${akka-projection.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.typesafe.akka</groupId>
+      <artifactId>akka-stream-testkit_2.13</artifactId>
+      <version>${akka.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>4.12</version>
