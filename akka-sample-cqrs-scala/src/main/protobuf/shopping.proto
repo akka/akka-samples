@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "sample.cqrs.grpc";
+option java_outer_classname = "ShoppingCartProto";
+
+// The ShoppingCart service definition.
+service ShoppingCartService {
+  // The stream of shopping cart events
+  rpc Events (EventsRequest) returns (stream ShoppingCartEventEnvelope) {}
+}
+
+message EventsRequest {
+  int32 slice = 1;
+  string offset = 2;
+}
+
+message ShoppingCartEventEnvelope {
+  string offset = 1;
+  // real events would be defined in this proto, but just using toString for now
+  string event = 2;
+}
+

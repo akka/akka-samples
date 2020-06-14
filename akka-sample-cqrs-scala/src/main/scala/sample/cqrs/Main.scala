@@ -5,6 +5,7 @@ import java.util.concurrent.CountDownLatch
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
@@ -20,6 +21,7 @@ import akka.projection.eventsourced.scaladsl.EventSourcedProvider
 import akka.stream.alpakka.cassandra.scaladsl.CassandraSessionRegistry
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
+import sample.cqrs.grpc.ShoppingCartGrpcServer
 
 object Main {
 
@@ -29,7 +31,8 @@ object Main {
       case Some(portString) if portString.matches("""\d+""") =>
         val port = portString.toInt
         val httpPort = ("80" + portString.takeRight(2)).toInt
-        startNode(port, httpPort)
+        val grpcPort = ("90" + portString.takeRight(2)).toInt
+        startNode(port, httpPort, grpcPort)
 
       case Some("cassandra") =>
         startCassandraDatabase()
@@ -41,19 +44,20 @@ object Main {
     }
   }
 
-  def startNode(port: Int, httpPort: Int): Unit = {
+  def startNode(port: Int, httpPort: Int, grpcPort: Int): Unit = {
     val system =
-      ActorSystem[Nothing](Guardian(), "Shopping", config(port, httpPort))
+      ActorSystem[Nothing](Guardian(), "Shopping", config(port, httpPort, grpcPort))
 
     if (Cluster(system).selfMember.hasRole("read-model"))
       createTables(system)
   }
 
-  def config(port: Int, httpPort: Int): Config =
+  def config(port: Int, httpPort: Int, grpcPort: Int): Config =
     ConfigFactory.parseString(s"""
       akka.remote.artery.canonical.port = $port
       shopping.http.port = $httpPort
-       """).withFallback(ConfigFactory.load())
+      shopping.grpc.port = $grpcPort
+      """).withFallback(ConfigFactory.load())
 
   /**
    * To make the sample easier to run we kickstart a Cassandra instance to
@@ -123,6 +127,7 @@ object Guardian {
       val settings = EventProcessorSettings(system)
 
       val httpPort = context.system.settings.config.getInt("shopping.http.port")
+      val grpcPort = context.system.settings.config.getInt("shopping.grpc.port")
 
       ShoppingCart.init(system, settings)
 
@@ -143,6 +148,8 @@ object Guardian {
 
       val routes = new ShoppingCartRoutes()(context.system)
       new ShoppingCartServer(routes.shopping, httpPort, context.system).start()
+
+      new ShoppingCartGrpcServer(system, grpcPort, settings).start()
 
       Behaviors.empty
     }
