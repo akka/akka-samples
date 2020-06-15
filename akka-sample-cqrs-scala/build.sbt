@@ -1,7 +1,9 @@
 val AkkaVersion = "2.6.6"
 val AkkaPersistenceCassandraVersion = "1.0.0"
-val AkkaHttpVersion = "10.1.10"
+val AkkaHttpVersion = "10.1.12"
 val AkkaProjectionVersion = "0.2"
+
+enablePlugins(AkkaGrpcPlugin)
 
 lazy val `akka-sample-cqrs-scala` = project
   .in(file("."))
@@ -15,6 +17,7 @@ lazy val `akka-sample-cqrs-scala` = project
         "com.typesafe.akka" %% "akka-cluster-sharding-typed" % AkkaVersion,
         "com.typesafe.akka" %% "akka-persistence-typed" % AkkaVersion,
         "com.typesafe.akka" %% "akka-persistence-query" % AkkaVersion,
+        "com.typesafe.akka" %% "akka-discovery" % AkkaVersion,
         "com.typesafe.akka" %% "akka-serialization-jackson" % AkkaVersion,
         "com.typesafe.akka" %% "akka-persistence-cassandra" % AkkaPersistenceCassandraVersion,
         "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % AkkaPersistenceCassandraVersion,
