@@ -21,6 +21,7 @@
     <akka.version>2.6.6</akka.version>
     <akka-persistence-cassandra.version>1.0.0-RC1</akka-persistence-cassandra.version>
     <akka-http.version>10.1.10</akka-http.version>
+    <akka-projection.version>0.2</akka-projection.version>
   </properties>
   
   <dependencies>
@@ -69,6 +70,16 @@
       <artifactId>akka-http-jackson_2.13</artifactId>
       <version>${akka-http.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.lightbend.akka</groupId>
+      <artifactId>akka-projection-eventsourced_2.13</artifactId>
+      <version>${akka-projection.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.lightbend.akka</groupId>
+      <artifactId>akka-projection-cassandra_2.13</artifactId>
+      <version>${akka-projection.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>ch.qos.logback</groupId>
@@ -82,6 +93,19 @@
       <version>${akka.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.lightbend.akka</groupId>
+      <artifactId>akka-projection-testkit_2.13</artifactId>
+      <version>${akka-projection.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.typesafe.akka</groupId>
+      <artifactId>akka-stream-testkit_2.13</artifactId>
+      <version>${akka.version}</version>
+      <scope>test</scope>
+    </dependency>
+
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
