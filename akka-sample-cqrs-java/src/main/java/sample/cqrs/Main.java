@@ -12,7 +12,7 @@ import akka.persistence.cassandra.testkit.CassandraLauncher;
 import akka.persistence.query.Offset;
 import akka.projection.ProjectionBehavior;
 import akka.projection.ProjectionId;
-import akka.projection.cassandra.javadsl.AtLeastOnceCassandraProjection;
+import akka.projection.javadsl.AtLeastOnceProjection;
 import akka.projection.cassandra.javadsl.CassandraProjection;
 import akka.projection.eventsourced.EventEnvelope;
 import akka.projection.eventsourced.javadsl.EventSourcedProvider;
@@ -133,7 +133,7 @@ class Guardian {
     });
   }
 
-  static AtLeastOnceCassandraProjection<EventEnvelope<ShoppingCart.Event>> createProjectionFor(
+  static AtLeastOnceProjection<Offset, EventEnvelope<ShoppingCart.Event>> createProjectionFor(
           ActorSystem<?> system,
           EventProcessorSettings settings,
           int index) {
@@ -148,7 +148,7 @@ class Guardian {
     return CassandraProjection.atLeastOnce(
             ProjectionId.of("shopping-carts", tag),
             sourceProvider,
-            new ShoppingCartProjectionHandler(system, tag)
+            () -> new ShoppingCartProjectionHandler(system, tag)
         );
   }
 }
