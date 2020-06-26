@@ -1,7 +1,7 @@
 val AkkaVersion = "2.6.6"
 val AkkaPersistenceCassandraVersion = "1.0.0"
 val AkkaHttpVersion = "10.1.10"
-val AkkaProjectionVersion = "0.2"
+val AkkaProjectionVersion = "0.3"
 
 lazy val `akka-sample-cqrs-scala` = project
   .in(file("."))

@@ -5,6 +5,7 @@ import java.util.concurrent.CountDownLatch
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
@@ -13,8 +14,10 @@ import akka.cluster.sharding.typed.scaladsl.ShardedDaemonProcess
 import akka.cluster.typed.Cluster
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
 import akka.persistence.cassandra.testkit.CassandraLauncher
+import akka.persistence.query.Offset
 import akka.projection.{ ProjectionBehavior, ProjectionId }
-import akka.projection.cassandra.scaladsl.{ AtLeastOnceCassandraProjection, CassandraProjection }
+import akka.projection.scaladsl.AtLeastOnceProjection
+import akka.projection.cassandra.scaladsl.CassandraProjection
 import akka.projection.eventsourced.EventEnvelope
 import akka.projection.eventsourced.scaladsl.EventSourcedProvider
 import akka.stream.alpakka.cassandra.scaladsl.CassandraSessionRegistry
@@ -104,7 +107,7 @@ object Guardian {
   def createProjectionFor(
       system: ActorSystem[_],
       settings: EventProcessorSettings,
-      index: Int): AtLeastOnceCassandraProjection[EventEnvelope[ShoppingCart.Event]] = {
+      index: Int): AtLeastOnceProjection[Offset, EventEnvelope[ShoppingCart.Event]] = {
     val tag = s"${settings.tagPrefix}-$index"
     val sourceProvider = EventSourcedProvider.eventsByTag[ShoppingCart.Event](
       system = system,
@@ -113,7 +116,7 @@ object Guardian {
     CassandraProjection.atLeastOnce(
       projectionId = ProjectionId("shopping-carts", tag),
       sourceProvider,
-      handler = new ShoppingCartProjectionHandler(tag, system))
+      handler = () => new ShoppingCartProjectionHandler(tag, system))
   }
 
   def apply(): Behavior[Nothing] = {
