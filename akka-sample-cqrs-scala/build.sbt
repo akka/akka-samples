@@ -8,7 +8,7 @@ lazy val `akka-sample-cqrs-scala` = project
   .settings(
     organization := "com.lightbend.akka.samples",
     version := "1.0",
-    scalaVersion := "2.13.3",
+    scalaVersion := "2.13.1",
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
     libraryDependencies ++= Seq(
