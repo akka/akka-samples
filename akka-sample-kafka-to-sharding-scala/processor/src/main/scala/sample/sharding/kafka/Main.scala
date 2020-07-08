@@ -56,10 +56,9 @@ object Main {
       val eventProcessor = ctx.spawn[Nothing](UserEventsKafkaProcessor(region, settings), "kafka-event-processor")
       val binding: Future[Http.ServerBinding] = startGrpc(ctx.system, frontEndPort, region)
       binding.onComplete {
-        case Success(bound) =>
-          ctx.log.info("Bound: {}", bound)
         case Failure(t) =>
           ctx.self ! BindingFailed(t)
+        case _ =>
       }
       running(ctx, binding, eventProcessor)
     }
