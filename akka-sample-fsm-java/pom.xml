@@ -6,7 +6,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <akka.version>2.6.6</akka.version>
+    <akka.version>2.6.7</akka.version>
   </properties>
 
   <groupId>com.lightbend.akka.samples</groupId>
