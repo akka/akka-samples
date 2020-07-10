@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.6.6"
+val akkaVersion = "2.6.7"
 
 val `akka-sample-distributed-data-scala` = project
   .in(file("."))
