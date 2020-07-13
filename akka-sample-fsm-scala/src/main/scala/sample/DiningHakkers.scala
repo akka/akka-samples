@@ -208,6 +208,6 @@ object DiningHakkers {
   }
 
   def main(args: Array[String]): Unit = {
-    ActorSystem(DiningHakkers(), "DinningHakkers")
+    ActorSystem(DiningHakkers(), "DiningHakkers")
   }
 }
