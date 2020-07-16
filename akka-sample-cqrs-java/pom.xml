@@ -18,7 +18,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <akka.version>2.6.7</akka.version>
+    <akka.version>2.6.8</akka.version>
     <akka-persistence-cassandra.version>1.0.0-RC1</akka-persistence-cassandra.version>
     <akka-http.version>10.1.10</akka-http.version>
     <akka-projection.version>0.3</akka-projection.version>
