@@ -2,7 +2,7 @@ val AkkaVersion = "2.6.8"
 val AlpakkaKafkaVersion = "2.0.4"
 val AkkaManagementVersion = "1.0.5"
 val AkkaHttpVersion = "10.1.11"
-val KafkaVersion = "2.4.0"
+val KafkaVersion = "2.4.1"
 val LogbackVersion = "1.2.3"
 
 ThisBuild / scalaVersion := "2.13.1"
