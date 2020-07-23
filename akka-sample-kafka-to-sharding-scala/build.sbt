@@ -2,7 +2,7 @@ val AkkaVersion = "2.6.8"
 val AlpakkaKafkaVersion = "2.0.4"
 val AkkaManagementVersion = "1.0.5"
 val AkkaHttpVersion = "10.1.11"
-val KafkaVersion = "2.4.1"
+val EmbeddedKafkaVersion = "2.4.1.1"
 val LogbackVersion = "1.2.3"
 
 ThisBuild / scalaVersion := "2.13.1"
@@ -31,7 +31,7 @@ lazy val kafka = project
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % LogbackVersion,
       "org.slf4j" % "log4j-over-slf4j" % "1.7.26",
-      "io.github.embeddedkafka" %% "embedded-kafka" % KafkaVersion),
+      "io.github.embeddedkafka" %% "embedded-kafka" % EmbeddedKafkaVersion),
     cancelable := false)
 
 lazy val client = project
