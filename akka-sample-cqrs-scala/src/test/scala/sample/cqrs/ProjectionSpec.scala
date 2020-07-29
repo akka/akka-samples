@@ -4,6 +4,7 @@ import java.io.File
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import akka.actor.typed.eventstream.EventStream
+import akka.pattern.StatusReply
 import akka.persistence.cassandra.testkit.CassandraLauncher
 import akka.projection.testkit.scaladsl.ProjectionTestKit
 import com.typesafe.config.ConfigFactory
@@ -70,7 +71,7 @@ class ProjectionSpec
       val cartProbe = createTestProbe[Any]()
       val cart = spawn(ShoppingCart("cart-1", Set(s"${settings.tagPrefix}-0")))
       cart ! ShoppingCart.AddItem("25", 12, cartProbe.ref)
-      cartProbe.expectMessageType[ShoppingCart.Accepted]
+      cartProbe.expectMessageType[StatusReply[ShoppingCart.Summary]].isSuccess should ===(true)
 
       val eventProbe = createTestProbe[ShoppingCart.Event]()
       system.eventStream ! EventStream.Subscribe(eventProbe.ref)

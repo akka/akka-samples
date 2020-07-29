@@ -4,13 +4,13 @@ import java.io.File
 import java.util.UUID
 
 import scala.concurrent.duration._
-
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.typed.eventstream.EventStream
 import akka.cluster.MemberStatus
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.typed.Cluster
 import akka.cluster.typed.Join
+import akka.pattern.StatusReply
 import akka.persistence.cassandra.testkit.CassandraLauncher
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.Effect
@@ -149,24 +149,24 @@ class IntegrationSpec
 
     "update and consume from different nodes" in {
       val cart1 = ClusterSharding(testKit1.system).entityRefFor(ShoppingCart.EntityKey, "cart-1")
-      val probe1 = testKit1.createTestProbe[ShoppingCart.Confirmation]
+      val probe1 = testKit1.createTestProbe[StatusReply[ShoppingCart.Summary]]
 
       val cart2 = ClusterSharding(testKit2.system).entityRefFor(ShoppingCart.EntityKey, "cart-2")
-      val probe2 = testKit2.createTestProbe[ShoppingCart.Confirmation]
+      val probe2 = testKit2.createTestProbe[StatusReply[ShoppingCart.Summary]]
 
       val eventProbe3 = testKit3.createTestProbe[ShoppingCart.Event]()
       testKit3.system.eventStream ! EventStream.Subscribe(eventProbe3.ref)
 
       // update from node1, consume event from node3
       cart1 ! ShoppingCart.AddItem("foo", 42, probe1.ref)
-      probe1.expectMessageType[ShoppingCart.Accepted]
+      probe1.receiveMessage().isSuccess should ===(true)
       eventProbe3.expectMessage(ShoppingCart.ItemAdded("cart-1", "foo", 42))
 
       // update from node2, consume event from node3
       cart2 ! ShoppingCart.AddItem("bar", 17, probe2.ref)
-      probe2.expectMessageType[ShoppingCart.Accepted]
+      probe2.receiveMessage().isSuccess should ===(true)
       cart2 ! ShoppingCart.AdjustItemQuantity("bar", 18, probe2.ref)
-      probe2.expectMessageType[ShoppingCart.Accepted]
+      probe2.receiveMessage().isSuccess should ===(true)
       eventProbe3.expectMessage(ShoppingCart.ItemAdded("cart-2", "bar", 17))
       eventProbe3.expectMessage(ShoppingCart.ItemQuantityAdjusted("cart-2", "bar", 18))
     }
@@ -189,11 +189,11 @@ class IntegrationSpec
       }
 
       val cart3 = ClusterSharding(testKit1.system).entityRefFor(ShoppingCart.EntityKey, "cart-3")
-      val probe3 = testKit1.createTestProbe[ShoppingCart.Confirmation]
+      val probe3 = testKit1.createTestProbe[StatusReply[ShoppingCart.Summary]]
 
       // update from node1, consume event from node4
       cart3 ! ShoppingCart.AddItem("abc", 43, probe3.ref)
-      probe3.expectMessageType[ShoppingCart.Accepted]
+      probe3.receiveMessage().isSuccess should ===(true)
       // note that node4 is new, but continues reading from previous offset, i.e. not receiving events
       // that have already been consumed
       eventProbe4.expectMessage(ShoppingCart.ItemAdded("cart-3", "abc", 43))
