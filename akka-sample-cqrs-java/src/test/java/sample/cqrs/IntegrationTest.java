@@ -12,6 +12,7 @@ import akka.cluster.sharding.typed.javadsl.ClusterSharding;
 import akka.cluster.sharding.typed.javadsl.EntityRef;
 import akka.cluster.typed.Cluster;
 import akka.cluster.typed.Join;
+import akka.pattern.StatusReply;
 import akka.persistence.cassandra.testkit.CassandraLauncher;
 import akka.persistence.typed.PersistenceId;
 import akka.persistence.typed.javadsl.CommandHandler;
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 // order of test methods matter in this test
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -167,18 +169,18 @@ public class IntegrationTest {
   public void step02_shouldUpdateAndConsumeFromDifferentNodes() {
     EntityRef<ShoppingCart.Command> cart1 = ClusterSharding.get(testKit1.system())
       .entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, "cart-1");
-    TestProbe<ShoppingCart.Confirmation> probe1 = testKit1.createTestProbe();
+    TestProbe<StatusReply<ShoppingCart.Summary>> probe1 = testKit1.createTestProbe();
 
     EntityRef<ShoppingCart.Command> cart2 = ClusterSharding.get(testKit2.system())
       .entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, "cart-2");
-    TestProbe<ShoppingCart.Confirmation> probe2 = testKit2.createTestProbe();
+    TestProbe<StatusReply<ShoppingCart.Summary>> probe2 = testKit2.createTestProbe();
 
     TestProbe<ShoppingCart.Event> eventProbe3 = testKit3.createTestProbe();
     testKit3.system().eventStream().tell(new EventStream.Subscribe<>(ShoppingCart.Event.class, eventProbe3.getRef()));
 
     // update from node1, consume event from node3
     cart1.tell(new ShoppingCart.AddItem("foo", 42, probe1.getRef()));
-    probe1.expectMessageClass(ShoppingCart.Accepted.class);
+    assertTrue(probe1.receiveMessage().isSuccess());
     ShoppingCart.ItemAdded event1 = eventProbe3.expectMessageClass(ShoppingCart.ItemAdded.class);
     assertEquals("cart-1", event1.cartId);
     assertEquals("foo", event1.itemId);
@@ -186,9 +188,9 @@ public class IntegrationTest {
 
     // update from node2, consume event from node3
     cart2.tell(new ShoppingCart.AddItem("bar", 17, probe2.getRef()));
-    probe2.expectMessageClass(ShoppingCart.Accepted.class);
+    assertTrue(probe2.receiveMessage().isSuccess());
     cart2.tell(new ShoppingCart.AdjustItemQuantity("bar", 18, probe2.getRef()));
-    probe2.expectMessageClass(ShoppingCart.Accepted.class);
+    assertTrue(probe2.receiveMessage().isSuccess());
     ShoppingCart.ItemAdded event2 = eventProbe3.expectMessageClass(ShoppingCart.ItemAdded.class);
     assertEquals("bar", event2.itemId);
     assertEquals(17, event2.quantity);
@@ -218,11 +220,11 @@ public class IntegrationTest {
 
     EntityRef<ShoppingCart.Command> cart3 = ClusterSharding.get(testKit1.system())
       .entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, "cart-3");
-    TestProbe<ShoppingCart.Confirmation> probe3 = testKit1.createTestProbe();
+    TestProbe<StatusReply<ShoppingCart.Summary>> probe3 = testKit1.createTestProbe();
 
     // update from node1, consume event from node4
     cart3.tell(new ShoppingCart.AddItem("abc", 43, probe3.getRef()));
-    probe3.expectMessageClass(ShoppingCart.Accepted.class);
+    assertTrue(probe3.receiveMessage().isSuccess());
     ShoppingCart.ItemAdded event4 = eventProbe4.expectMessageClass(ShoppingCart.ItemAdded.class);
     assertEquals("cart-3", event4.cartId);
     assertEquals("abc", event4.itemId);

@@ -8,6 +8,7 @@ import akka.http.javadsl.marshallers.jackson.Jackson;
 import akka.http.javadsl.model.StatusCodes;
 import akka.http.javadsl.server.PathMatchers;
 import akka.http.javadsl.server.Route;
+import akka.pattern.StatusReply;
 import akka.serialization.jackson.JacksonObjectMapperProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -88,22 +89,22 @@ public class ShoppingCartRoutes {
     );
   }
 
-  private Route onConfirmationReply(CompletionStage<ShoppingCart.Confirmation> reply) {
-    return onSuccess(reply, confirmation -> {
-      if (confirmation instanceof ShoppingCart.Accepted)
-        return complete(StatusCodes.OK, ((ShoppingCart.Accepted) confirmation).summary, Jackson.marshaller(objectMapper));
+  private Route onConfirmationReply(CompletionStage<StatusReply<ShoppingCart.Summary>> futureReply) {
+    return onSuccess(futureReply, reply -> {
+      if (reply.isSuccess())
+        return complete(StatusCodes.OK, reply.getValue(), Jackson.marshaller(objectMapper));
       else
-        return complete(StatusCodes.BAD_REQUEST, ((ShoppingCart.Rejected) confirmation).reason);
+        return complete(StatusCodes.BAD_REQUEST, reply.getError().getMessage());
     });
   }
 
-  private CompletionStage<ShoppingCart.Confirmation> addItem(AddItem data) {
+  private CompletionStage<StatusReply<ShoppingCart.Summary>> addItem(AddItem data) {
     EntityRef<ShoppingCart.Command> entityRef =
       sharding.entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, data.cartId);
     return entityRef.ask(replyTo -> new ShoppingCart.AddItem(data.itemId, data.quantity, replyTo), timeout);
   }
 
-  private CompletionStage<ShoppingCart.Confirmation> updateItem(UpdateItem data) {
+  private CompletionStage<StatusReply<ShoppingCart.Summary>> updateItem(UpdateItem data) {
     EntityRef<ShoppingCart.Command> entityRef =
       sharding.entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, data.cartId);
     if (data.quantity == 0)
@@ -118,7 +119,7 @@ public class ShoppingCartRoutes {
     return entityRef.ask(ShoppingCart.Get::new, timeout);
   }
 
-  private CompletionStage<ShoppingCart.Confirmation> checkout(String cartId) {
+  private CompletionStage<StatusReply<ShoppingCart.Summary>> checkout(String cartId) {
     EntityRef<ShoppingCart.Command> entityRef =
       sharding.entityRefFor(ShoppingCart.ENTITY_TYPE_KEY, cartId);
     return entityRef.ask(ShoppingCart.Checkout::new, timeout);
