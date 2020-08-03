@@ -3,6 +3,7 @@ package sample.cqrs;
 import akka.actor.testkit.typed.javadsl.TestKitJunitResource;
 import akka.actor.testkit.typed.javadsl.TestProbe;
 import akka.actor.typed.ActorRef;
+import akka.pattern.StatusReply;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -31,67 +32,72 @@ public class ShoppingCartTest {
   @Test
   public void shouldAddItem() {
     ActorRef<ShoppingCart.Command> cart = testKit.spawn(ShoppingCart.create(newCartId(), Collections.emptySet()));
-    TestProbe<ShoppingCart.Confirmation> probe = testKit.createTestProbe();
+    TestProbe<StatusReply<ShoppingCart.Summary>> probe = testKit.createTestProbe();
     cart.tell(new ShoppingCart.AddItem("foo", 42, probe.getRef()));
-    ShoppingCart.Accepted result = probe.expectMessageClass(ShoppingCart.Accepted.class);
-    assertEquals(42, result.summary.items.get("foo").intValue());
-    assertFalse(result.summary.checkedOut);
+    StatusReply<ShoppingCart.Summary> result = probe.receiveMessage();
+    assertTrue(result.isSuccess());
+    assertEquals(42, result.getValue().items.get("foo").intValue());
+    assertFalse(result.getValue().checkedOut);
   }
 
   @Test
   public void shouldRejectAlreadyAddedItem() {
     ActorRef<ShoppingCart.Command> cart = testKit.spawn(ShoppingCart.create(newCartId(), Collections.emptySet()));
-    TestProbe<ShoppingCart.Confirmation> probe = testKit.createTestProbe();
+    TestProbe<StatusReply<ShoppingCart.Summary>> probe = testKit.createTestProbe();
     cart.tell(new ShoppingCart.AddItem("foo", 42, probe.getRef()));
-    probe.expectMessageClass(ShoppingCart.Accepted.class);
+    assertTrue(probe.receiveMessage().isSuccess());
     cart.tell(new ShoppingCart.AddItem("foo", 13, probe.getRef()));
-    probe.expectMessageClass(ShoppingCart.Rejected.class);
+    assertTrue(probe.receiveMessage().isError());
   }
 
   @Test
   public void shouldRemoveItem() {
     ActorRef<ShoppingCart.Command> cart = testKit.spawn(ShoppingCart.create(newCartId(), Collections.emptySet()));
-    TestProbe<ShoppingCart.Confirmation> probe = testKit.createTestProbe();
+    TestProbe<StatusReply<ShoppingCart.Summary>> probe = testKit.createTestProbe();
     cart.tell(new ShoppingCart.AddItem("foo", 42, probe.getRef()));
-    probe.expectMessageClass(ShoppingCart.Accepted.class);
+    assertTrue(probe.receiveMessage().isSuccess());
     cart.tell(new ShoppingCart.RemoveItem("foo", probe.getRef()));
-    ShoppingCart.Accepted result = probe.expectMessageClass(ShoppingCart.Accepted.class);
-    assertTrue(result.summary.items.isEmpty());
+    StatusReply<ShoppingCart.Summary> result = probe.receiveMessage();
+    assertTrue(result.isSuccess());
+    assertTrue(result.getValue().items.isEmpty());
   }
 
   @Test
   public void shouldAjustQuantity() {
     ActorRef<ShoppingCart.Command> cart = testKit.spawn(ShoppingCart.create(newCartId(), Collections.emptySet()));
-    TestProbe<ShoppingCart.Confirmation> probe = testKit.createTestProbe();
+    TestProbe<StatusReply<ShoppingCart.Summary>> probe = testKit.createTestProbe();
     cart.tell(new ShoppingCart.AddItem("foo", 42, probe.getRef()));
-    probe.expectMessageClass(ShoppingCart.Accepted.class);
+    assertTrue(probe.receiveMessage().isSuccess());
     cart.tell(new ShoppingCart.AdjustItemQuantity("foo", 43, probe.getRef()));
-    ShoppingCart.Accepted result = probe.expectMessageClass(ShoppingCart.Accepted.class);
-    assertEquals(43, result.summary.items.get("foo").intValue());
+    StatusReply<ShoppingCart.Summary> result = probe.receiveMessage();
+    assertTrue(result.isSuccess());
+    assertEquals(43, result.getValue().items.get("foo").intValue());
   }
 
   @Test
   public void shouldCheckout() {
     ActorRef<ShoppingCart.Command> cart = testKit.spawn(ShoppingCart.create(newCartId(), Collections.emptySet()));
-    TestProbe<ShoppingCart.Confirmation> probe = testKit.createTestProbe();
+    TestProbe<StatusReply<ShoppingCart.Summary>> probe = testKit.createTestProbe();
     cart.tell(new ShoppingCart.AddItem("foo", 42, probe.getRef()));
-    probe.expectMessageClass(ShoppingCart.Accepted.class);
+    assertTrue(probe.receiveMessage().isSuccess());
     cart.tell(new ShoppingCart.Checkout(probe.getRef()));
-    ShoppingCart.Accepted result = probe.expectMessageClass(ShoppingCart.Accepted.class);
-    assertTrue(result.summary.checkedOut);
+    StatusReply<ShoppingCart.Summary> result = probe.receiveMessage();
+    assertTrue(result.isSuccess());
+    assertTrue(result.getValue().checkedOut);
 
     cart.tell(new ShoppingCart.AddItem("bar", 13, probe.getRef()));
-    probe.expectMessageClass(ShoppingCart.Rejected.class);
+    assertTrue(probe.receiveMessage().isError());
   }
 
   @Test
   public void shouldKeepItsState() {
     String cartId = newCartId();
     ActorRef<ShoppingCart.Command> cart = testKit.spawn(ShoppingCart.create(cartId, Collections.emptySet()));
-    TestProbe<ShoppingCart.Confirmation> probe = testKit.createTestProbe();
+    TestProbe<StatusReply<ShoppingCart.Summary>> probe = testKit.createTestProbe();
     cart.tell(new ShoppingCart.AddItem("foo", 42, probe.getRef()));
-    ShoppingCart.Accepted result = probe.expectMessageClass(ShoppingCart.Accepted.class);
-    assertEquals(42, result.summary.items.get("foo").intValue());
+    StatusReply<ShoppingCart.Summary> result = probe.receiveMessage();
+    assertTrue(result.isSuccess());
+    assertEquals(42, result.getValue().items.get("foo").intValue());
 
     testKit.stop(cart);
 

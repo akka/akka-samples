@@ -3,7 +3,6 @@ package sample.cqrs
 import java.time.Instant
 
 import scala.concurrent.duration._
-
 import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
@@ -11,6 +10,7 @@ import akka.actor.typed.SupervisorStrategy
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.sharding.typed.scaladsl.Entity
 import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
+import akka.pattern.StatusReply
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.RetentionCriteria
 import akka.persistence.typed.scaladsl.Effect
@@ -75,25 +75,26 @@ object ShoppingCart {
   /**
    * A command to add an item to the cart.
    *
-   * It can reply with `Confirmation`, which is sent back to the caller when
+   * It can reply with `StatusReply[Summary]`, which is sent back to the caller when
    * all the events emitted by this command are successfully persisted.
    */
-  final case class AddItem(itemId: String, quantity: Int, replyTo: ActorRef[Confirmation]) extends Command
+  final case class AddItem(itemId: String, quantity: Int, replyTo: ActorRef[StatusReply[Summary]]) extends Command
 
   /**
    * A command to remove an item from the cart.
    */
-  final case class RemoveItem(itemId: String, replyTo: ActorRef[Confirmation]) extends Command
+  final case class RemoveItem(itemId: String, replyTo: ActorRef[StatusReply[Summary]]) extends Command
 
   /**
    * A command to adjust the quantity of an item in the cart.
    */
-  final case class AdjustItemQuantity(itemId: String, quantity: Int, replyTo: ActorRef[Confirmation]) extends Command
+  final case class AdjustItemQuantity(itemId: String, quantity: Int, replyTo: ActorRef[StatusReply[Summary]])
+      extends Command
 
   /**
    * A command to checkout the shopping cart.
    */
-  final case class Checkout(replyTo: ActorRef[Confirmation]) extends Command
+  final case class Checkout(replyTo: ActorRef[StatusReply[Summary]]) extends Command
 
   /**
    * A command to get the current state of the shopping cart.
@@ -104,12 +105,6 @@ object ShoppingCart {
    * Summary of the shopping cart state, used in reply messages.
    */
   final case class Summary(items: Map[String, Int], checkedOut: Boolean) extends CborSerializable
-
-  sealed trait Confirmation extends CborSerializable
-
-  final case class Accepted(summary: Summary) extends Confirmation
-
-  final case class Rejected(reason: String) extends Confirmation
 
   /**
    * This interface defines all the events that the ShoppingCart supports.
@@ -156,37 +151,40 @@ object ShoppingCart {
     command match {
       case AddItem(itemId, quantity, replyTo) =>
         if (state.hasItem(itemId))
-          Effect.reply(replyTo)(Rejected(s"Item '$itemId' was already added to this shopping cart"))
+          Effect.reply(replyTo)(StatusReply.Error(s"Item '$itemId' was already added to this shopping cart"))
         else if (quantity <= 0)
-          Effect.reply(replyTo)(Rejected("Quantity must be greater than zero"))
+          Effect.reply(replyTo)(StatusReply.Error("Quantity must be greater than zero"))
         else
           Effect
             .persist(ItemAdded(cartId, itemId, quantity))
-            .thenReply(replyTo)(updatedCart => Accepted(updatedCart.toSummary))
+            .thenReply(replyTo)(updatedCart => StatusReply.Success(updatedCart.toSummary))
 
       case RemoveItem(itemId, replyTo) =>
         if (state.hasItem(itemId))
-          Effect.persist(ItemRemoved(cartId, itemId)).thenReply(replyTo)(updatedCart => Accepted(updatedCart.toSummary))
+          Effect
+            .persist(ItemRemoved(cartId, itemId))
+            .thenReply(replyTo)(updatedCart => StatusReply.Success(updatedCart.toSummary))
         else
-          Effect.reply(replyTo)(Accepted(state.toSummary)) // removing an item is idempotent
+          Effect.reply(replyTo)(StatusReply.Success(state.toSummary)) // removing an item is idempotent
 
       case AdjustItemQuantity(itemId, quantity, replyTo) =>
         if (quantity <= 0)
-          Effect.reply(replyTo)(Rejected("Quantity must be greater than zero"))
+          Effect.reply(replyTo)(StatusReply.Error("Quantity must be greater than zero"))
         else if (state.hasItem(itemId))
           Effect
             .persist(ItemQuantityAdjusted(cartId, itemId, quantity))
-            .thenReply(replyTo)(updatedCart => Accepted(updatedCart.toSummary))
+            .thenReply(replyTo)(updatedCart => StatusReply.Success(updatedCart.toSummary))
         else
-          Effect.reply(replyTo)(Rejected(s"Cannot adjust quantity for item '$itemId'. Item not present on cart"))
+          Effect.reply(replyTo)(
+            StatusReply.Error(s"Cannot adjust quantity for item '$itemId'. Item not present on cart"))
 
       case Checkout(replyTo) =>
         if (state.isEmpty)
-          Effect.reply(replyTo)(Rejected("Cannot checkout an empty shopping cart"))
+          Effect.reply(replyTo)(StatusReply.Error("Cannot checkout an empty shopping cart"))
         else
           Effect
             .persist(CheckedOut(cartId, Instant.now()))
-            .thenReply(replyTo)(updatedCart => Accepted(updatedCart.toSummary))
+            .thenReply(replyTo)(updatedCart => StatusReply.Success(updatedCart.toSummary))
 
       case Get(replyTo) =>
         Effect.reply(replyTo)(state.toSummary)
@@ -197,13 +195,13 @@ object ShoppingCart {
       case Get(replyTo) =>
         Effect.reply(replyTo)(state.toSummary)
       case cmd: AddItem =>
-        Effect.reply(cmd.replyTo)(Rejected("Can't add an item to an already checked out shopping cart"))
+        Effect.reply(cmd.replyTo)(StatusReply.Error("Can't add an item to an already checked out shopping cart"))
       case cmd: RemoveItem =>
-        Effect.reply(cmd.replyTo)(Rejected("Can't remove an item from an already checked out shopping cart"))
+        Effect.reply(cmd.replyTo)(StatusReply.Error("Can't remove an item from an already checked out shopping cart"))
       case cmd: AdjustItemQuantity =>
-        Effect.reply(cmd.replyTo)(Rejected("Can't adjust item on an already checked out shopping cart"))
+        Effect.reply(cmd.replyTo)(StatusReply.Error("Can't adjust item on an already checked out shopping cart"))
       case cmd: Checkout =>
-        Effect.reply(cmd.replyTo)(Rejected("Can't checkout already checked out shopping cart"))
+        Effect.reply(cmd.replyTo)(StatusReply.Error("Can't checkout already checked out shopping cart"))
     }
 
   private def handleEvent(state: State, event: Event) = {

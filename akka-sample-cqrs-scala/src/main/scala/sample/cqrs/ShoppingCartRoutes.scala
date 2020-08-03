@@ -1,12 +1,12 @@
 package sample.cqrs
 
 import scala.concurrent.Future
-
 import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
+import akka.pattern.StatusReply
 import akka.util.Timeout
 
 object ShoppingCartRoutes {
@@ -30,17 +30,18 @@ class ShoppingCartRoutes()(implicit system: ActorSystem[_]) {
       pathPrefix("carts") {
         concat(
           post {
-            entity(as[AddItem]) { data =>
-              val entityRef =
-                sharding.entityRefFor(ShoppingCart.EntityKey, data.cartId)
-              val reply: Future[ShoppingCart.Confirmation] =
-                entityRef.ask(ShoppingCart.AddItem(data.itemId, data.quantity, _))
-              onSuccess(reply) {
-                case ShoppingCart.Accepted(summary) =>
-                  complete(StatusCodes.OK -> summary)
-                case ShoppingCart.Rejected(reason) =>
-                  complete(StatusCodes.BadRequest -> reason)
-              }
+            entity(as[AddItem]) {
+              data =>
+                val entityRef =
+                  sharding.entityRefFor(ShoppingCart.EntityKey, data.cartId)
+                val reply: Future[StatusReply[ShoppingCart.Summary]] =
+                  entityRef.ask(ShoppingCart.AddItem(data.itemId, data.quantity, _))
+                onSuccess(reply) {
+                  case StatusReply.Success(summary: ShoppingCart.Summary) =>
+                    complete(StatusCodes.OK -> summary)
+                  case StatusReply.Error(reason) =>
+                    complete(StatusCodes.BadRequest -> reason)
+                }
             }
           },
           put {
@@ -49,18 +50,18 @@ class ShoppingCartRoutes()(implicit system: ActorSystem[_]) {
                 val entityRef =
                   sharding.entityRefFor(ShoppingCart.EntityKey, data.cartId)
 
-                def command(replyTo: ActorRef[ShoppingCart.Confirmation]) =
+                def command(replyTo: ActorRef[StatusReply[ShoppingCart.Summary]]) =
                   if (data.quantity == 0)
                     ShoppingCart.RemoveItem(data.itemId, replyTo)
                   else
                     ShoppingCart.AdjustItemQuantity(data.itemId, data.quantity, replyTo)
 
-                val reply: Future[ShoppingCart.Confirmation] =
+                val reply: Future[StatusReply[ShoppingCart.Summary]] =
                   entityRef.ask(command(_))
                 onSuccess(reply) {
-                  case ShoppingCart.Accepted(summary) =>
+                  case StatusReply.Success(summary: ShoppingCart.Summary) =>
                     complete(StatusCodes.OK -> summary)
-                  case ShoppingCart.Rejected(reason) =>
+                  case StatusReply.Error(reason) =>
                     complete(StatusCodes.BadRequest -> reason)
                 }
             }
@@ -77,12 +78,12 @@ class ShoppingCartRoutes()(implicit system: ActorSystem[_]) {
               post {
                 val entityRef =
                   sharding.entityRefFor(ShoppingCart.EntityKey, cartId)
-                val reply: Future[ShoppingCart.Confirmation] =
+                val reply: Future[StatusReply[ShoppingCart.Summary]] =
                   entityRef.ask(ShoppingCart.Checkout(_))
                 onSuccess(reply) {
-                  case ShoppingCart.Accepted(summary) =>
+                  case StatusReply.Success(summary: ShoppingCart.Summary) =>
                     complete(StatusCodes.OK -> summary)
-                  case ShoppingCart.Rejected(reason) =>
+                  case StatusReply.Error(reason) =>
                     complete(StatusCodes.BadRequest -> reason)
                 }
               }

@@ -4,6 +4,7 @@ import akka.actor.testkit.typed.javadsl.TestKitJunitResource;
 import akka.actor.testkit.typed.javadsl.TestProbe;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.eventstream.EventStream;
+import akka.pattern.StatusReply;
 import akka.persistence.cassandra.testkit.CassandraLauncher;
 import akka.projection.testkit.javadsl.ProjectionTestKit;
 import com.typesafe.config.ConfigFactory;
@@ -76,11 +77,11 @@ public class ProjectionTest {
 
     @Test
     public void projectionShouldPublishEventsToSystemEventStream() {
-        TestProbe<Object> cartProbe = testKit.createTestProbe();
+        TestProbe<StatusReply<ShoppingCart.Summary>> cartProbe = testKit.createTestProbe();
         ActorRef<ShoppingCart.Command> cart =
                 testKit.spawn(ShoppingCart.create("cart-1", Collections.singleton(settings.tagPrefix + "-0")));
         cart.tell(new ShoppingCart.AddItem("25", 12, cartProbe.ref().narrow()));
-        cartProbe.expectMessageClass(ShoppingCart.Accepted.class);
+        assertTrue(cartProbe.receiveMessage().isSuccess());
 
         TestProbe<ShoppingCart.Event> eventProbe = testKit.createTestProbe();
         testKit.system().eventStream().tell(new EventStream.Subscribe(ShoppingCart.Event.class, eventProbe.ref()));

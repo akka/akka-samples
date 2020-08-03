@@ -7,6 +7,7 @@ import akka.actor.typed.SupervisorStrategy;
 import akka.cluster.sharding.typed.javadsl.ClusterSharding;
 import akka.cluster.sharding.typed.javadsl.Entity;
 import akka.cluster.sharding.typed.javadsl.EntityTypeKey;
+import akka.pattern.StatusReply;
 import akka.persistence.typed.PersistenceId;
 import akka.persistence.typed.javadsl.CommandHandlerWithReply;
 import akka.persistence.typed.javadsl.CommandHandlerWithReplyBuilder;
@@ -98,15 +99,15 @@ public class ShoppingCart
   /**
    * A command to add an item to the cart.
    *
-   * It can reply with `Confirmation`, which is sent back to the caller when
+   * It can reply with `StatusReply<Summary>`, which is sent back to the caller when
    * all the events emitted by this command are successfully persisted.
    */
   public static class AddItem implements Command {
     public final String itemId;
     public final int quantity;
-    public final ActorRef<Confirmation> replyTo;
+    public final ActorRef<StatusReply<Summary>> replyTo;
 
-    public AddItem(String itemId, int quantity, ActorRef<Confirmation> replyTo) {
+    public AddItem(String itemId, int quantity, ActorRef<StatusReply<Summary>> replyTo) {
       this.itemId = itemId;
       this.quantity = quantity;
       this.replyTo = replyTo;
@@ -118,10 +119,10 @@ public class ShoppingCart
    */
   public static class RemoveItem implements Command {
     public final String itemId;
-    public final ActorRef<Confirmation> replyTo;
+    public final ActorRef<StatusReply<Summary>> replyTo;
 
     @JsonCreator
-    public RemoveItem(String itemId, ActorRef<Confirmation> replyTo) {
+    public RemoveItem(String itemId, ActorRef<StatusReply<Summary>> replyTo) {
       this.itemId = itemId;
       this.replyTo = replyTo;
     }
@@ -133,9 +134,9 @@ public class ShoppingCart
   public static class AdjustItemQuantity implements Command {
     public final String itemId;
     public final int quantity;
-    public final ActorRef<Confirmation> replyTo;
+    public final ActorRef<StatusReply<Summary>> replyTo;
 
-    public AdjustItemQuantity(String itemId, int quantity, ActorRef<Confirmation> replyTo) {
+    public AdjustItemQuantity(String itemId, int quantity, ActorRef<StatusReply<Summary>> replyTo) {
       this.itemId = itemId;
       this.quantity = quantity;
       this.replyTo = replyTo;
@@ -159,14 +160,14 @@ public class ShoppingCart
   /**
    * A command to checkout the shopping cart.
    *
-   * The reply type is the {@link Confirmation}, which will be returned when the events have been
+   * The reply type is a {@link akka.pattern.StatusReply<Summary>}, which will be returned when the events have been
    * emitted.
    */
   public static class Checkout implements Command {
-    public final ActorRef<Confirmation> replyTo;
+    public final ActorRef<StatusReply<Summary>> replyTo;
 
     @JsonCreator
-    public Checkout(ActorRef<Confirmation> replyTo) {
+    public Checkout(ActorRef<StatusReply<Summary>> replyTo) {
       this.replyTo = replyTo;
     }
   }
@@ -183,25 +184,6 @@ public class ShoppingCart
       // Summary is included in messages and should therefore be immutable
       this.items = Collections.unmodifiableMap(new HashMap<>(items));
       this.checkedOut = checkedOut;
-    }
-  }
-
-  public interface Confirmation extends CborSerializable {}
-
-  public static class Accepted implements Confirmation {
-    public final Summary summary;
-
-    @JsonCreator
-    public Accepted(Summary summary) {
-      this.summary = summary;
-    }
-  }
-
-  public static class Rejected implements Confirmation {
-    public final String reason;
-
-    public Rejected(String reason) {
-      this.reason = reason;
     }
   }
 
@@ -338,62 +320,62 @@ public class ShoppingCart
 
     public ReplyEffect<Event, State> onAddItem(State state, AddItem cmd) {
       if (state.hasItem(cmd.itemId)) {
-        return Effect().reply(cmd.replyTo, new Rejected(
+        return Effect().reply(cmd.replyTo, StatusReply.error(
           "Item '" + cmd.itemId + "' was already added to this shopping cart"));
       } else if (cmd.quantity <= 0) {
-        return Effect().reply(cmd.replyTo, new Rejected("Quantity must be greater than zero"));
+        return Effect().reply(cmd.replyTo, StatusReply.error("Quantity must be greater than zero"));
       } else {
         return Effect().persist(new ItemAdded(cartId, cmd.itemId, cmd.quantity))
-          .thenReply(cmd.replyTo, updatedCart -> new Accepted(updatedCart.toSummary()));
+          .thenReply(cmd.replyTo, updatedCart -> StatusReply.success(updatedCart.toSummary()));
       }
     }
 
     public ReplyEffect<Event, State> onRemoveItem(State state, RemoveItem cmd) {
       if (state.hasItem(cmd.itemId)) {
         return Effect().persist(new ItemRemoved(cartId, cmd.itemId))
-          .thenReply(cmd.replyTo, updatedCart -> new Accepted(updatedCart.toSummary()));
+          .thenReply(cmd.replyTo, updatedCart -> StatusReply.success(updatedCart.toSummary()));
       } else {
-        return Effect().reply(cmd.replyTo, new Accepted(state.toSummary()));
+        return Effect().reply(cmd.replyTo, StatusReply.success(state.toSummary()));
       }
     }
 
     public ReplyEffect<Event, State> onAdjustItemQuantity(State state, AdjustItemQuantity cmd) {
       if (cmd.quantity <= 0) {
-        return Effect().reply(cmd.replyTo, new Rejected("Quantity must be greater than zero"));
+        return Effect().reply(cmd.replyTo, StatusReply.error("Quantity must be greater than zero"));
       } else if (state.hasItem(cmd.itemId)) {
         return Effect().persist(new ItemQuantityAdjusted(cartId, cmd.itemId, cmd.quantity))
-          .thenReply(cmd.replyTo, updatedCart -> new Accepted(updatedCart.toSummary()));
+          .thenReply(cmd.replyTo, updatedCart -> StatusReply.success(updatedCart.toSummary()));
       } else {
-        return Effect().reply(cmd.replyTo, new Rejected(
+        return Effect().reply(cmd.replyTo, StatusReply.error(
           "Cannot adjust quantity for item '" + cmd.itemId + "'. Item not present on cart"));
       }
     }
 
     public ReplyEffect<Event, State> onCheckout(State state, Checkout cmd) {
       if (state.isEmpty()) {
-        return Effect().reply(cmd.replyTo, new Rejected("Cannot checkout an empty shopping cart"));
+        return Effect().reply(cmd.replyTo, StatusReply.error("Cannot checkout an empty shopping cart"));
       } else {
         return Effect().persist(new CheckedOut(cartId, Instant.now()))
-          .thenReply(cmd.replyTo, updatedCart -> new Accepted(updatedCart.toSummary()));
+          .thenReply(cmd.replyTo, updatedCart -> StatusReply.success(updatedCart.toSummary()));
       }
     }
   }
 
   private class CheckedOutCommandHandlers {
     ReplyEffect<Event, State> onAddItem(AddItem cmd) {
-      return Effect().reply(cmd.replyTo, new Rejected("Can't add an item to an already checked out shopping cart"));
+      return Effect().reply(cmd.replyTo, StatusReply.error("Can't add an item to an already checked out shopping cart"));
     }
 
     ReplyEffect<Event, State> onRemoveItem(RemoveItem cmd) {
-      return Effect().reply(cmd.replyTo, new Rejected("Can't remove an item from an already checked out shopping cart"));
+      return Effect().reply(cmd.replyTo, StatusReply.error("Can't remove an item from an already checked out shopping cart"));
     }
 
     ReplyEffect<Event, State> onAdjustItemQuantity(AdjustItemQuantity cmd) {
-      return Effect().reply(cmd.replyTo, new Rejected("Can't adjust item on an already checked out shopping cart"));
+      return Effect().reply(cmd.replyTo, StatusReply.error("Can't adjust item on an already checked out shopping cart"));
     }
 
     ReplyEffect<Event, State> onCheckout(Checkout cmd) {
-      return Effect().reply(cmd.replyTo, new Rejected("Can't checkout already checked out shopping cart"));
+      return Effect().reply(cmd.replyTo, StatusReply.error("Can't checkout already checked out shopping cart"));
     }
   }
 
