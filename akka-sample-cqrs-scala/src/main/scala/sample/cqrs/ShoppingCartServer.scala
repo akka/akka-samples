@@ -9,17 +9,16 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
 import akka.Done
-import akka.{ actor => classic }
 
-class ShoppingCartServer(routes: Route, port: Int, system: ActorSystem[_]) {
-  import akka.actor.typed.scaladsl.adapter._
-  implicit val classicSystem: classic.ActorSystem = system.toClassic
-  private val shutdown = CoordinatedShutdown(classicSystem)
+class ShoppingCartServer(routes: Route, port: Int)(implicit system: ActorSystem[_]) {
+  private val shutdown = CoordinatedShutdown(system)
 
   import system.executionContext
 
   def start(): Unit = {
-    Http().bindAndHandle(routes, "localhost", port).onComplete {
+    Http().newServerAt("localhost", port).bind(routes)
+      .map(_.addToCoordinatedShutdown(3.seconds))
+      .onComplete {
       case Success(binding) =>
         val address = binding.localAddress
         system.log.info("Shopping online at http://{}:{}/", address.getHostString, address.getPort)

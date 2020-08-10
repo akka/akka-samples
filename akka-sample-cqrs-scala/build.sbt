@@ -1,6 +1,6 @@
 val AkkaVersion = "2.6.8"
 val AkkaPersistenceCassandraVersion = "1.0.0"
-val AkkaHttpVersion = "10.1.10"
+val AkkaHttpVersion = "10.2.0"
 val AkkaProjectionVersion = "0.3"
 
 lazy val `akka-sample-cqrs-scala` = project
