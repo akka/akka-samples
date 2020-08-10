@@ -23,13 +23,6 @@ class ShoppingCartServer(routes: Route, port: Int)(implicit system: ActorSystem[
         val address = binding.localAddress
         system.log.info("Shopping online at http://{}:{}/", address.getHostString, address.getPort)
 
-        shutdown.addTask(CoordinatedShutdown.PhaseServiceRequestsDone, "http-graceful-terminate") { () =>
-          binding.terminate(10.seconds).map { _ =>
-            system.log
-              .info("Shopping http://{}:{}/ graceful shutdown completed", address.getHostString, address.getPort)
-            Done
-          }
-        }
       case Failure(ex) =>
         system.log.error("Failed to bind HTTP endpoint, terminating system", ex)
         system.terminate()

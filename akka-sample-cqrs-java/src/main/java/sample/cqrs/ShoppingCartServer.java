@@ -6,9 +6,9 @@ import akka.http.javadsl.Http;
 import akka.http.javadsl.ServerBinding;
 import akka.http.javadsl.server.Route;
 import akka.stream.Materializer;
-import akka.stream.javadsl.Flow;
 
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.concurrent.CompletionStage;
 
 class ShoppingCartServer {
@@ -22,17 +22,19 @@ class ShoppingCartServer {
     CompletionStage<ServerBinding> futureBinding =
       http.newServerAt("localhost", httpPort).bind(route);
 
-    futureBinding.whenComplete((binding, exception) -> {
-      if (binding != null) {
-        InetSocketAddress address = binding.localAddress();
-        system.log().info("Server online at http://{}:{}/",
-          address.getHostString(),
-          address.getPort());
-      } else {
-        system.log().error("Failed to bind HTTP endpoint, terminating system", exception);
-        system.terminate();
-      }
-    });
+    futureBinding
+      .thenAccept(binding -> binding.addToCoordinatedShutdown(Duration.ofSeconds(3), system))
+      .whenComplete((binding, exception) -> {
+        if (binding != null) {
+          InetSocketAddress address = binding.localAddress();
+          system.log().info("Server online at http://{}:{}/",
+            address.getHostString(),
+            address.getPort());
+        } else {
+          system.log().error("Failed to bind HTTP endpoint, terminating system", exception);
+          system.terminate();
+        }
+      });
   }
 
 }
