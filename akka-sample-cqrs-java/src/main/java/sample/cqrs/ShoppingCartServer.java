@@ -23,7 +23,7 @@ class ShoppingCartServer {
       http.newServerAt("localhost", httpPort).bind(route);
 
     futureBinding
-      .thenAccept(binding -> binding.addToCoordinatedShutdown(Duration.ofSeconds(3), system))
+      .thenApply(binding -> binding.addToCoordinatedShutdown(Duration.ofSeconds(3), system))
       .whenComplete((binding, exception) -> {
         if (binding != null) {
           InetSocketAddress address = binding.localAddress();
