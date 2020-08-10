@@ -1,13 +1,9 @@
 package sample.cqrs;
 
-import akka.NotUsed;
 import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.Adapter;
-import akka.http.javadsl.ConnectHttp;
 import akka.http.javadsl.Http;
 import akka.http.javadsl.ServerBinding;
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.server.Route;
 import akka.stream.Materializer;
 import akka.stream.javadsl.Flow;
@@ -23,9 +19,8 @@ class ShoppingCartServer {
     final Http http = Http.get(classicSystem);
     final Materializer materializer = Materializer.matFromSystem(system);
 
-    final Flow<HttpRequest, HttpResponse, NotUsed> routeFlow = route.flow(classicSystem, materializer);
     CompletionStage<ServerBinding> futureBinding =
-      http.bindAndHandle(routeFlow, ConnectHttp.toHost("localhost", httpPort), materializer);
+      http.newServerAt("localhost", httpPort).bind(route);
 
     futureBinding.whenComplete((binding, exception) -> {
       if (binding != null) {
