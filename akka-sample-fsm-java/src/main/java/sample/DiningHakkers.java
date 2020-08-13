@@ -15,7 +15,7 @@ import java.util.stream.IntStream;
 public class DiningHakkers {
 
    public static void main(String[] args) {
-      ActorSystem.create(DiningHakkers.create(), "DinningHakkers");
+      ActorSystem.create(DiningHakkers.create(), "DiningHakkers");
    }
 
    private static Behavior<NotUsed> create() {
