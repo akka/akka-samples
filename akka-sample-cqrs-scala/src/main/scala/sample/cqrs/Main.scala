@@ -145,7 +145,7 @@ object Guardian {
       }
 
       val routes = new ShoppingCartRoutes()(context.system)
-      new ShoppingCartServer(routes.shopping, httpPort, context.system).start()
+      new ShoppingCartServer(routes.shopping, httpPort)(context.system).start()
 
       Behaviors.empty
     }
