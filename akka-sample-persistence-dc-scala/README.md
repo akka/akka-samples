@@ -1,8 +1,8 @@
-akka-sample-persistence-dc-scala
-================================
+Akka Replicated Event Sourcing Multi DC Sample
+=====================================
 
-This is an example project demonstrating [Akka Persistence Multi-DC](https://developer.lightbend.com/docs/akka-commercial-addons/current/persistence-dc/index.html)
-which is available as a commercial feature as part of the [Lightbend Subscription](https://www.lightbend.com/subscription).
+This is an example project demonstrating [Akka Replicated Event Sourcing](https://doc.akka.io/docs/akka/current/typed/replicated-eventsourcing.html)
+to run a replica per datacenter.
 
 ## How to run
 

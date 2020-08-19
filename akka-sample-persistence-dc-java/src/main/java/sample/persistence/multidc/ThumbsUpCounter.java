@@ -1,170 +1,135 @@
 package sample.persistence.multidc;
 
+import akka.actor.typed.ActorRef;
+import akka.actor.typed.Behavior;
+import akka.actor.typed.javadsl.ActorContext;
+import akka.actor.typed.javadsl.Behaviors;
+import akka.cluster.sharding.typed.ReplicatedEntityProvider;
+import akka.persistence.cassandra.query.javadsl.CassandraReadJournal;
+import akka.persistence.typed.ReplicaId;
+import akka.persistence.typed.ReplicationId;
+import akka.persistence.typed.javadsl.*;
+import com.fasterxml.jackson.annotation.JsonCreator;
+
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import akka.actor.Props;
-import akka.cluster.sharding.ShardRegion;
-import akka.persistence.multidc.PersistenceMultiDcSettings;
-import akka.persistence.multidc.SpeculativeReplicatedEvent;
-import akka.persistence.multidc.javadsl.CommandHandler;
-import akka.persistence.multidc.javadsl.EventHandler;
-import akka.persistence.multidc.javadsl.ReplicatedEntity;
+public class ThumbsUpCounter extends ReplicatedEventSourcedBehavior<ThumbsUpCounter.Command, ThumbsUpCounter.Event, ThumbsUpCounter.State> {
 
-public class ThumbsUpCounter
-    extends ReplicatedEntity<ThumbsUpCounter.Command, ThumbsUpCounter.Event, ThumbsUpCounter.State> {
+    public static Set<ReplicaId> ALL_REPLICAS = Set.of(new ReplicaId("eu-west"), new ReplicaId("eu-central"));
+    private final ActorContext<Command> ctx;
 
-  @Override
-  public State initialState() {
-    return new State();
-  }
+    private static Behavior<Command> create(ReplicationId id) {
+        return Behaviors.setup(ctx -> ReplicatedEventSourcing.commonJournalConfig(id, ALL_REPLICAS, CassandraReadJournal.Identifier(), replicationContext -> new ThumbsUpCounter(replicationContext, ctx)));
+    }
 
-  @Override
-  public CommandHandler<Command, Event, State> commandHandler() {
-    return commandHandlerBuilder(Command.class)
-        .matchCommand(GiveThumbsUp.class, (ctx, state, cmd) -> {
-          return Effect().persist(new GaveThumbsUp(cmd.userId)).andThen(state2 -> {
-            log().info("Thumbs-up by {}, total count {}", cmd.userId, state2.users.size());
-            ctx.getSender().tell(state2.users.size(), ctx.getSelf());
-          });
-        }).matchCommand(GetCount.class, (ctx, state, cmd) -> {
-          ctx.getSender().tell(state.users.size(), ctx.getSelf());
-          return Effect().none();
-        }).matchCommand(GetUsers.class, (ctx, state, cmd) -> {
-          ctx.getSender().tell(state, ctx.getSelf());
-          return Effect().none();
-        }).build();
-  }
+    public static ReplicatedEntityProvider<Command> provider() {
+        return ReplicatedEntityProvider.createPerDataCenter(Command.class, "counter", ALL_REPLICAS, ThumbsUpCounter::create);
+    }
 
-
-  @Override
-  public EventHandler<Event, State> eventHandler() {
-    return eventHandlerBuilder(Event.class)
-        .matchEvent(GaveThumbsUp.class, (state, event) ->
-          state.add(event.userId)
-        ).build();
-  }
-
-  // Sharding ...
-  public static final String ShardingTypeName = "counter";
-
-  public static final ShardRegion.MessageExtractor messageExtractor = new ShardRegion.MessageExtractor() {
-
-    @Override
-    public String entityId(Object message) {
-      if (message instanceof Command) {
-        return ((Command) message).getResourceId();
-      } else if (message instanceof SpeculativeReplicatedEvent) {
-        return ((SpeculativeReplicatedEvent) message).entityId();
-      } else {
-        return null;
-      }
+    private ThumbsUpCounter(ReplicationContext replicationContext, ActorContext<Command> ctx) {
+        super(replicationContext);
+        this.ctx = ctx;
     }
 
     @Override
-    public Object entityMessage(Object message) {
-      return message;
-    }
-
-    private String shardId(String entityId) {
-      int maxNumberOfShards = 1000;
-      return Integer.toString(Math.abs(entityId.hashCode()) % maxNumberOfShards);
+    public State emptyState() {
+        return new State();
     }
 
     @Override
-    public String shardId(Object message) {
-      if (message instanceof Command) {
-        return shardId(((Command) message).getResourceId());
-      } else if (message instanceof ShardRegion.StartEntity) {
-        return shardId(((ShardRegion.StartEntity) message).entityId());
-      } else if (message instanceof SpeculativeReplicatedEvent) {
-        return shardId(((SpeculativeReplicatedEvent) message).entityId());
-      } else {
-        return null;
-      }
-    }
-  };
-
-  public static Props shardingProps(PersistenceMultiDcSettings persistenceMultiDcSettings) {
-    return ReplicatedEntity.clusterShardingProps(
-        Command.class,
-        ShardingTypeName,
-        ThumbsUpCounter::new,
-        persistenceMultiDcSettings);
-  }
-
-  // Classes for commands, events, and state...
-
-  interface Command {
-    String getResourceId();
-  }
-
-  public static class GiveThumbsUp implements Command {
-    public final String resourceId;
-    public final String userId;
-
-    public GiveThumbsUp(String resourceId, String userId) {
-      this.resourceId = resourceId;
-      this.userId = userId;
+    public CommandHandler<Command, Event, State> commandHandler() {
+        return newCommandHandlerBuilder().forAnyState()
+                .onCommand(GiveThumbsUp.class, (state, cmd) -> Effect().persist(new GaveThumbsUp(cmd.userId)).thenRun(state2 -> {
+                    ctx.getLog().info("Thumbs-up by {}, total count {}", cmd.userId, state2.users.size());
+                    cmd.replyTo.tell((long) state2.users.size());
+                })).onCommand(GetCount.class, (state, cmd) -> {
+                    cmd.replyTo.tell((long) state.users.size());
+                    return Effect().none();
+                }).onCommand(GetUsers.class, (state, cmd) -> {
+                    cmd.replyTo.tell(state);
+                    return Effect().none();
+                }).build();
     }
 
-    public String getResourceId() {
-      return resourceId;
-    }
-  }
+    @Override
+    public EventHandler<State, Event> eventHandler() {
+        return newEventHandlerBuilder().forAnyState()
+                .onEvent(GaveThumbsUp.class, (state, event) ->
+                        state.add(event.userId)
+                ).build();
 
-  public static class GetCount implements Command {
-    public final String resourceId;
-
-    public GetCount(String resourceId) {
-      this.resourceId = resourceId;
     }
 
-    public String getResourceId() {
-      return resourceId;
-    }
-  }
+    // Classes for commands, events, and state...
 
-  public static class GetUsers implements Command {
-    public final String resourceId;
-
-    public GetUsers(String resourceId) {
-      this.resourceId = resourceId;
+    interface Command extends CborSerializer {
     }
 
-    public String getResourceId() {
-      return resourceId;
-    }
-  }
+    public static class GiveThumbsUp implements Command {
+        public final String resourceId;
+        public final String userId;
+        public final ActorRef<Long> replyTo;
 
-
-  interface Event {}
-
-  public static class GaveThumbsUp implements Event {
-    public final String userId;
-
-    public GaveThumbsUp(String userId) {
-      this.userId = userId;
-    }
-  }
-
-  public static class State {
-    public final Set<String> users;
-
-    public State() {
-      this.users = Collections.emptySet();
+        public GiveThumbsUp(String resourceId, String userId, ActorRef<Long> replyTo) {
+            this.resourceId = resourceId;
+            this.userId = userId;
+            this.replyTo = replyTo;
+        }
     }
 
-    State(Set<String> users) {
-      this.users = Collections.unmodifiableSet(users);
+    public static class GetCount implements Command {
+        public final String resourceId;
+        public final ActorRef<Long> replyTo;
+
+        public GetCount(String resourceId, ActorRef<Long> replyTo) {
+            this.resourceId = resourceId;
+            this.replyTo = replyTo;
+        }
     }
 
-    public State add(String userId) {
-      // defensive copy for thread safety
-      Set<String> newUsers = new HashSet<>(users);
-      newUsers.add(userId);
-      return new State(newUsers);
+    public static class GetUsers implements Command {
+        public final String resourceId;
+        public final ActorRef<State> replyTo;
+
+        public GetUsers(String resourceId, ActorRef<State> replyTo) {
+            this.resourceId = resourceId;
+            this.replyTo = replyTo;
+        }
     }
-  }
+
+
+    interface Event extends CborSerializer {
+    }
+
+    public static class GaveThumbsUp implements Event {
+        public final String userId;
+
+        @JsonCreator
+        public GaveThumbsUp(String userId) {
+            this.userId = userId;
+        }
+    }
+
+    public static class State implements CborSerializer {
+        public final Set<String> users;
+
+        public State() {
+            this.users = Collections.emptySet();
+        }
+
+        State(Set<String> users) {
+            this.users = Collections.unmodifiableSet(users);
+        }
+
+        public State add(String userId) {
+            // defensive copy for thread safety
+            Set<String> newUsers = new HashSet<>(users);
+            newUsers.add(userId);
+            return new State(newUsers);
+        }
+    }
+
 }
+

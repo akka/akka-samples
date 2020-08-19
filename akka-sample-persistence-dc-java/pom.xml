@@ -4,9 +4,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
    <modelVersion>4.0.0</modelVersion>
-  <artifactId>akka-sample-persistence-dc-java</artifactId>
+  <artifactId>akka-sample-replicated-event-sourcing-java</artifactId>
   <groupId>com.lightbend.akka.samples</groupId>
-  <name>Akka persistence multi dc sample</name>
+  <name>Akka replicated event sourcing multi dc sample</name>
   <version>1.0</version>
 
    <licenses>
@@ -26,37 +26,46 @@
 
    <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <akka.version>2.6.8</akka.version>
-    <akka-addons.version>1.1.12</akka-addons.version>
-    <akka-persistence-cassandra.version>0.100</akka-persistence-cassandra.version>
-    <akka-http.version>10.1.10</akka-http.version>
-    <akka-management.version>1.0.3</akka-management.version>
+    <akka.version>2.6.8+91-3fc9c35e+20200821-1523</akka.version>
+    <akka-persistence-cassandra.version>1.0.1-3-cdbe0573-20200819-1243</akka-persistence-cassandra.version>
+    <akka-http.version>10.2.0</akka-http.version>
+    <akka-management.version>1.0.8</akka-management.version>
   </properties>
 
    <dependencies>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-cluster-sharding_2.13</artifactId>
+      <artifactId>akka-cluster-sharding-typed_2.13</artifactId>
       <version>${akka.version}</version>
     </dependency>
     <dependency>
+        <groupId>com.typesafe.akka</groupId>
+        <artifactId>akka-cluster_2.13</artifactId>
+        <version>${akka.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.typesafe.akka</groupId>
+        <artifactId>akka-actor_2.13</artifactId>
+        <version>${akka.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.typesafe.akka</groupId>
+        <artifactId>akka-cluster-tools_2.13</artifactId>
+        <version>${akka.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.typesafe.akka</groupId>
+        <artifactId>akka-serialization-jackson_2.13</artifactId>
+        <version>${akka.version}</version>
+    </dependency>
+    <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-persistence_2.13</artifactId>
+      <artifactId>akka-persistence-typed_2.13</artifactId>
       <version>${akka.version}</version>
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
       <artifactId>akka-persistence-query_2.13</artifactId>
-      <version>${akka.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-cluster-tools_2.13</artifactId>
-      <version>${akka.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-slf4j_2.13</artifactId>
       <version>${akka.version}</version>
     </dependency>
     <dependency>
@@ -68,11 +77,6 @@
       <groupId>com.typesafe.akka</groupId>
       <artifactId>akka-persistence-cassandra-launcher_2.13</artifactId>
       <version>${akka-persistence-cassandra.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.lightbend.akka</groupId>
-      <artifactId>akka-diagnostics_2.13</artifactId>
-      <version>${akka-addons.version}</version>
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
@@ -93,17 +97,6 @@
       <groupId>com.lightbend.akka.management</groupId>
       <artifactId>akka-management-cluster-http_2.13</artifactId>
       <version>${akka-management.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.lightbend.akka</groupId>
-      <artifactId>akka-persistence-multi-dc_2.13</artifactId>
-      <version>${akka-addons.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.lightbend.akka</groupId>
-      <artifactId>akka-persistence-multi-dc-testkit_2.13</artifactId>
-      <version>${akka-addons.version}</version>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
@@ -131,8 +124,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.8.1</version>
         <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
+          <source>11</source>
+          <target>11</target>
           <compilerArgs>
             <arg>-Xlint:unchecked</arg>
             <arg>-Xlint:deprecation</arg>
@@ -140,22 +133,6 @@
           </compilerArgs>
         </configuration>
       </plugin>
-       <plugin>
-         <groupId>org.xolstice.maven.plugins</groupId>
-         <artifactId>protobuf-maven-plugin</artifactId>
-         <version>0.6.1</version>
-         <configuration>
-             <protocExecutable>/usr/local/bin/protoc</protocExecutable>
-         </configuration>
-         <executions>
-             <execution>
-                 <goals>
-                     <goal>compile</goal>
-                     <goal>test-compile</goal>
-                 </goals>
-             </execution>
-         </executions>
-        </plugin>
     </plugins>
   </build>
 

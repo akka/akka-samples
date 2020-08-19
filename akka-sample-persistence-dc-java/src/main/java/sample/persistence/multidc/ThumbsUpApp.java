@@ -1,17 +1,17 @@
 package sample.persistence.multidc;
 
 import java.io.File;
-import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.cluster.Cluster;
-import akka.cluster.sharding.ClusterSharding;
-import akka.cluster.sharding.ClusterShardingSettings;
+import akka.actor.typed.ActorSystem;
+import akka.actor.typed.internal.adapter.ActorSystemAdapter;
+import akka.actor.typed.javadsl.Behaviors;
+import akka.cluster.sharding.typed.ReplicatedSharding;
+import akka.cluster.sharding.typed.ReplicatedShardingExtension;
+import akka.cluster.typed.Cluster;
 import akka.management.javadsl.AkkaManagement;
 import akka.persistence.cassandra.testkit.CassandraLauncher;
-import akka.persistence.multidc.PersistenceMultiDcSettings;
+import akka.persistence.typed.ReplicaId;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
@@ -46,33 +46,16 @@ public class ThumbsUpApp {
   }
 
   private static void startNode(int port, String dc) {
-    ActorSystem system = ActorSystem.create("ClusterSystem", config(port, dc));
 
-    PersistenceMultiDcSettings persistenceMultiDcSettings = PersistenceMultiDcSettings.create(system);
+    ActorSystem<?> system = ActorSystem.create(Behaviors.empty(), "ClusterSystem", config(port, dc));
+    Cluster cluster = Cluster.get(system);
 
-    ActorRef counterRegion = ClusterSharding.get(system).start(
-      ThumbsUpCounter.ShardingTypeName,
-      ThumbsUpCounter.shardingProps(persistenceMultiDcSettings),
-      ClusterShardingSettings.create(system),
-      ThumbsUpCounter.messageExtractor);
-
-    // The speculative replication requires sharding proxies to other DCs
-    if (persistenceMultiDcSettings.useSpeculativeReplication()) {
-      for (String otherDc: persistenceMultiDcSettings.getOtherDcs(Cluster.get(system).selfDataCenter())) {
-        ClusterSharding.get(system).startProxy(
-            ThumbsUpCounter.ShardingTypeName,
-            Optional.empty(),
-            Optional.of(otherDc),
-            ThumbsUpCounter.messageExtractor);
-      }
-    }
+    ReplicatedSharding<ThumbsUpCounter.Command> replicatedSharding = ReplicatedShardingExtension.get(system).init(ThumbsUpCounter.provider());
 
     if (port != 0) {
-      ThumbsUpHttp.startServer(system, "0.0.0.0", 20000 + port, counterRegion);
-
-      AkkaManagement.get(system).start();
+      ThumbsUpHttp.startServer(system, "0.0.0.0", 20000 + port, new ReplicaId(cluster.selfMember().dataCenter()), replicatedSharding);
+      AkkaManagement.get(ActorSystemAdapter.toClassic(system)).start();
     }
-
   }
 
   private static Config config(int port, String dc) {

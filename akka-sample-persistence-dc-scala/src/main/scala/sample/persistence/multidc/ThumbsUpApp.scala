@@ -3,13 +3,13 @@ package sample.persistence.multidc
 import java.io.File
 import java.util.concurrent.CountDownLatch
 
-import akka.actor.ActorSystem
-import akka.cluster.Cluster
-import akka.cluster.sharding.ClusterSharding
-import akka.cluster.sharding.ClusterShardingSettings
+import akka.actor.typed.{ActorRef, ActorSystem}
+import akka.actor.typed.scaladsl.Behaviors
+import akka.cluster.sharding.typed.{ReplicatedShardingExtension, ShardingEnvelope}
+import akka.cluster.typed.Cluster
 import akka.management.scaladsl.AkkaManagement
 import akka.persistence.cassandra.testkit.CassandraLauncher
-import akka.persistence.multidc.PersistenceMultiDcSettings
+import akka.persistence.typed.ReplicaId
 import com.typesafe.config.{Config, ConfigFactory}
 
 object ThumbsUpApp {
@@ -23,7 +23,6 @@ object ThumbsUpApp {
       case Some(portString) if portString.matches("""\d+""") =>
         val port = portString.toInt
         val dc = args.tail.headOption.getOrElse("eu-west")
-
         startNode(port, dc)
 
       case Some("cassandra") =>
@@ -42,28 +41,15 @@ object ThumbsUpApp {
   }
 
   def startNode(port: Int, dc: String): Unit = {
-    val system = ActorSystem("ClusterSystem", config(port, dc))
+    val system: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.empty[Nothing], "ClusterSystem", config(port, dc))
 
-    val persistenceMultiDcSettings = PersistenceMultiDcSettings(system)
 
-    val counterRegion = ClusterSharding(system).start(
-      typeName = ThumbsUpCounter.ShardingTypeName,
-      entityProps = ThumbsUpCounter.shardingProps(persistenceMultiDcSettings),
-      settings = ClusterShardingSettings(system),
-      extractEntityId = ThumbsUpCounter.extractEntityId,
-      extractShardId = ThumbsUpCounter.extractShardId)
+    val cluster = Cluster(system)
+    val replicatedSharding = ReplicatedShardingExtension(system).init(ThumbsUpCounter.Provider)
 
-    // The speculative replication requires sharding proxies to other DCs
-    if (persistenceMultiDcSettings.useSpeculativeReplication) {
-      persistenceMultiDcSettings.otherDcs(Cluster(system).selfDataCenter).foreach { d =>
-        ClusterSharding(system).startProxy(ThumbsUpCounter.ShardingTypeName, role = None,
-          dataCenter = Some(d), ThumbsUpCounter.extractEntityId, ThumbsUpCounter.extractShardId)
-      }
-    }
 
     if (port != 0) {
-      ThumbsUpHttp.startServer("0.0.0.0", 20000 + port, counterRegion)(system)
-
+      ThumbsUpHttp.startServer("0.0.0.0", 20000 + port, ReplicaId(cluster.selfMember.dataCenter), replicatedSharding)(system)
       AkkaManagement(system).start()
     }
 
@@ -72,9 +58,7 @@ object ThumbsUpApp {
   def config(port: Int, dc: String): Config =
     ConfigFactory.parseString(s"""
       akka.remote.artery.canonical.port = $port
-
       akka.management.http.port = 1$port
-
       akka.cluster.multi-data-center.self-data-center = $dc
     """).withFallback(ConfigFactory.load("application.conf"))
 
