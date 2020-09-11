@@ -39,7 +39,7 @@ object ThumbsUpCounter {
   // we use a shared journal as cassandra typically spans DCs rather than a DB per replica
   def apply(replicationId: ReplicationId): Behavior[Command] =
     Behaviors.setup { ctx =>
-      ReplicatedEventSourcing.withSharedJournal(replicationId, Replicas, CassandraReadJournal.Identifier) { replicationContext =>
+      ReplicatedEventSourcing.commonJournalConfig(replicationId, Replicas, CassandraReadJournal.Identifier) { replicationContext =>
         EventSourcedBehavior[Command, Event, State](
           persistenceId = replicationId.persistenceId,
           emptyState = State(Set.empty),
