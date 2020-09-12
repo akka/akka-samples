@@ -5,7 +5,7 @@ scalaVersion := "2.13.3"
 
 val AkkaVersion = "2.6.9"
 val AkkaAddOnsVersion = "1.1.12"
-val AkkaPersistenceCassandraVersion = "1.0.2"
+val AkkaPersistenceCassandraVersion = "1.0.3"
 val AkkaHttpVersion = "10.2.0"
 val AkkaClusterManagementVersion = "1.0.8"
 
