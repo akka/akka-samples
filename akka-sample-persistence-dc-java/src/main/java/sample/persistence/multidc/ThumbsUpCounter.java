@@ -11,13 +11,16 @@ import akka.persistence.typed.ReplicationId;
 import akka.persistence.typed.javadsl.*;
 import com.fasterxml.jackson.annotation.JsonCreator;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 public class ThumbsUpCounter extends ReplicatedEventSourcedBehavior<ThumbsUpCounter.Command, ThumbsUpCounter.Event, ThumbsUpCounter.State> {
 
-    public static Set<ReplicaId> ALL_REPLICAS = Set.of(new ReplicaId("eu-west"), new ReplicaId("eu-central"));
+    public static Set<ReplicaId> ALL_REPLICAS =
+        Collections.unmodifiableSet(new HashSet<>(Arrays.asList(new ReplicaId("eu-west"), new ReplicaId("eu-central"))));
+    
     private final ActorContext<Command> ctx;
 
     private static Behavior<Command> create(ReplicationId id) {
