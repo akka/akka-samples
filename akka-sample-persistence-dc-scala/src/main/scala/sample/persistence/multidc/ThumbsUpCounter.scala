@@ -1,77 +1,67 @@
 package sample.persistence.multidc
 
-import akka.Done
-import akka.actor.Props
-import akka.cluster.sharding.ShardRegion
-import akka.cluster.sharding.ShardRegion.StartEntity
-import akka.persistence.multidc.PersistenceMultiDcSettings
-import akka.persistence.multidc.SpeculativeReplicatedEvent
-import akka.persistence.multidc.scaladsl.ReplicatedEntity;
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, Behavior}
+import akka.cluster.sharding.typed.ReplicatedEntityProvider
+import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
+import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior, ReplicatedEventSourcing, ReplicationContext}
+import akka.persistence.typed.{ReplicaId, ReplicationId}
 
 object ThumbsUpCounter {
-  sealed trait Command {
+
+  // sent over sharding
+  sealed trait Command extends CborSerializer {
     def resourceId: String
   }
 
-  final case class GiveThumbsUp(resourceId: String, userId: String) extends Command
+  final case class GiveThumbsUp(resourceId: String, userId: String, replyTo: ActorRef[Long]) extends Command
 
-  final case class GetCount(resourceId: String) extends Command
+  final case class GetCount(resourceId: String, replyTo: ActorRef[Long]) extends Command
 
-  final case class GetUsers(resourceId: String) extends Command
+  final case class GetUsers(resourceId: String, replyTo: ActorRef[State]) extends Command
 
-  sealed trait Event
+  // saved to DB
+  sealed trait Event extends CborSerializer
 
   final case class GaveThumbsUp(userId: String) extends Event
 
-  final case class State(users: Set[String]) {
+  // saved to DB
+  final case class State(users: Set[String]) extends CborSerializer {
     def add(userId: String): State = copy(users + userId)
   }
 
-  def shardingProps(settings: PersistenceMultiDcSettings): Props =
-    ReplicatedEntity.clusterShardingProps(ShardingTypeName, () => new ThumbsUpCounter, settings)
+  // In this sample one replica per DC
+  val Replicas = Set(ReplicaId("eu-west"), ReplicaId("eu-central"))
 
-  val ShardingTypeName = "counter"
+  val Provider: ReplicatedEntityProvider[Command] = ReplicatedEntityProvider.perDataCenter("counter", Replicas) { replicationId => ThumbsUpCounter(replicationId) }
 
-  val extractEntityId: ShardRegion.ExtractEntityId = {
-    case cmd: Command => (cmd.resourceId, cmd)
-    case evt: SpeculativeReplicatedEvent => (evt.entityId, evt)
-  }
 
-  val MaxShards = 100
-  def shardId(entityId: String): String = (math.abs(entityId.hashCode) % MaxShards).toString
-  val extractShardId: ShardRegion.ExtractShardId = {
-    case cmd: Command   => shardId(cmd.resourceId)
-    case evt: SpeculativeReplicatedEvent => shardId(evt.entityId)
-    case StartEntity(entityId)           => shardId(entityId)
-  }
-}
+  // we use a shared journal as cassandra typically spans DCs rather than a DB per replica
+  def apply(replicationId: ReplicationId): Behavior[Command] =
+    Behaviors.setup { ctx =>
+      ReplicatedEventSourcing.commonJournalConfig(replicationId, Replicas, CassandraReadJournal.Identifier) { replicationContext =>
+        EventSourcedBehavior[Command, Event, State](
+          persistenceId = replicationId.persistenceId,
+          emptyState = State(Set.empty),
+          commandHandler = (state, cmd) => cmd match {
+            case GiveThumbsUp(_, userId, replyTo) =>
+              Effect.persist(GaveThumbsUp(userId)).thenRun { state2 =>
+                ctx.log.info("Thumbs-up by {}, total count {}", userId, state2.users.size)
+                replyTo ! state2.users.size
+              }
+            case GetCount(_, replyTo) =>
+              replyTo ! state.users.size
+              Effect.none
+            case GetUsers(_, replyTo) =>
+              replyTo ! state
+              Effect.none
+          },
+          eventHandler = (state, event) => event match {
+            case GaveThumbsUp(userId) =>
+              state.add(userId)
+          }
+        )
+      }
 
-class ThumbsUpCounter
-  extends ReplicatedEntity[ThumbsUpCounter.Command, ThumbsUpCounter.Event, ThumbsUpCounter.State] {
-  import ThumbsUpCounter._
-
-  override def initialState: State = State(Set.empty)
-
-  override def commandHandler: CommandHandler = CommandHandler { (ctx, state, cmd) =>
-    cmd match {
-      case GiveThumbsUp(_, userId) =>
-        Effect.persist(GaveThumbsUp(userId)).andThen { state2 =>
-          log.info("Thumbs-up by {}, total count {}", userId, state2.users.size)
-          ctx.sender() ! state2.users.size
-        }
-      case GetCount(_) =>
-        ctx.sender() ! state.users.size
-        Effect.none
-      case GetUsers(_) =>
-        ctx.sender() ! state
-        Effect.none
     }
-  }
-
-  override def eventHandler(state: State, event: Event): State = {
-    event match {
-      case GaveThumbsUp(userId) => state.add(userId)
-    }
-  }
-
 }

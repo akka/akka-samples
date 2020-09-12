@@ -1,72 +1,60 @@
 package sample.persistence.multidc;
 
 import akka.NotUsed;
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.http.javadsl.ConnectHttp;
+import akka.actor.typed.ActorSystem;
+import akka.cluster.sharding.typed.ReplicatedSharding;
 import akka.http.javadsl.Http;
 import akka.http.javadsl.ServerBinding;
 import akka.http.javadsl.model.ContentTypes;
 import akka.http.javadsl.model.HttpEntities;
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.server.AllDirectives;
 import akka.http.javadsl.server.Route;
-import akka.stream.Materializer;
-import akka.stream.javadsl.Flow;
+import akka.persistence.typed.ReplicaId;
 import akka.stream.javadsl.Source;
 import akka.util.ByteString;
-import akka.util.Timeout;
 
 import java.time.Duration;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
 
 import static akka.http.javadsl.server.PathMatchers.segment;
 import static akka.http.javadsl.server.PathMatchers.segments;
-import static akka.pattern.Patterns.ask;
 
 public class ThumbsUpHttp extends AllDirectives {
 
-  public static void startServer(ActorSystem system, String httpHost, int httpPort, ActorRef counterRegion) {
-
-    final Materializer materializer = Materializer.createMaterializer(system);
+  public static void startServer(ActorSystem<?> system, String httpHost, int httpPort, ReplicaId selfReplica, ReplicatedSharding<ThumbsUpCounter.Command> replicatedSharding) {
 
     ThumbsUpHttp api = new ThumbsUpHttp();
-
-    final Flow<HttpRequest, HttpResponse, NotUsed> routeFlow =
-        api.createRoute(counterRegion).flow(system, materializer);
-    final CompletionStage<ServerBinding> binding = Http.get(system).bindAndHandle(routeFlow,
-        ConnectHttp.toHost(httpHost, httpPort), materializer);
+    final Route routeFlow =
+        api.createRoute(selfReplica, replicatedSharding);
+    final CompletionStage<ServerBinding> binding = Http.get(system).newServerAt(httpHost, httpPort)
+            .bind(routeFlow);
 
     binding.thenAccept(b ->
         system.log().info("HTTP Server bound to http://{}:{}", httpHost, httpPort)
     );
   }
 
-  private Route createRoute(ActorRef counterRegion) {
+  private Route createRoute(ReplicaId selfReplica, ReplicatedSharding<ThumbsUpCounter.Command> replicatedSharding) {
     Duration timeout = Duration.ofSeconds(10);
     return
         pathPrefix("thumbs-up", () ->
             concat(
                 // example: curl http://0.0.0.0:22551/thumbs-up/a
-                get(() -> {
-                  return path(segment(), resourceId -> {
-                    return onComplete(ask(counterRegion, new ThumbsUpCounter.GetUsers(resourceId), timeout), state -> {
-                      Source<ByteString, NotUsed> s =
-                          Source.fromIterator(() -> ((ThumbsUpCounter.State) state.get()).users.iterator())
-                              .intersperse("\n")
-                              .map(ByteString::fromString);
-                      return complete(HttpEntities.create(ContentTypes.TEXT_PLAIN_UTF8, s));
-                    });
+                get(() -> path(segment(), resourceId -> {
+                  return onComplete(replicatedSharding.getEntityRefsFor(resourceId).get(selfReplica).<ThumbsUpCounter.State>ask(replyTo ->  new ThumbsUpCounter.GetUsers(resourceId, replyTo), timeout), state -> {
+                    Source<ByteString, NotUsed> s =
+                        Source.fromIterator(() -> (state.get()).users.iterator())
+                            .intersperse("\n")
+                            .map(ByteString::fromString);
+                    return complete(HttpEntities.create(ContentTypes.TEXT_PLAIN_UTF8, s));
                   });
-                }),
+                })),
                 // example: curl -X POST http://0.0.0.0:22551/thumbs-up/a/u1
                 post(() -> {
                   return path(segments(2), seg -> {
                     final String resourceId = seg.get(0);
                     final String userId = seg.get(1);
-                    return onComplete(ask(counterRegion, new ThumbsUpCounter.GiveThumbsUp(resourceId, userId), timeout), cnt -> {
+                    return onComplete(replicatedSharding.getEntityRefsFor(resourceId).get(selfReplica).<Long>ask(replyTo -> new ThumbsUpCounter.GiveThumbsUp(resourceId, userId, replyTo), timeout), cnt -> {
                       return complete(cnt.get().toString());
                     });
                   });
