@@ -1,18 +1,25 @@
-package sample.persistence.multidc
+package sample.persistence.res
 
 import java.io.File
 import java.util.concurrent.CountDownLatch
 
-import akka.actor.typed.{ActorRef, ActorSystem}
+import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
-import akka.cluster.sharding.typed.{ReplicatedShardingExtension, ShardingEnvelope}
+import akka.cluster.sharding.typed.ReplicatedShardingExtension
 import akka.cluster.typed.Cluster
+import akka.http.scaladsl.Http
 import akka.management.scaladsl.AkkaManagement
 import akka.persistence.cassandra.testkit.CassandraLauncher
 import akka.persistence.typed.ReplicaId
 import com.typesafe.config.{Config, ConfigFactory}
+import sample.persistence.res.counter.{ThumbsUpCounter, ThumbsUpHttp}
 
-object ThumbsUpApp {
+import scala.concurrent.ExecutionContext
+import scala.util.{Failure, Success}
+
+object MainApp {
+
+  val AllReplicas = Set(ReplicaId("eu-west"), ReplicaId("eu-central"))
 
   def main(args: Array[String]): Unit = {
     args.headOption match {
@@ -41,22 +48,27 @@ object ThumbsUpApp {
   }
 
   def startNode(port: Int, dc: String): Unit = {
-    val system: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.empty[Nothing], "ClusterSystem", config(port, dc))
-
-
-    val cluster = Cluster(system)
-    val replicatedSharding = ReplicatedShardingExtension(system).init(ThumbsUpCounter.Provider)
-
+    implicit val system: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.empty[Nothing], "ClusterSystem", config(port, dc))
+    implicit val ec: ExecutionContext = system.executionContext
+    val thumbsUpReplicatedSharding = ReplicatedShardingExtension(system).init(ThumbsUpCounter.Provider)
 
     if (port != 0) {
-      ThumbsUpHttp.startServer("0.0.0.0", 20000 + port, ReplicaId(cluster.selfMember.dataCenter), replicatedSharding)(system)
+      val httpHost = "0.0.0.0"
+      val httpPort = 20000+port
+      Http().newServerAt(httpHost, httpPort)
+        .bind(ThumbsUpHttp.route(ReplicaId(dc), thumbsUpReplicatedSharding))
+        .onComplete {
+        case Success(_) => system.log.info("HTTP Server bound to http://{}:{}", httpHost, httpPort)
+        case Failure(ex) => system.log.error(s"Failed to bind HTTP Server to http://$httpHost:$httpPort", ex)
+      }
       AkkaManagement(system).start()
     }
 
   }
 
   def config(port: Int, dc: String): Config =
-    ConfigFactory.parseString(s"""
+    ConfigFactory.parseString(
+      s"""
       akka.remote.artery.canonical.port = $port
       akka.management.http.port = 1$port
       akka.cluster.multi-data-center.self-data-center = $dc
