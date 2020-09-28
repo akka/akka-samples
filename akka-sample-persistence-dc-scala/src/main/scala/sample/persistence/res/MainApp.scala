@@ -5,13 +5,14 @@ import java.util.concurrent.CountDownLatch
 
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
-import akka.cluster.sharding.typed.ReplicatedShardingExtension
+import akka.cluster.sharding.typed.{ReplicatedSharding, ReplicatedShardingExtension}
 import akka.cluster.typed.Cluster
 import akka.http.scaladsl.Http
 import akka.management.scaladsl.AkkaManagement
 import akka.persistence.cassandra.testkit.CassandraLauncher
 import akka.persistence.typed.ReplicaId
 import com.typesafe.config.{Config, ConfigFactory}
+import sample.persistence.res.bank.BankAccount
 import sample.persistence.res.counter.{ThumbsUpCounter, ThumbsUpHttp}
 
 import scala.concurrent.ExecutionContext
@@ -50,7 +51,12 @@ object MainApp {
   def startNode(port: Int, dc: String): Unit = {
     implicit val system: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.empty[Nothing], "ClusterSystem", config(port, dc))
     implicit val ec: ExecutionContext = system.executionContext
-    val thumbsUpReplicatedSharding = ReplicatedShardingExtension(system).init(ThumbsUpCounter.Provider)
+
+    val replicatedSharding = ReplicatedShardingExtension(system)
+    val thumbsUpReplicatedSharding: ReplicatedSharding[ThumbsUpCounter.Command] = replicatedSharding .init(ThumbsUpCounter.Provider)
+
+    // no HTTP end points for them, just showing that multiple replicated sharding instances can be started
+    val bankAccountReplicatedSharding: ReplicatedSharding[BankAccount.Command] = replicatedSharding.init(BankAccount.Provider)
 
     if (port != 0) {
       val httpHost = "0.0.0.0"

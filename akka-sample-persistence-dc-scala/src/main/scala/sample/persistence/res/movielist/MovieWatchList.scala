@@ -36,6 +36,8 @@ object MovieWatchList {
       (state, event) => state.applyOperation(event))
 
   private def commandHandler(state: ORSet[String], cmd: Command): Effect[ORSet.DeltaOp, ORSet[String]] = {
+    // operations on an ORSet don't but instead create events describing the change that
+    // are then persisted
     cmd match {
       case AddMovie(movieId) =>
         Effect.persist(state.add(movieId))

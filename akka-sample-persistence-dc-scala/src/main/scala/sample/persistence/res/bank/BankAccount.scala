@@ -3,8 +3,10 @@ package sample.persistence.res.bank
 import akka.Done
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
+import akka.cluster.sharding.typed.ReplicatedEntityProvider
 import akka.pattern.StatusReply
-import akka.persistence.typed.javadsl.ReplicationContext
+import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
+import akka.persistence.typed.scaladsl.ReplicationContext
 import akka.persistence.typed.{ReplicaId, ReplicationId}
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior, ReplicatedEventSourcing}
 import sample.persistence.res.{CborSerializable, MainApp}
@@ -12,7 +14,7 @@ import sample.persistence.res.{CborSerializable, MainApp}
 object BankAccount {
 
   sealed trait Command extends CborSerializable
-  final case class Deposit(amount: Long) extends Command
+  final case class Deposit(amount: Long, replyTo: ActorRef[StatusReply[Done]]) extends Command
   final case class Withdraw(amount: Long, replyTo: ActorRef[StatusReply[Done]]) extends Command
   final case class GetBalance(replyTo: ActorRef[Long]) extends Command
 
@@ -23,23 +25,28 @@ object BankAccount {
   final case class Withdrawn(amount: Long) extends Event
   final case class Overdrawn(amount: Long) extends Event
 
-  final case class State(balance: Long) {
+  private final case class State(balance: Long) {
     def applyOperation(event: Event): State = event match {
       case Deposited(amount) => State(balance + amount)
       case Withdrawn(amount) => State(balance - amount)
+      case Overdrawn(_)      => this
     }
   }
 
 
-  def apply(entityId: String, replicaId: ReplicaId, readJournalId: String): Behavior[Command] = {
+  def apply(replicaId: ReplicationId): Behavior[Command] = {
     Behaviors.setup[Command] { context =>
       ReplicatedEventSourcing.commonJournalConfig(
-        ReplicationId("accounts", entityId, replicaId),
+        replicaId,
         MainApp.AllReplicas,
-        readJournalId
+        CassandraReadJournal.Identifier,
       )(replicationContext => eventSourcedBehavior(replicationContext, context))
     }
   }
+
+  // For sharding
+  val Provider: ReplicatedEntityProvider[Command] = ReplicatedEntityProvider
+    .perDataCenter("account", MainApp.AllReplicas) { replicationId => BankAccount(replicationId) }
 
   private def eventSourcedBehavior(replicationContext: ReplicationContext, context: ActorContext[Command]): EventSourcedBehavior[Command, Event, State] =
     EventSourcedBehavior[Command, Event, State](
@@ -53,8 +60,8 @@ object BankAccount {
     )
 
   private def commandHandler(state: State, command: Command): Effect[Event, State] = command match {
-    case Deposit(amount) =>
-      Effect.persist(Deposited(amount))
+    case Deposit(amount, ack) =>
+      Effect.persist(Deposited(amount)).thenRun(_ => ack ! StatusReply.ack())
     case Withdraw(amount, ack) =>
       if (state.balance - amount >= 0) {
        Effect.persist(Withdrawn(amount)).thenRun(_ => ack ! StatusReply.ack())
@@ -63,6 +70,8 @@ object BankAccount {
       }
     case GetBalance(replyTo) =>
       Effect.none.thenRun(_ =>replyTo ! state.balance)
+    case AlertOverdrawn(amount) =>
+      Effect.persist(Overdrawn(amount))
   }
 
   /**
@@ -82,5 +91,4 @@ object BankAccount {
       }
     }
   }
-
 }
