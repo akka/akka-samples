@@ -3,7 +3,7 @@ package sample.persisetnce.multidc;
 import akka.actor.testkit.typed.javadsl.TestKitJunitResource;
 import org.junit.ClassRule;
 import org.junit.Test;
-import sample.persistence.multidc.ThumbsUpCounter;
+import sample.persistence.res.counter.ThumbsUpCounter;
 
 public class SerializationSpec {
     @ClassRule

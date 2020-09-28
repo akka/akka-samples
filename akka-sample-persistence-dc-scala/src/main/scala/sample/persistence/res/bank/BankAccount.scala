@@ -34,10 +34,10 @@ object BankAccount {
   }
 
 
-  def apply(replicaId: ReplicationId): Behavior[Command] = {
+  def apply(replicationId: ReplicationId): Behavior[Command] = {
     Behaviors.setup[Command] { context =>
       ReplicatedEventSourcing.commonJournalConfig(
-        replicaId,
+        replicationId,
         MainApp.AllReplicas,
         CassandraReadJournal.Identifier,
       )(replicationContext => eventSourcedBehavior(replicationContext, context))
@@ -54,8 +54,9 @@ object BankAccount {
       State(0),
       (state, command) => commandHandler(state, command),
       { (state, event) =>
-        detectOverdrawn(state, replicationContext, context)
-        state.applyOperation(event)
+        val newState = state.applyOperation(event)
+        detectOverdrawn(newState, replicationContext, context)
+        newState
       }
     )
 

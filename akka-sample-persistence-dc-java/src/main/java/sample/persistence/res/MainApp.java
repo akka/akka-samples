@@ -1,6 +1,10 @@
-package sample.persistence.multidc;
+package sample.persistence.res;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
 import akka.actor.typed.ActorSystem;
@@ -14,8 +18,13 @@ import akka.persistence.cassandra.testkit.CassandraLauncher;
 import akka.persistence.typed.ReplicaId;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import sample.persistence.res.counter.ThumbsUpCounter;
+import sample.persistence.res.counter.ThumbsUpHttp;
 
-public class ThumbsUpApp {
+public class MainApp {
+
+  public static Set<ReplicaId> ALL_REPLICAS =
+          Collections.unmodifiableSet(new HashSet<>(Arrays.asList(new ReplicaId("eu-west"), new ReplicaId("eu-central"))));
 
   public static void main(String[] args) {
     if (args.length == 0) {
@@ -27,7 +36,7 @@ public class ThumbsUpApp {
         new CountDownLatch(1).await();
       } catch (InterruptedException e) {}
     } else {
-      int port = Integer.valueOf(args[0]);
+      int port = Integer.parseInt(args[0]);
       String dc;
       if (args.length > 1)
         dc = args[1];

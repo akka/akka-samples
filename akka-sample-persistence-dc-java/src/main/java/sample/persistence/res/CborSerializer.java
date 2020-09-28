@@ -1,4 +1,4 @@
-package sample.persistence.multidc;
+package sample.persistence.res;
 
 public interface CborSerializer {
 }
