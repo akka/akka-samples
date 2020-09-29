@@ -6,7 +6,6 @@ import java.util.concurrent.CountDownLatch
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import akka.cluster.sharding.typed.{ReplicatedSharding, ReplicatedShardingExtension}
-import akka.cluster.typed.Cluster
 import akka.http.scaladsl.Http
 import akka.management.scaladsl.AkkaManagement
 import akka.persistence.cassandra.testkit.CassandraLauncher

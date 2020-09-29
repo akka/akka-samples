@@ -35,9 +35,7 @@ class Auction(
     val millisUntilClosing = closingAt.toEpochMilli - replicationContext.currentTimeMillis()
     timers.startSingleTimer(Finish, millisUntilClosing.millis)
   }
-  //#setup
 
-  //#command-handler
   private def commandHandler(state: AuctionState, command: Command): Effect[Event, AuctionState] = {
     state.phase match {
       case Closing(_) | Closed =>
@@ -54,7 +52,6 @@ class Auction(
           case Close =>
             context.log.info("Close")
             require(shouldClose(state))
-            // TODO send email (before or after persisting)
             Effect.persist(WinnerDecided(replicationContext.replicaId, state.highestBid, state.highestCounterOffer))
           case _: OfferBid =>
             // auction finished, no more bids accepted
@@ -85,11 +82,8 @@ class Auction(
         }
     }
   }
-  //#command-handler
 
-  //#event-handler
   private def eventHandler(state: AuctionState, event: Event): AuctionState = {
-
     val newState = state.applyEvent(event)
     context.log.infoN("Applying event {}. New start {}", event, newState)
     if (!replicationContext.recoveryRunning) {
@@ -99,9 +93,6 @@ class Auction(
 
   }
 
-  //#event-handler
-
-  //#event-triggers
   private def eventTriggers(event: Event, newState: AuctionState): Unit = {
     event match {
       case finished: AuctionFinished =>
@@ -139,9 +130,6 @@ class Auction(
         false
     })
   }
-  //#event-triggers
-
-  //#setup
 }
 
 object Auction {
@@ -177,9 +165,9 @@ object Auction {
    * DC is seen before the scheduled `Finish` command. In that way the auction is finished
    * as quickly as possible in all DCs even though there might be some clock skew.
    *
-   * One DC is responsible for finally deciding the winner and publishing the result.
+   * One replica is responsible for finally deciding the winner and publishing the result.
    * All events must be collected from all DC before that can happen.
-   * When the responsible DC has seen all `AuctionFinished` events from other DCs
+   * When the responsible replicas has seen all `AuctionFinished` events from other DCs
    * all other events have also been propagated and it can persist `WinnerDecided` and
    * the auction is finally `Closed`.
    *
@@ -188,9 +176,7 @@ object Auction {
   private case object Running extends AuctionPhase
   private final case class Closing(finishedAtReplica: Set[ReplicaId]) extends AuctionPhase
   private case object Closed extends AuctionPhase
-  //#phase
 
-  //#state
   private case class AuctionState(phase: AuctionPhase, highestBid: Bid, highestCounterOffer: MoneyAmount)
     extends CborSerializable {
 

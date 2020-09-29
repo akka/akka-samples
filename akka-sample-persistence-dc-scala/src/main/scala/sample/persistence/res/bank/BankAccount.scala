@@ -81,7 +81,7 @@ object BankAccount {
   def detectOverdrawn(state: BankAccount.State, replicationContext: ReplicationContext, context: ActorContext[Command]): Unit = {
     if (
       replicationContext.concurrent // this event happened concurrently with other events already processed
-      && replicationContext.origin == ReplicaId("eu-central") // if we only want to do the side effect in a single DC
+      && replicationContext.replicaId == ReplicaId("eu-central") // if we only want to do the side effect in a single DC
       && !replicationContext.recoveryRunning // probably want to avoid re-execution of side effects during recovery
     ) {
       // there's a chance we may have gone into the overdraft due to concurrent events due to concurrent requests
@@ -93,3 +93,24 @@ object BankAccount {
     }
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -11,7 +11,7 @@ import akka.persistence.cassandra.query.javadsl.CassandraReadJournal;
 import akka.persistence.typed.ReplicaId;
 import akka.persistence.typed.ReplicationId;
 import akka.persistence.typed.javadsl.*;
-import sample.persistence.res.CborSerializer;
+import sample.persistence.res.CborSerializable;
 import sample.persistence.res.MainApp;
 
 public class BankAccount extends ReplicatedEventSourcedBehavior<BankAccount.Command, BankAccount.Event, BankAccount.State> {
@@ -19,7 +19,7 @@ public class BankAccount extends ReplicatedEventSourcedBehavior<BankAccount.Comm
 
     private ActorContext<Command> context;
 
-    public interface Command extends CborSerializer {
+    public interface Command extends CborSerializable {
     }
 
     public final static class Deposit implements Command {
@@ -58,7 +58,7 @@ public class BankAccount extends ReplicatedEventSourcedBehavior<BankAccount.Comm
         }
     }
 
-    public interface Event extends CborSerializer {
+    public interface Event extends CborSerializable {
     }
 
     public final static class Deposited implements Event {

@@ -1,6 +1,7 @@
 package sample.persistence.res.movielist
 
 import akka.actor.typed.{ActorRef, Behavior}
+import akka.persistence.cassandra.query.javadsl.CassandraReadJournal
 import akka.persistence.typed.{PersistenceId, ReplicaId, ReplicationId}
 import akka.persistence.typed.crdt.ORSet
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior, ReplicatedEventSourcing}
@@ -20,11 +21,11 @@ object MovieWatchList {
   final case class GetMovieList(replyTo: ActorRef[MovieList]) extends Command
   final case class MovieList(movieIds: Set[String])
 
-  def apply(entityId: String, replicaId: ReplicaId, readJournalId: String): Behavior[Command] = {
+  def apply(entityId: String, replicaId: ReplicaId): Behavior[Command] = {
     ReplicatedEventSourcing.commonJournalConfig(
       ReplicationId("movies", entityId, replicaId),
       MainApp.AllReplicas,
-      readJournalId
+      CassandraReadJournal.Identifier
     )(replicationContext => eventSourcedBehavior(replicaId, replicationContext.persistenceId))
   }
 
@@ -50,4 +51,14 @@ object MovieWatchList {
   }
 
 }
+
+
+
+
+
+
+
+
+
+
 
