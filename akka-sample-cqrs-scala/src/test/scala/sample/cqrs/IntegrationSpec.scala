@@ -3,6 +3,7 @@ package sample.cqrs
 import java.io.File
 import java.util.UUID
 
+import scala.concurrent.Await
 import scala.concurrent.duration._
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.typed.eventstream.EventStream
@@ -12,6 +13,7 @@ import akka.cluster.typed.Cluster
 import akka.cluster.typed.Join
 import akka.pattern.StatusReply
 import akka.persistence.cassandra.testkit.CassandraLauncher
+import akka.persistence.testkit.scaladsl.PersistenceInit
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.Effect
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
@@ -103,17 +105,10 @@ class IntegrationSpec
     super.beforeAll()
   }
 
-  // FIXME use Akka's initializePlugins instead when released https://github.com/akka/akka/issues/28808
   private def initializePersistence(): Unit = {
-    val persistenceId = PersistenceId.ofUniqueId(s"persistenceInit-${UUID.randomUUID()}")
-    val ref = testKit1.spawn(
-      EventSourcedBehavior[String, String, String](
-        persistenceId,
-        "",
-        commandHandler = (_, _) => Effect.stop(),
-        eventHandler = (_, _) => ""))
-    ref ! "start"
-    testKit1.createTestProbe().expectTerminated(ref, 10.seconds)
+    val timeout = 10.seconds
+    val done = PersistenceInit.initializeDefaultPlugins(testKit1.system, timeout)
+    Await.result(done, timeout)
   }
 
   override protected def afterAll(): Unit = {
