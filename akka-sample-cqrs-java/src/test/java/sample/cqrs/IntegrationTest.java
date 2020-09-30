@@ -1,5 +1,6 @@
 package sample.cqrs;
 
+import akka.Done;
 import akka.actor.testkit.typed.javadsl.ActorTestKit;
 import akka.actor.testkit.typed.javadsl.TestKitJunitResource;
 import akka.actor.testkit.typed.javadsl.TestProbe;
@@ -14,6 +15,7 @@ import akka.cluster.typed.Cluster;
 import akka.cluster.typed.Join;
 import akka.pattern.StatusReply;
 import akka.persistence.cassandra.testkit.CassandraLauncher;
+import akka.persistence.testkit.javadsl.PersistenceInit;
 import akka.persistence.typed.PersistenceId;
 import akka.persistence.typed.javadsl.CommandHandler;
 import akka.persistence.typed.javadsl.EventHandler;
@@ -33,6 +35,8 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -91,7 +95,7 @@ public class IntegrationTest {
   private final static File databaseDirectory = new File("target/cassandra-IntegrationTest");
 
   @BeforeClass
-  public static void beforeAll() {
+  public static void beforeAll() throws Exception {
     CassandraLauncher.start(
       databaseDirectory,
       CassandraLauncher.DefaultTestConfigResource(),
@@ -105,28 +109,11 @@ public class IntegrationTest {
 
   }
 
-  // FIXME use Akka's initializePlugins instead when released https://github.com/akka/akka/issues/28808
-  private static void initializePersistence() {
-    PersistenceId persistenceId = PersistenceId.ofUniqueId("persistenceId-" + UUID.randomUUID());
-    ActorRef<String> ref = testKit1.spawn(Behaviors.setup(context -> new EventSourcedBehavior<String, String, String>(persistenceId) {
-      @Override
-      public String emptyState() {
-        return "";
-      }
-
-      @Override
-      public CommandHandler<String, String, String> commandHandler() {
-        return newCommandHandlerBuilder()
-          .forAnyState().onAnyCommand(cmd -> Effect().stop());
-      }
-
-      @Override
-      public EventHandler<String, String> eventHandler() {
-        return newEventHandlerBuilder().forAnyState().build();
-      }
-    }));
-    ref.tell("start");
-    testKit1.createTestProbe().expectTerminated(ref, Duration.ofSeconds(10));
+  private static void initializePersistence() throws Exception {
+    Duration timeout = Duration.ofSeconds(10);
+    CompletionStage<Done> done =
+      PersistenceInit.initializeDefaultPlugins(testKit1.system(), timeout);
+    done.toCompletableFuture().get(timeout.getSeconds(), TimeUnit.SECONDS);
   }
 
   @AfterClass
