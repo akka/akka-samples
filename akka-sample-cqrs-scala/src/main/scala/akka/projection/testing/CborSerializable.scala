@@ -1,4 +1,4 @@
-package sample.cqrs
+package akka.projection.testing
 
 /**
  * Marker trait for serialization with Jackson CBOR

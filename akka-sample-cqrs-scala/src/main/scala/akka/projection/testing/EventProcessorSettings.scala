@@ -1,4 +1,4 @@
-package sample.cqrs
+package akka.projection.testing
 
 import akka.actor.typed.ActorSystem
 import com.typesafe.config.Config
@@ -10,10 +10,9 @@ object EventProcessorSettings {
   }
 
   def apply(config: Config): EventProcessorSettings = {
-    val tagPrefix: String = config.getString("tag-prefix")
     val parallelism: Int = config.getInt("parallelism")
-    EventProcessorSettings(tagPrefix, parallelism)
+    EventProcessorSettings(parallelism)
   }
 }
 
-final case class EventProcessorSettings(tagPrefix: String, parallelism: Int)
+final case class EventProcessorSettings(parallelism: Int)
