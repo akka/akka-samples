@@ -44,6 +44,8 @@ env:
     - CMD="cd akka-sample-persistence-dc-scala && sbt test"
     - CMD="cd akka-sample-cqrs-scala && sbt test"
     - CMD="cd akka-sample-cqrs-java && mvn test"
+    - CMD="cd akka-sample-sharding-java && mvn test"
+    - CMD="cd akka-sample-sharding-scala && sbt test"
     - CMD="cd docs-gen && sbt paradox"
     - CMD="cd akka-sample-kafka-to-sharding-scala && sbt test"
 script:
