@@ -112,7 +112,7 @@ private[killrweather] object WeatherStation {
 
       case Query(dataType, func, replyTo) =>
         val valuesForType = values.filter(_.dataType == dataType)
-        val queryResult: Seq[TimeWindow] =
+        val queryResult: Vector[TimeWindow] =
           if (valuesForType.isEmpty) Vector.empty
           else
             func match {
