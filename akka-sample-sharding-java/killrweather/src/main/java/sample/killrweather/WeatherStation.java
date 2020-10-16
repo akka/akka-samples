@@ -97,7 +97,7 @@ final class WeatherStation extends AbstractBehavior<WeatherStation.Command> {
 
 
 
-  // small domain model for queriying and storing weather data
+  // small domain model for querying and storing weather data
 
   enum Function {
     // readable names needed for the HTTP API JSON marshalling
