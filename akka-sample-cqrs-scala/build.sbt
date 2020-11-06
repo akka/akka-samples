@@ -1,14 +1,14 @@
-val AkkaVersion = "2.6.8"
-val AkkaPersistenceCassandraVersion = "1.0.1"
-val AkkaHttpVersion = "10.2.0"
-val AkkaProjectionVersion = "0.3"
+val AkkaVersion = "2.6.10"
+val AkkaPersistenceCassandraVersion = "1.0.3"
+val AkkaHttpVersion = "10.2.1"
+val AkkaProjectionVersion = "1.0.0"
 
 lazy val `akka-sample-cqrs-scala` = project
   .in(file("."))
   .settings(
     organization := "com.lightbend.akka.samples",
     version := "1.0",
-    scalaVersion := "2.13.1",
+    scalaVersion := "2.13.3",
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
     libraryDependencies ++= Seq(
@@ -28,7 +28,7 @@ lazy val `akka-sample-cqrs-scala` = project
         "com.typesafe.akka" %% "akka-persistence-testkit" % AkkaVersion % Test,
         "com.typesafe.akka" %% "akka-stream-testkit" % AkkaVersion % Test,
         "com.lightbend.akka" %% "akka-projection-testkit" % AkkaProjectionVersion % Test,
-        "org.scalatest" %% "scalatest" % "3.1.0" % Test,
+        "org.scalatest" %% "scalatest" % "3.2.2" % Test,
         "commons-io" % "commons-io" % "2.4" % Test),
     fork in run := false,
     Global / cancelable := false, // ctrl-c

@@ -41,7 +41,7 @@ class ProjectionSpec
     extends ScalaTestWithActorTestKit(ProjectionSpec.config)
     with AnyWordSpecLike
     with BeforeAndAfterAll {
-  val projectionTestKit = ProjectionTestKit(testKit)
+  val projectionTestKit = ProjectionTestKit(system)
   val settings = EventProcessorSettings(system)
 
   val databaseDirectory = new File("target/cassandra-ProjectionSpec")
