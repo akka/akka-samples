@@ -4,14 +4,11 @@ import scala.concurrent.duration._
 import scala.util.Failure
 import scala.util.Success
 
-import akka.actor.CoordinatedShutdown
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
-import akka.Done
 
 class ShoppingCartServer(routes: Route, port: Int)(implicit system: ActorSystem[_]) {
-  private val shutdown = CoordinatedShutdown(system)
 
   import system.executionContext
 

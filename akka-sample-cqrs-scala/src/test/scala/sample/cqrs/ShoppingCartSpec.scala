@@ -22,14 +22,14 @@ class ShoppingCartSpec extends ScalaTestWithActorTestKit(s"""
 
     "add item" in {
       val cart = testKit.spawn(ShoppingCart(newCartId(), Set.empty))
-      val probe = testKit.createTestProbe[StatusReply[ShoppingCart.Summary]]
+      val probe = testKit.createTestProbe[StatusReply[ShoppingCart.Summary]]()
       cart ! ShoppingCart.AddItem("foo", 42, probe.ref)
       probe.expectMessage(StatusReply.Success(ShoppingCart.Summary(Map("foo" -> 42), checkedOut = false)))
     }
 
     "reject already added item" in {
       val cart = testKit.spawn(ShoppingCart(newCartId(), Set.empty))
-      val probe = testKit.createTestProbe[StatusReply[ShoppingCart.Summary]]
+      val probe = testKit.createTestProbe[StatusReply[ShoppingCart.Summary]]()
       cart ! ShoppingCart.AddItem("foo", 42, probe.ref)
       probe.receiveMessage().isSuccess should ===(true)
       cart ! ShoppingCart.AddItem("foo", 13, probe.ref)
@@ -38,7 +38,7 @@ class ShoppingCartSpec extends ScalaTestWithActorTestKit(s"""
 
     "remove item" in {
       val cart = testKit.spawn(ShoppingCart(newCartId(), Set.empty))
-      val probe = testKit.createTestProbe[StatusReply[ShoppingCart.Summary]]
+      val probe = testKit.createTestProbe[StatusReply[ShoppingCart.Summary]]()
       cart ! ShoppingCart.AddItem("foo", 42, probe.ref)
       probe.receiveMessage().isSuccess should ===(true)
       cart ! ShoppingCart.RemoveItem("foo", probe.ref)
@@ -47,7 +47,7 @@ class ShoppingCartSpec extends ScalaTestWithActorTestKit(s"""
 
     "adjust quantity" in {
       val cart = testKit.spawn(ShoppingCart(newCartId(), Set.empty))
-      val probe = testKit.createTestProbe[StatusReply[ShoppingCart.Summary]]
+      val probe = testKit.createTestProbe[StatusReply[ShoppingCart.Summary]]()
       cart ! ShoppingCart.AddItem("foo", 42, probe.ref)
       probe.receiveMessage().isSuccess should ===(true)
       cart ! ShoppingCart.AdjustItemQuantity("foo", 43, probe.ref)
@@ -56,7 +56,7 @@ class ShoppingCartSpec extends ScalaTestWithActorTestKit(s"""
 
     "checkout" in {
       val cart = testKit.spawn(ShoppingCart(newCartId(), Set.empty))
-      val probe = testKit.createTestProbe[StatusReply[ShoppingCart.Summary]]
+      val probe = testKit.createTestProbe[StatusReply[ShoppingCart.Summary]]()
       cart ! ShoppingCart.AddItem("foo", 42, probe.ref)
       probe.receiveMessage().isSuccess should ===(true)
       cart ! ShoppingCart.Checkout(probe.ref)
@@ -69,7 +69,7 @@ class ShoppingCartSpec extends ScalaTestWithActorTestKit(s"""
     "keep its state" in {
       val cartId = newCartId()
       val cart = testKit.spawn(ShoppingCart(cartId, Set.empty))
-      val probe = testKit.createTestProbe[StatusReply[ShoppingCart.Summary]]
+      val probe = testKit.createTestProbe[StatusReply[ShoppingCart.Summary]]()
       cart ! ShoppingCart.AddItem("foo", 42, probe.ref)
       probe.expectMessage(StatusReply.Success(ShoppingCart.Summary(Map("foo" -> 42), checkedOut = false)))
 
@@ -77,7 +77,7 @@ class ShoppingCartSpec extends ScalaTestWithActorTestKit(s"""
 
       // start again with same cartId
       val restartedCart = testKit.spawn(ShoppingCart(cartId, Set.empty))
-      val stateProbe = testKit.createTestProbe[ShoppingCart.Summary]
+      val stateProbe = testKit.createTestProbe[ShoppingCart.Summary]()
       restartedCart ! ShoppingCart.Get(stateProbe.ref)
       stateProbe.expectMessage(ShoppingCart.Summary(Map("foo" -> 42), checkedOut = false))
     }
