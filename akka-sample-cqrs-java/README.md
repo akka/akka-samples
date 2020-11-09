@@ -1,4 +1,6 @@
-This tutorial contains a sample illustrating an CQRS design with [Akka Cluster Sharding](https://doc.akka.io/docs/akka/2.6/typed/cluster-sharding.html), [Akka Cluster Singleton](https://doc.akka.io/docs/akka/2.6/typed/cluster-singleton.html), [Akka Persistence](https://doc.akka.io/docs/akka/2.6/typed/persistence.html) and [Akka Persistence Query](https://doc.akka.io/docs/akka/2.6/persistence-query.html).
+# Akka CQRS - Java Sample
+
+This tutorial contains a sample illustrating an CQRS design with [Akka Cluster Sharding](https://doc.akka.io/docs/akka/2.6/typed/cluster-sharding.html), [Akka Cluster Singleton](https://doc.akka.io/docs/akka/2.6/typed/cluster-singleton.html), [Akka Persistence](https://doc.akka.io/docs/akka/2.6/typed/persistence.html), [Akka Persistence Query](https://doc.akka.io/docs/akka/2.6/persistence-query.html), and [Akka Projection](https://doc.akka.io/docs/akka-projection/1.0.0/index.html).
 
 ## Overview
 
@@ -22,43 +24,43 @@ This is implemented using [Akka Projections](https://doc.akka.io/docs/akka-proje
 
 1. Start a Cassandra server by running:
 
-```
+```bash
 mvn compile exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="cassandra"
 ```
 
 2. Start a node that runs the write model:
 
-```
+```bash
 mvn compile -Dakka.cluster.roles.0=write-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2551"
 ```
 
 3. Start a node that runs the read model:
 
-```
+```bash
 mvn compile -Dakka.cluster.roles.0=read-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2552"
 ```
 
 4. More write or read nodes can be started by defining roles and port:
 
-```
+```bash
 mvn compile -Dakka.cluster.roles.0=write-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2553"
 mvn compile -Dakka.cluster.roles.0=read-model exec:java -Dexec.mainClass="sample.cqrs.Main" -Dexec.args="2554"
-``` 
+```
 
 Try it with curl:
 
- ```
- # add item to cart
- curl -X POST -H "Content-Type: application/json" -d '{"cartId":"cart1", "itemId":"socks", "quantity":3}' http://127.0.0.1:8051/shopping/carts
+```bash
+# add item to cart
+curl -X POST -H "Content-Type: application/json" -d '{"cartId":"cart1", "itemId":"socks", "quantity":3}' http://127.0.0.1:8051/shopping/carts
 
- # get cart
- curl http://127.0.0.1:8051/shopping/carts/cart1
+# get cart
+curl http://127.0.0.1:8051/shopping/carts/cart1
 
- # update quantity of item
- curl -X PUT -H "Content-Type: application/json" -d '{"cartId":"cart1", "itemId":"socks", "quantity":5}' http://127.0.0.1:8051/shopping/carts
+# update quantity of item
+curl -X PUT -H "Content-Type: application/json" -d '{"cartId":"cart1", "itemId":"socks", "quantity":5}' http://127.0.0.1:8051/shopping/carts
 
- # check out cart
- curl -X POST -H "Content-Type: application/json" -d '{}' http://127.0.0.1:8051/shopping/carts/cart1/checkout
- ```
+# check out cart
+curl -X POST -H "Content-Type: application/json" -d '{}' http://127.0.0.1:8051/shopping/carts/cart1/checkout
+```
 
- or same `curl` commands to port 8052.
+ or same `curl` commands to port `8052`.

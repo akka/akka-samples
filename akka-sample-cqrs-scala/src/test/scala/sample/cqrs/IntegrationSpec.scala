@@ -1,7 +1,6 @@
 package sample.cqrs
 
 import java.io.File
-import java.util.UUID
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -14,9 +13,6 @@ import akka.cluster.typed.Join
 import akka.pattern.StatusReply
 import akka.persistence.cassandra.testkit.CassandraLauncher
 import akka.persistence.testkit.scaladsl.PersistenceInit
-import akka.persistence.typed.PersistenceId
-import akka.persistence.typed.scaladsl.Effect
-import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import org.apache.commons.io.FileUtils
@@ -144,10 +140,10 @@ class IntegrationSpec
 
     "update and consume from different nodes" in {
       val cart1 = ClusterSharding(testKit1.system).entityRefFor(ShoppingCart.EntityKey, "cart-1")
-      val probe1 = testKit1.createTestProbe[StatusReply[ShoppingCart.Summary]]
+      val probe1 = testKit1.createTestProbe[StatusReply[ShoppingCart.Summary]]()
 
       val cart2 = ClusterSharding(testKit2.system).entityRefFor(ShoppingCart.EntityKey, "cart-2")
-      val probe2 = testKit2.createTestProbe[StatusReply[ShoppingCart.Summary]]
+      val probe2 = testKit2.createTestProbe[StatusReply[ShoppingCart.Summary]]()
 
       val eventProbe3 = testKit3.createTestProbe[ShoppingCart.Event]()
       testKit3.system.eventStream ! EventStream.Subscribe(eventProbe3.ref)
@@ -184,7 +180,7 @@ class IntegrationSpec
       }
 
       val cart3 = ClusterSharding(testKit1.system).entityRefFor(ShoppingCart.EntityKey, "cart-3")
-      val probe3 = testKit1.createTestProbe[StatusReply[ShoppingCart.Summary]]
+      val probe3 = testKit1.createTestProbe[StatusReply[ShoppingCart.Summary]]()
 
       // update from node1, consume event from node4
       cart3 ! ShoppingCart.AddItem("abc", 43, probe3.ref)

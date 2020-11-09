@@ -49,7 +49,7 @@ public class ProjectionTest {
 
     private static final File databaseDirectory = new File("target/cassandra-EventProcessorTest");
 
-    private static final ProjectionTestKit projectionTestKit = ProjectionTestKit.create(testKit.testKit());
+    private static final ProjectionTestKit projectionTestKit = ProjectionTestKit.create(testKit.system());
 
     private final EventProcessorSettings settings = EventProcessorSettings.create(testKit.system());
 
