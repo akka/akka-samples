@@ -29,35 +29,42 @@ object UserEventsKafkaProcessor {
         implicit val ec: ExecutionContextExecutor = ctx.executionContext
         implicit val scheduler: Scheduler = classic.scheduler
 
+        // ActorContext can't be accessed inside Futures
+        // so we capture the scheduler and log before using them
+        val typedScheduler = ctx.system.scheduler
+        val logger = ctx.log
+
         val rebalanceListener = KafkaClusterSharding(classic).rebalanceListener(processorSettings.entityTypeKey)
 
         val subscription = Subscriptions
           .topics(processorSettings.topics: _*)
           .withRebalanceListener(rebalanceListener.toClassic)
 
-        val stream: Future[Done] = Consumer.sourceWithOffsetContext(processorSettings.kafkaConsumerSettings(), subscription)
-          // MapAsync and Retries can be replaced by reliable delivery
-          .mapAsync(20) { record =>
-            ctx.log.info(s"user id consumed kafka partition ${record.key()}->${record.partition()}")
-            retry(() =>
-              shardRegion.ask[Done](replyTo => {
-                val purchaseProto = UserPurchaseProto.parseFrom(record.value())
-                UserEvents.UserPurchase(
-                  purchaseProto.userId,
-                  purchaseProto.product,
-                  purchaseProto.quantity,
-                  purchaseProto.price,
-                  replyTo)
-              })(processorSettings.askTimeout, ctx.system.scheduler),
-              attempts = 5,
-              delay = 1.second
-            )
-          }
-          .runWith(Committer.sinkWithOffsetContext(CommitterSettings(classic)))
+        val stream: Future[Done] =
+          Consumer.sourceWithOffsetContext(processorSettings.kafkaConsumerSettings(), subscription)
+            // MapAsync and Retries can be replaced by reliable delivery
+            .mapAsync(20) { record =>
+              logger.info(s"user id consumed kafka partition ${record.key()}->${record.partition()}")
+              retry(() =>
+                shardRegion.ask[Done](replyTo => {
+                  val purchaseProto = UserPurchaseProto.parseFrom(record.value())
+                  UserEvents.UserPurchase(
+                    purchaseProto.userId,
+                    purchaseProto.product,
+                    purchaseProto.quantity,
+                    purchaseProto.price,
+                    replyTo)
+                })(processorSettings.askTimeout, typedScheduler),
+                attempts = 5,
+                delay = 1.second
+              )
+            }
+            .runWith(Committer.sinkWithOffsetContext(CommitterSettings(classic)))
 
         stream.onComplete { result =>
           ctx.self ! KafkaConsumerStopped(result)
         }
+
         Behaviors.receiveMessage[Command] {
           case KafkaConsumerStopped(reason) =>
             ctx.log.info("Consumer stopped {}", reason)
