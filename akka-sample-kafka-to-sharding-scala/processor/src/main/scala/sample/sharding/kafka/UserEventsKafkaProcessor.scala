@@ -34,7 +34,7 @@ object UserEventsKafkaProcessor {
     Behaviors
       .setup[Command] { ctx =>
         implicit val sys: TypedActorSystem[_] = ctx.system
-        val result = consumeFromTopic(shardRegion, processorSettings)
+        val result = startConsumingFromTopic(shardRegion, processorSettings)
 
         ctx.pipeToSelf(result) {
           result => KafkaConsumerStopped(result)
@@ -50,7 +50,7 @@ object UserEventsKafkaProcessor {
   }
 
 
-  private def consumeFromTopic(shardRegion: ActorRef[UserEvents.Command], processorSettings: ProcessorSettings)
+  private def startConsumingFromTopic(shardRegion: ActorRef[UserEvents.Command], processorSettings: ProcessorSettings)
                      (implicit actorSystem: TypedActorSystem[_]): Future[Done] = {
 
     implicit val ec: ExecutionContext = actorSystem.executionContext
