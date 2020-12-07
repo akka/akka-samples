@@ -2,21 +2,22 @@ package sample.persistence.res.auction
 
 import java.time.Instant
 
-import akka.actor.typed.{ActorRef, Behavior}
-import akka.actor.typed.scaladsl.{ActorContext, Behaviors, LoggerOps, TimerScheduler}
+import akka.actor.typed.{ ActorRef, Behavior }
+import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, LoggerOps, TimerScheduler }
 import akka.persistence.cassandra.query.javadsl.CassandraReadJournal
-import akka.persistence.typed.{RecoveryCompleted, ReplicaId, ReplicationId}
-import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior, ReplicatedEventSourcing, ReplicationContext}
-import sample.persistence.res.{CborSerializable, MainApp}
+import akka.persistence.typed.{ RecoveryCompleted, ReplicaId, ReplicationId }
+import akka.persistence.typed.scaladsl.{ Effect, EventSourcedBehavior, ReplicatedEventSourcing, ReplicationContext }
+import sample.persistence.res.{ CborSerializable, MainApp }
 
 import scala.concurrent.duration._
 
 class Auction(
-                     context: ActorContext[Auction.Command],
-                     replicationContext: ReplicationContext,
-                     timers: TimerScheduler[Auction.Command],
-                     closingAt: Instant,
-                     responsibleForClosing: Boolean) {
+    context: ActorContext[Auction.Command],
+    replicationContext: ReplicationContext,
+    timers: TimerScheduler[Auction.Command],
+    closingAt: Instant,
+    responsibleForClosing: Boolean) {
+
   import Auction._
 
   private def behavior(initialBid: Bid): EventSourcedBehavior[Command, Event, AuctionState] =
@@ -36,52 +37,57 @@ class Auction(
     timers.startSingleTimer(Finish, millisUntilClosing.millis)
   }
 
-  private def commandHandler(state: AuctionState, command: Command): Effect[Event, AuctionState] = {
+  private def commandHandler(state: AuctionState, command: Command): Effect[Event, AuctionState] =
     state.phase match {
       case Closing(_) | Closed =>
-        command match {
-          case GetHighestBid(replyTo) =>
-            replyTo ! state.highestBid.copy(offer = state.highestCounterOffer) // TODO this is not as described
-            Effect.none
-          case IsClosed(replyTo) =>
-            replyTo ! (state.phase == Closed)
-            Effect.none
-          case Finish =>
-            context.log.info("Finish")
-            Effect.persist(AuctionFinished(replicationContext.replicaId))
-          case Close =>
-            context.log.info("Close")
-            require(shouldClose(state))
-            Effect.persist(WinnerDecided(replicationContext.replicaId, state.highestBid, state.highestCounterOffer))
-          case _: OfferBid =>
-            // auction finished, no more bids accepted
-            Effect.unhandled
-        }
+        readOnlyCommandHandler(state, command)
       case Running =>
-        command match {
-          case OfferBid(bidder, offer) =>
-            Effect.persist(
-              BidRegistered(
-                Bid(
-                  bidder,
-                  offer,
-                  Instant.ofEpochMilli(replicationContext.currentTimeMillis()),
-                  replicationContext.replicaId)))
-          case GetHighestBid(replyTo) =>
-            replyTo ! state.highestBid
-            Effect.none
-          case Finish =>
-            Effect.persist(AuctionFinished(replicationContext.replicaId))
-          case Close =>
-            context.log.warn("Premature close")
-            // Close should only be triggered when we have already finished
-            Effect.unhandled
-          case IsClosed(replyTo) =>
-            replyTo ! false
-            Effect.none
-        }
+        runningCommandHandler(state, command)
     }
-  }
+
+  private def readOnlyCommandHandler(state: AuctionState, command: Command): Effect[Event, AuctionState] =
+    command match {
+      case GetHighestBid(replyTo) =>
+        replyTo ! state.highestBid.copy(offer = state.highestCounterOffer) // TODO this is not as described
+        Effect.none
+      case IsClosed(replyTo) =>
+        replyTo ! (state.phase == Closed)
+        Effect.none
+      case Finish =>
+        context.log.info("Finish")
+        Effect.persist(AuctionFinished(replicationContext.replicaId))
+      case Close =>
+        context.log.info("Close")
+        require(shouldClose(state))
+        Effect.persist(WinnerDecided(replicationContext.replicaId, state.highestBid, state.highestCounterOffer))
+      case _: OfferBid =>
+        // auction finished, no more bids accepted
+        Effect.unhandled
+    }
+
+  private def runningCommandHandler(state: AuctionState, command: Command): Effect[Event, AuctionState] =
+    command match {
+      case OfferBid(bidder, offer) =>
+        Effect.persist(
+          BidRegistered(
+            Bid(
+              bidder,
+              offer,
+              Instant.ofEpochMilli(replicationContext.currentTimeMillis()),
+              replicationContext.replicaId)))
+      case GetHighestBid(replyTo) =>
+        replyTo ! state.highestBid
+        Effect.none
+      case Finish =>
+        Effect.persist(AuctionFinished(replicationContext.replicaId))
+      case Close =>
+        context.log.warn("Premature close")
+        // Close should only be triggered when we have already finished
+        Effect.unhandled
+      case IsClosed(replyTo) =>
+        replyTo ! false
+        Effect.none
+    }
 
   private def eventHandler(state: AuctionState, event: Event): AuctionState = {
     val newState = state.applyEvent(event)
@@ -139,17 +145,23 @@ object Auction {
   case class Bid(bidder: String, offer: MoneyAmount, timestamp: Instant, originReplica: ReplicaId)
 
   sealed trait Command extends CborSerializable
+
   case object Finish extends Command // A timer needs to schedule this event at each replica
   final case class OfferBid(bidder: String, offer: MoneyAmount) extends Command
+
   final case class GetHighestBid(replyTo: ActorRef[Bid]) extends Command
+
   final case class IsClosed(replyTo: ActorRef[Boolean]) extends Command
+
   private final case object Close extends Command // Internal, should not be sent from the outside
 
   sealed trait Event extends CborSerializable
+
   final case class BidRegistered(bid: Bid) extends Event
+
   final case class AuctionFinished(atReplica: ReplicaId) extends Event
-  final case class WinnerDecided(atReplica: ReplicaId, winningBid: Bid, highestCounterOffer: MoneyAmount)
-    extends Event
+
+  final case class WinnerDecided(atReplica: ReplicaId, winningBid: Bid, highestCounterOffer: MoneyAmount) extends Event
 
   /**
    * The auction passes through several workflow phases.
@@ -173,12 +185,15 @@ object Auction {
    *
    */
   private sealed trait AuctionPhase
+
   private case object Running extends AuctionPhase
+
   private final case class Closing(finishedAtReplica: Set[ReplicaId]) extends AuctionPhase
+
   private case object Closed extends AuctionPhase
 
   private case class AuctionState(phase: AuctionPhase, highestBid: Bid, highestCounterOffer: MoneyAmount)
-    extends CborSerializable {
+      extends CborSerializable {
 
     def applyEvent(event: Event): AuctionState =
       event match {
@@ -215,27 +230,26 @@ object Auction {
 
     def isHigherBid(first: Bid, second: Bid): Boolean =
       first.offer > second.offer ||
-        (first.offer == second.offer && first.timestamp.isBefore(second.timestamp)) || // if equal, first one wins
-        // If timestamps are equal, choose by dc where the offer was submitted
-        // In real auctions, this last comparison should be deterministic but unpredictable, so that submitting to a
-        // particular DC would not be an advantage.
-        (first.offer == second.offer && first.timestamp.equals(second.timestamp) && first.originReplica.id
-          .compareTo(second.originReplica.id) < 0)
+      (first.offer == second.offer && first.timestamp.isBefore(second.timestamp)) || // if equal, first one wins
+      // If timestamps are equal, choose by dc where the offer was submitted
+      // In real auctions, this last comparison should be deterministic but unpredictable, so that submitting to a
+      // particular DC would not be an advantage.
+      (first.offer == second.offer && first.timestamp.equals(second.timestamp) && first.originReplica.id
+        .compareTo(second.originReplica.id) < 0)
   }
 
   def apply(
-             replica: ReplicaId,
-             name: String,
-             initialBid: Auction.Bid, // the initial bid is basically the minimum price bidden at start time by the owner
-             closingAt: Instant,
-             responsibleForClosing: Boolean): Behavior[Command] = Behaviors.setup[Command] { ctx =>
+      replica: ReplicaId,
+      name: String,
+      initialBid: Auction.Bid, // the initial bid is basically the minimum price bidden at start time by the owner
+      closingAt: Instant,
+      responsibleForClosing: Boolean): Behavior[Command] = Behaviors.setup[Command] { ctx =>
     Behaviors.withTimers { timers =>
       ReplicatedEventSourcing.commonJournalConfig(
         ReplicationId("auction", name, replica),
         MainApp.AllReplicas,
         CassandraReadJournal.Identifier) { replicationCtx =>
-        new Auction(ctx, replicationCtx, timers, closingAt, responsibleForClosing)
-          .behavior(initialBid)
+        new Auction(ctx, replicationCtx, timers, closingAt, responsibleForClosing).behavior(initialBid)
       }
     }
   }
