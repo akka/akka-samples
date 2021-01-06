@@ -40,7 +40,7 @@ sbt -Dakka.cluster.roles.0=write-model "runMain sample.cqrs.Main 2551"
 sbt -Dakka.cluster.roles.0=read-model "runMain sample.cqrs.Main 2552"
 ```
 
-4. More write or read nodes can be started started by defining roles and port:
+4. More write or read nodes can be started by defining roles and port:
 
 ```bash
 sbt -Dakka.cluster.roles.0=write-model "runMain sample.cqrs.Main 2553"
