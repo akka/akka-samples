@@ -26,7 +26,7 @@ before_install:
 
 env:
   global:
-    - TRAVIS_JDK=adopt@1.8.0-222
+    - TRAVIS_JDK=adopt@1.8.0-275
     - JABBA_HOME=/home/travis/.jabba
   matrix:
     - CMD="cd akka-sample-cluster-java && sbt multi-jvm:test"
