@@ -56,3 +56,11 @@ branches:
   only:
     - "2.6"
     - "2.5"
+
+notifications:
+  email:
+    recipients:
+      - akka.official@gmail.com
+    on_success: never
+    on_failure: always
+    if: (branch = "2.6" OR branch = "2.5")
