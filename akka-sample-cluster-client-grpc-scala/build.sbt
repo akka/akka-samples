@@ -10,7 +10,7 @@ lazy val `akka-sample-cluster-client-grpc-scala` = project
   .settings(multiJvmSettings: _*)
   .settings(
     organization := "com.typesafe.akka",
-    scalaVersion := "2.13.2",
+    scalaVersion := "2.13.4",
     scalacOptions in Compile ++= Seq(
       "-deprecation",
       "-feature",
