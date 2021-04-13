@@ -1,13 +1,14 @@
-package sample.persistence.multidc
+package sample.persistence.res.counter
 
 import akka.actor.typed.ActorSystem
-import akka.cluster.sharding.typed.{ReplicatedSharding, ShardingEnvelope}
+import akka.cluster.sharding.typed.ReplicatedSharding
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes}
+import akka.http.scaladsl.server.Route
 import akka.persistence.typed.ReplicaId
 import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
-import sample.persistence.multidc.ThumbsUpCounter.State
+import sample.persistence.res.counter.ThumbsUpCounter.State
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -15,14 +16,14 @@ import scala.util.{Failure, Success}
 
 object ThumbsUpHttp {
 
-  def startServer(httpHost: String, httpPort: Int, selfReplica: ReplicaId, res: ReplicatedSharding[ThumbsUpCounter.Command])(implicit system: ActorSystem[_]): Unit = {
+  def route(selfReplica: ReplicaId, res: ReplicatedSharding[ThumbsUpCounter.Command])(implicit system: ActorSystem[_]): Route = {
 
     import akka.http.scaladsl.server.Directives._
 
     implicit val timeout: Timeout = Timeout(10.seconds)
     implicit val ec: ExecutionContext = system.executionContext
 
-    val api = pathPrefix("thumbs-up") {
+    pathPrefix("thumbs-up") {
       concat(
         // example: curl http://127.0.0.1:22551/thumbs-up/a
         get {
@@ -49,10 +50,6 @@ object ThumbsUpHttp {
       )
     }
 
-    Http().newServerAt(httpHost, httpPort).bind(api).onComplete {
-      case Success(_) => system.log.info("HTTP Server bound to http://{}:{}", httpHost, httpPort)
-      case Failure(ex) => system.log.error(s"Failed to bind HTTP Server to http://$httpHost:$httpPort", ex)
-    }
 
   }
 }

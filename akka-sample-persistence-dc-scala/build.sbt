@@ -27,6 +27,7 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.2.3",
 
   "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % AkkaPersistenceCassandraVersion,
+  "com.typesafe.akka" %% "akka-persistence-testkit" % AkkaVersion % Test,
   "org.scalatest" %% "scalatest" % "3.0.8" % Test
 )
 

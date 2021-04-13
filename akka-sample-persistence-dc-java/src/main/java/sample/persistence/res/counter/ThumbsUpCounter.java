@@ -1,4 +1,4 @@
-package sample.persistence.multidc;
+package sample.persistence.res.counter;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
@@ -6,21 +6,19 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.sharding.typed.ReplicatedEntityProvider;
 import akka.persistence.cassandra.query.javadsl.CassandraReadJournal;
-import akka.persistence.typed.ReplicaId;
 import akka.persistence.typed.ReplicationId;
 import akka.persistence.typed.javadsl.*;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import sample.persistence.res.CborSerializable;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-public class ThumbsUpCounter extends ReplicatedEventSourcedBehavior<ThumbsUpCounter.Command, ThumbsUpCounter.Event, ThumbsUpCounter.State> {
+import static sample.persistence.res.MainApp.ALL_REPLICAS;
 
-    public static Set<ReplicaId> ALL_REPLICAS =
-        Collections.unmodifiableSet(new HashSet<>(Arrays.asList(new ReplicaId("eu-west"), new ReplicaId("eu-central"))));
-    
+public final class ThumbsUpCounter extends ReplicatedEventSourcedBehavior<ThumbsUpCounter.Command, ThumbsUpCounter.Event, ThumbsUpCounter.State> {
+   
     private final ActorContext<Command> ctx;
 
     private static Behavior<Command> create(ReplicationId id) {
@@ -67,7 +65,7 @@ public class ThumbsUpCounter extends ReplicatedEventSourcedBehavior<ThumbsUpCoun
 
     // Classes for commands, events, and state...
 
-    interface Command extends CborSerializer {
+    public interface Command extends CborSerializable {
     }
 
     public static class GiveThumbsUp implements Command {
@@ -103,7 +101,7 @@ public class ThumbsUpCounter extends ReplicatedEventSourcedBehavior<ThumbsUpCoun
     }
 
 
-    interface Event extends CborSerializer {
+    interface Event extends CborSerializable {
     }
 
     public static class GaveThumbsUp implements Event {
@@ -115,7 +113,7 @@ public class ThumbsUpCounter extends ReplicatedEventSourcedBehavior<ThumbsUpCoun
         }
     }
 
-    public static class State implements CborSerializer {
+    public static class State implements CborSerializable {
         public final Set<String> users;
 
         public State() {

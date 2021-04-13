@@ -1,4 +1,4 @@
-package sample.persistence.multidc;
+package sample.persistence.res.counter;
 
 import akka.NotUsed;
 import akka.actor.typed.ActorSystem;
