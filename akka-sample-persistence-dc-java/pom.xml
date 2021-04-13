@@ -26,8 +26,8 @@
 
    <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <akka.version>2.6.9</akka.version>
-    <akka-persistence-cassandra.version>1.0.3</akka-persistence-cassandra.version>
+    <akka.version>2.6.13</akka.version>
+    <akka-persistence-cassandra.version>1.0.5</akka-persistence-cassandra.version>
     <akka-http.version>10.2.0</akka-http.version>
     <akka-management.version>1.0.8</akka-management.version>
   </properties>
@@ -112,7 +112,7 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.12</version>
+      <version>4.13.1</version>
       <scope>test</scope>
     </dependency>
    </dependencies>

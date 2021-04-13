@@ -47,7 +47,7 @@ private[killrweather] object WeatherStation {
   final case class QueryResult(wsid: String, dataType: DataType, func: Function, readings: Int, value: Vector[TimeWindow]) extends CborSerializable
 
 
-  // small domain model for queriying and storing weather data
+  // small domain model for querying and storing weather data
 
   // needed for CBOR serialization with Jackson
   @JsonSerialize(using = classOf[DataTypeJsonSerializer])
@@ -112,7 +112,7 @@ private[killrweather] object WeatherStation {
 
       case Query(dataType, func, replyTo) =>
         val valuesForType = values.filter(_.dataType == dataType)
-        val queryResult: Seq[TimeWindow] =
+        val queryResult: Vector[TimeWindow] =
           if (valuesForType.isEmpty) Vector.empty
           else
             func match {

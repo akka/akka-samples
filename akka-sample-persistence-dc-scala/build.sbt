@@ -1,11 +1,11 @@
 organization := "com.lightbend.akka.samples"
 name := "akka-sample-replicated-event-sourcing-scala"
 
-scalaVersion := "2.13.3"
+scalaVersion := "2.13.5"
 
-val AkkaVersion = "2.6.9"
+val AkkaVersion = "2.6.13"
 val AkkaAddOnsVersion = "1.1.12"
-val AkkaPersistenceCassandraVersion = "1.0.3"
+val AkkaPersistenceCassandraVersion = "1.0.5"
 val AkkaHttpVersion = "10.2.0"
 val AkkaClusterManagementVersion = "1.0.8"
 

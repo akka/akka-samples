@@ -2,10 +2,10 @@ name := "akka-distributed-workers"
 
 version := "1.0"
 
-scalaVersion := "2.13.1"
-val akkaVersion = "2.6.8"
+scalaVersion := "2.13.5"
+val akkaVersion = "2.6.13"
 
-val cassandraPluginVersion = "0.103"
+val cassandraPluginVersion = "1.0.5"
 
 Global / cancelable := false
 
