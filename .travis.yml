@@ -1,10 +1,22 @@
+version: ~> 1.0
+
+os: linux
+dist: xenial
+
 language: scala
 
 scala:
   - "2.12.8"
 
-install:
-  - $JABBA_HOME/bin/jabba install $TRAVIS_JDK && export JAVA_HOME="$JABBA_HOME/jdk/$TRAVIS_JDK" && export PATH="$JAVA_HOME/bin:$PATH" && java -Xmx32m -version
+addons:
+  apt:
+    sources:
+      # Official debian package for AdoptOpenJDK from https://adoptopenjdk.net/installation.html#linux-pkg
+      - sourceline: deb https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/ xenial main
+        key_url: https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public
+    packages:
+      - adoptopenjdk-8-hotspot
+      - adoptopenjdk-11-hotspot
 
 before_cache:
   - find $HOME/.ivy2 -name "ivydata-*.properties" -print -delete
@@ -13,21 +25,20 @@ before_cache:
 cache:
   directories:
     - $HOME/.ivy2/cache
-    - $HOME/.sbt
+    - $HOME/.sbt/boot
     - $HOME/.m2/repository
-    - $HOME/.jabba/jdk
 
 before_install:
-  - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.10.1/install.sh | bash && . ~/.jabba/jabba.sh
   - wget https://archive.apache.org/dist/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.zip
   - unzip -qq apache-maven-3.6.1-bin.zip
   - export M2_HOME=$PWD/apache-maven-3.6.1
   - export PATH=$M2_HOME/bin:$PATH
+  - whereis java
+  - export JAVA_HOME=/usr/lib/jvm/adoptopenjdk-11-hotspot-amd64
+  - export PATH=/usr/lib/jvm/adoptopenjdk-11-hotspot-amd64/bin:$PATH
+  - java -version
 
 env:
-  global:
-    - TRAVIS_JDK=adopt@1.8.0-275
-    - JABBA_HOME=/home/travis/.jabba
   matrix:
     - CMD="cd akka-sample-cluster-java && sbt multi-jvm:test"
     - CMD="cd akka-sample-cluster-scala && sbt multi-jvm:test"
@@ -45,7 +56,11 @@ env:
     - CMD="cd akka-sample-sharding-scala && sbt test"
     - CMD="cd docs-gen && sbt paradox"
     - CMD="cd akka-sample-kafka-to-sharding-scala && sbt test"
+
 script:
+  - export JAVA_HOME=/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64
+  - export PATH=/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/bin:$PATH
+  - java -version
   - eval "$CMD"
 
 
