@@ -157,7 +157,7 @@ With the cluster running you can interact with the HTTP endpoint using raw HTTP,
 Record data for station 62:
 
 ```
-curl -XPOST http://localhost:12553/weather/62/data -H "Content-Type: application/json" --data '{"eventTime": 1579106781, "dataType": "temperature", "value": 10.3}'
+curl -XPOST http://localhost:12553/weather/62 -H "Content-Type: application/json" --data '{"eventTime": 1579106781, "dataType": "temperature", "value": 10.3}'
 ```
 
 Query average temperature for station 62:
