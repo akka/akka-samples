@@ -44,7 +44,7 @@ jobs:
 
       - name: test ($${{ matrix.CMD }})
         # This runs the template with the default parameters, and runs test within the templated app.
-        run: $${{ matrix.CMD }}
+        run: ${{ matrix.CMD }}
 
       - name: docs gen
         run: cd docs-gen && sbt paradox
