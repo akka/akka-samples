@@ -1,0 +1,50 @@
+name: Build and test
+
+on:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # Not great but mimicing the pre-existing travis matrix solution for now
+        CMD: [
+          "cd akka-sample-cluster-java && sbt multi-jvm:test",
+          "cd akka-sample-cluster-scala && sbt multi-jvm:test",
+          "cd akka-sample-cluster-client-grpc-scala && sbt multi-jvm:test",
+          "cd akka-sample-cluster-client-grpc-java && mvn test",
+          "cd akka-sample-distributed-data-java && sbt multi-jvm:test",
+          "cd akka-sample-distributed-data-scala && sbt multi-jvm:test",
+          "cd akka-sample-fsm-java && mvn test",
+          "cd akka-sample-fsm-scala && sbt test",
+          "cd akka-sample-persistence-java && mvn test",
+          "cd akka-sample-persistence-scala && sbt test",
+          "cd akka-sample-persistence-dc-java && mvn test",
+          "cd akka-sample-persistence-dc-scala && sbt test",
+          "cd akka-sample-sharding-java && mvn test",
+          "cd akka-sample-sharding-scala && sbt test",
+          "cd akka-sample-kafka-to-sharding-scala && sbt test"
+        ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          # we don't know what commit the last tag was it's safer to get entire repo so previousStableVersion resolves
+          fetch-depth: 0
+
+      - name: Set up JDK 11
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: adopt@1.11.0
+
+      - name: Cache Coursier cache
+        uses: coursier/cache-action@v6.2
+
+      - name: test ($${{ matrix.CMD }})
+        # This runs the template with the default parameters, and runs test within the templated app.
+        run: $${{ matrix.CMD }}
+
+      - name: docs gen
+        run: cd docs-gen && sbt paradox
