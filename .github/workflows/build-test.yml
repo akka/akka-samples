@@ -1,0 +1,71 @@
+name: Build and test
+
+on:
+  pull_request:
+
+jobs:
+  build-test:
+    name: Build and test all samples
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          # we don't know what commit the last tag was it's safer to get entire repo so previousStableVersion resolves
+          fetch-depth: 0
+
+      - name: Set up JDK 11
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: adopt@1.11.0
+
+      - name: Cache Coursier cache
+        uses: coursier/cache-action@v6.2
+
+      - name: Test akka-sample-cluster-java
+        run: cd akka-sample-cluster-java && sbt multi-jvm:test
+
+      - name: Test akka-sample-cluster-scala
+        run: cd akka-sample-cluster-scala && sbt multi-jvm:test
+
+      - name: Test akka-sample-cluster-client-grpc-scala
+        run: cd akka-sample-cluster-client-grpc-scala && sbt multi-jvm:test
+
+      - name: Test akka-sample-cluster-client-grpc-java
+        run: cd akka-sample-cluster-client-grpc-java && mvn test
+
+      - name: Test akka-sample-distributed-data-java
+        run: cd akka-sample-distributed-data-java && sbt multi-jvm:test
+
+      - name: Test akka-sample-distributed-data-scala
+        run: cd akka-sample-distributed-data-scala && sbt multi-jvm:test
+
+      - name: Test akka-sample-fsm-java
+        run: cd akka-sample-fsm-java && mvn test
+
+      - name: Test akka-sample-fsm-scala
+        run: cd akka-sample-fsm-scala && sbt test
+
+      - name: Test akka-sample-persistence-java
+        run: cd akka-sample-persistence-java && mvn test
+
+      - name: Test akka-sample-persistence-scala
+        run: cd akka-sample-persistence-scala && sbt test
+
+      - name: Test akka-sample-persistence-dc-java
+        run: cd akka-sample-persistence-dc-java && mvn test
+
+      - name: Test akka-sample-persistence-dc-scala
+        run: cd akka-sample-persistence-dc-scala && sbt test
+
+      - name: Test akka-sample-sharding-java
+        run: cd akka-sample-sharding-java && mvn test
+
+      - name: Test akka-sample-sharding-scala
+        run: cd akka-sample-sharding-scala && sbt test
+
+      - name: Test akka-sample-kafka-to-sharding-scala
+        run: cd akka-sample-kafka-to-sharding-scala && sbt test
+
+      - name: Test docs gen
+        run: cd docs-gen && sbt paradox
