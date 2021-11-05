@@ -5,6 +5,7 @@ on:
 
 jobs:
   build-test:
+    name: Build and test all samples
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
@@ -42,7 +43,7 @@ jobs:
       - name: Cache Coursier cache
         uses: coursier/cache-action@v6.2
 
-      - name: test ($${{ matrix.CMD }})
+      - name: test (${{ matrix.CMD }})
         # This runs the template with the default parameters, and runs test within the templated app.
         run: ${{ matrix.CMD }}
 
