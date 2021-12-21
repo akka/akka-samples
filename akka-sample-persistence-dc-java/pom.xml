@@ -26,7 +26,7 @@
 
    <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <akka.version>2.6.17</akka.version>
+    <akka.version>2.6.18</akka.version>
     <akka-persistence-cassandra.version>1.0.5</akka-persistence-cassandra.version>
     <akka-http.version>10.2.0</akka-http.version>
     <akka-management.version>1.0.8</akka-management.version>
@@ -101,7 +101,7 @@
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
-      <version>1.2.3</version>
+      <version>1.2.9</version>
     </dependency>
      <dependency>
       <groupId>com.typesafe.akka</groupId>

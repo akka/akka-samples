@@ -1,12 +1,12 @@
 organization := "com.lightbend.akka.samples"
 name := "akka-sample-fsm-scala"
 
-val akkaVersion = "2.6.17"
+val akkaVersion = "2.6.18"
 
 scalaVersion := "2.13.5"
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
-  "ch.qos.logback" % "logback-classic" % "1.2.3"
+  "ch.qos.logback" % "logback-classic" % "1.2.9"
 )
 
 licenses := Seq(

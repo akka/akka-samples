@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.6.17"
+val akkaVersion = "2.6.18"
 
 lazy val `akka-sample-cluster-client-grpc-scala` = project
   .in(file("."))
