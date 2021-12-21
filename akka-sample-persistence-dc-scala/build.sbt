@@ -3,7 +3,7 @@ name := "akka-sample-replicated-event-sourcing-scala"
 
 scalaVersion := "2.13.5"
 
-val AkkaVersion = "2.6.17"
+val AkkaVersion = "2.6.18"
 val AkkaAddOnsVersion = "1.1.12"
 val AkkaPersistenceCassandraVersion = "1.0.5"
 val AkkaHttpVersion = "10.2.0"
@@ -24,7 +24,7 @@ libraryDependencies ++= Seq(
   "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaClusterManagementVersion,
   "com.typesafe.akka" %% "akka-persistence-cassandra" % AkkaPersistenceCassandraVersion,
 
-  "ch.qos.logback" % "logback-classic" % "1.2.3",
+  "ch.qos.logback" % "logback-classic" % "1.2.9",
 
   "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % AkkaPersistenceCassandraVersion,
   "com.typesafe.akka" %% "akka-persistence-testkit" % AkkaVersion % Test,

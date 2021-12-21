@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.6.17"
+val akkaVersion = "2.6.18"
 
 val `akka-sample-distributed-data-scala` = project
   .in(file("."))
@@ -18,7 +18,7 @@ val `akka-sample-distributed-data-scala` = project
       "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion % Test,
       "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
-      "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
+      "ch.qos.logback" % "logback-classic" % "1.2.9" % Test,
       "org.scalatest" %% "scalatest" % "3.0.8" % Test),
     fork in run := true,
     Global / cancelable := false, // ctrl-c
