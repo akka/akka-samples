@@ -3,7 +3,7 @@ name := "akka-distributed-workers"
 version := "1.0"
 
 scalaVersion := "2.13.5"
-val akkaVersion = "2.6.18"
+val akkaVersion = "2.6.19"
 
 val cassandraPluginVersion = "1.0.5"
 
