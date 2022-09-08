@@ -1,6 +1,6 @@
 
 val AkkaVersion = "2.6.20"
-val AkkaHttpVersion = "10.2.10"
+val AkkaHttpVersion = "10.1.11"
 val LogbackVersion = "1.4.0"
 
 lazy val buildSettings = Seq(
