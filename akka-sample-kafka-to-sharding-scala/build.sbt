@@ -1,11 +1,11 @@
-val AkkaVersion = "2.6.19"
-val AlpakkaKafkaVersion = "2.0.4"
-val AkkaManagementVersion = "1.0.5"
-val AkkaHttpVersion = "10.1.11"
+val AkkaVersion = "2.6.20"
+val AlpakkaKafkaVersion = "3.0.1"
+val AkkaManagementVersion = "1.1.4"
+val AkkaHttpVersion = "10.2.10"
 val EmbeddedKafkaVersion = "2.4.1.1"
-val LogbackVersion = "1.2.9"
+val LogbackVersion = "1.4.0"
 
-ThisBuild / scalaVersion := "2.13.5"
+ThisBuild / scalaVersion := "2.13.8"
 ThisBuild / organization := "com.lightbend.akka.samples"
 ThisBuild / scalacOptions in Compile ++= Seq(
   "-deprecation",
@@ -67,5 +67,5 @@ lazy val producer = project
   .settings(libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-stream-kafka" % AlpakkaKafkaVersion,
       "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
-      "ch.qos.logback" % "logback-classic" % "1.2.9",
+      "ch.qos.logback" % "logback-classic" % "1.4.0",
       "org.scalatest" %% "scalatest" % "3.0.8" % Test))

@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.6.19"
+val akkaVersion = "2.6.20"
 
 val `akka-sample-distributed-data-java` = project
   .in(file("."))
@@ -9,7 +9,7 @@ val `akka-sample-distributed-data-java` = project
   .settings(
     organization := "com.lightbend.akka.samples",
     version := "1.0",
-    scalaVersion := "2.13.5",
+    scalaVersion := "2.13.8",
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-parameters", "-Xlint:unchecked", "-Xlint:deprecation", "-Xdiags:verbose"),
     javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m"),
@@ -18,7 +18,7 @@ val `akka-sample-distributed-data-java` = project
       "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion % Test,
       "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
-      "ch.qos.logback" % "logback-classic" % "1.2.9" % Test,
+      "ch.qos.logback" % "logback-classic" % "1.4.0" % Test,
       "org.scalatest" %% "scalatest" % "3.0.8" % Test),
     fork in run := true,
     Global / cancelable := false, // ctrl-c

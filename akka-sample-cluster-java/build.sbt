@@ -1,14 +1,14 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.6.19"
+val akkaVersion = "2.6.20"
 
 lazy val `akka-sample-cluster-java` = project
   .in(file("."))
   .settings(multiJvmSettings: _*)
   .settings(
     organization := "com.lightbend.akka.samples",
-    scalaVersion := "2.13.5",
+    scalaVersion := "2.13.8",
     Compile / scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     Compile / javacOptions ++= Seq("-parameters", "-Xlint:unchecked", "-Xlint:deprecation"),
     run / javaOptions ++= Seq("-Xms128m", "-Xmx1024m", "-Djava.library.path=./target/native"),
@@ -16,7 +16,7 @@ lazy val `akka-sample-cluster-java` = project
       "com.typesafe.akka" %% "akka-actor-typed"           % akkaVersion,
       "com.typesafe.akka" %% "akka-cluster-typed"         % akkaVersion,
       "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
-      "ch.qos.logback"    %  "logback-classic"             % "1.2.9",
+      "ch.qos.logback"    %  "logback-classic"             % "1.4.0",
       "com.typesafe.akka" %% "akka-multi-node-testkit"    % akkaVersion % Test,
       "org.scalatest"     %% "scalatest"                  % "3.0.8"     % Test,
       "com.typesafe.akka" %% "akka-actor-testkit-typed"   % akkaVersion % Test),
