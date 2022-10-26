@@ -1,7 +1,7 @@
 
 val AkkaVersion = "2.6.20"
 val AkkaHttpVersion = "10.2.10"
-val LogbackVersion = "1.4.0"
+val LogbackVersion = "1.2.11"
 
 lazy val buildSettings = Seq(
   organization := "com.lightbend.akka.samples",

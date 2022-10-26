@@ -7,7 +7,7 @@ def akkaVersion = "2.6.20"
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-persistence-typed" % akkaVersion,
   "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
-  "ch.qos.logback" % "logback-classic" % "1.4.0",
+  "ch.qos.logback" % "logback-classic" % "1.2.11",
   "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
   "org.scalatest" %% "scalatest" % "3.1.0" % Test
 )

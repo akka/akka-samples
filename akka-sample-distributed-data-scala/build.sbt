@@ -18,7 +18,7 @@ val `akka-sample-distributed-data-scala` = project
       "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion % Test,
       "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
-      "ch.qos.logback" % "logback-classic" % "1.4.0" % Test,
+      "ch.qos.logback" % "logback-classic" % "1.2.11" % Test,
       "org.scalatest" %% "scalatest" % "3.0.8" % Test),
     fork in run := true,
     Global / cancelable := false, // ctrl-c

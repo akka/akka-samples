@@ -3,7 +3,7 @@ val AlpakkaKafkaVersion = "3.0.1"
 val AkkaManagementVersion = "1.1.4"
 val AkkaHttpVersion = "10.2.10"
 val EmbeddedKafkaVersion = "2.4.1.1"
-val LogbackVersion = "1.4.0"
+val LogbackVersion = "1.2.11"
 
 ThisBuild / scalaVersion := "2.13.8"
 ThisBuild / organization := "com.lightbend.akka.samples"
@@ -67,5 +67,5 @@ lazy val producer = project
   .settings(libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-stream-kafka" % AlpakkaKafkaVersion,
       "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
-      "ch.qos.logback" % "logback-classic" % "1.4.0",
+      "ch.qos.logback" % "logback-classic" % "1.2.11",
       "org.scalatest" %% "scalatest" % "3.0.8" % Test))

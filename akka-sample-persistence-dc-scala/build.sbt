@@ -23,7 +23,7 @@ libraryDependencies ++= Seq(
   "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaClusterManagementVersion,
   "com.typesafe.akka" %% "akka-persistence-cassandra" % AkkaPersistenceCassandraVersion,
 
-  "ch.qos.logback" % "logback-classic" % "1.4.0",
+  "ch.qos.logback" % "logback-classic" % "1.2.11",
 
   "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % AkkaPersistenceCassandraVersion,
   "com.typesafe.akka" %% "akka-persistence-testkit" % AkkaVersion % Test,
