@@ -2,10 +2,10 @@ name := "akka-distributed-workers"
 
 version := "1.0"
 
-scalaVersion := "2.13.5"
-val akkaVersion = "2.6.19"
+scalaVersion := "2.13.8"
+val akkaVersion = "2.6.20"
 
-val cassandraPluginVersion = "1.0.5"
+val cassandraPluginVersion = "1.0.6"
 
 Global / cancelable := false
 
@@ -17,7 +17,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-persistence-cassandra" % cassandraPluginVersion,
   // this allows us to start cassandra from the sample
   "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % cassandraPluginVersion,
-  "ch.qos.logback" % "logback-classic" % "1.2.9",
+  "ch.qos.logback" % "logback-classic" % "1.2.11",
   // test dependencies
   "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
   "org.scalatest" %% "scalatest" % "3.0.8" % Test,

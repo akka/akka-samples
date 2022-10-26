@@ -1,13 +1,12 @@
 organization := "com.lightbend.akka.samples"
 name := "akka-sample-replicated-event-sourcing-scala"
 
-scalaVersion := "2.13.5"
+scalaVersion := "2.13.8"
 
-val AkkaVersion = "2.6.19"
-val AkkaAddOnsVersion = "1.1.12"
-val AkkaPersistenceCassandraVersion = "1.0.5"
-val AkkaHttpVersion = "10.2.0"
-val AkkaClusterManagementVersion = "1.0.8"
+val AkkaVersion = "2.6.20"
+val AkkaPersistenceCassandraVersion = "1.0.6"
+val AkkaHttpVersion = "10.2.10"
+val AkkaClusterManagementVersion = "1.1.4"
 
 credentials += Credentials(Path.userHome / ".lightbend" / "commercial.credentials")
 resolvers += "com-mvn" at "https://repo.lightbend.com/commercial-releases/"
@@ -24,7 +23,7 @@ libraryDependencies ++= Seq(
   "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaClusterManagementVersion,
   "com.typesafe.akka" %% "akka-persistence-cassandra" % AkkaPersistenceCassandraVersion,
 
-  "ch.qos.logback" % "logback-classic" % "1.2.9",
+  "ch.qos.logback" % "logback-classic" % "1.2.11",
 
   "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % AkkaPersistenceCassandraVersion,
   "com.typesafe.akka" %% "akka-persistence-testkit" % AkkaVersion % Test,
