@@ -1,11 +1,11 @@
-val AkkaVersion = "2.6.20"
+val AkkaVersion = "2.7.0"
 val AlpakkaKafkaVersion = "3.0.1"
-val AkkaManagementVersion = "1.1.4"
-val AkkaHttpVersion = "10.2.10"
+val AkkaManagementVersion = "1.2.0"
+val AkkaHttpVersion = "10.4.0"
 val EmbeddedKafkaVersion = "2.4.1.1"
 val LogbackVersion = "1.2.11"
 
-ThisBuild / scalaVersion := "2.13.8"
+ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / organization := "com.lightbend.akka.samples"
 ThisBuild / scalacOptions in Compile ++= Seq(
   "-deprecation",

@@ -26,10 +26,10 @@
 
    <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <akka.version>2.6.20</akka.version>
-    <akka-persistence-cassandra.version>1.0.6</akka-persistence-cassandra.version>
-    <akka-http.version>10.2.10</akka-http.version>
-    <akka-management.version>1.1.4</akka-management.version>
+    <akka.version>2.7.0</akka.version>
+    <akka-persistence-cassandra.version>1.1.0</akka-persistence-cassandra.version>
+    <akka-http.version>10.4.0</akka-http.version>
+    <akka-management.version>1.2.0</akka-management.version>
   </properties>
 
    <dependencies>
