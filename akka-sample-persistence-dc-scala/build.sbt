@@ -4,7 +4,7 @@ name := "akka-sample-replicated-event-sourcing-scala"
 scalaVersion := "2.13.10"
 
 val AkkaVersion = "2.7.0"
-val AAkkaPersistenceCassandraVersion = "1.1.0"
+val AkkaPersistenceCassandraVersion = "1.1.0"
 val AkkaHttpVersion = "10.4.0"
 val AkkaClusterManagementVersion = "1.2.0"
 
