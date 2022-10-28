@@ -15,6 +15,7 @@
 .#*
 .*.swp
 .DS_Store
+.bsp
 .cache
 .cache
 .classpath
