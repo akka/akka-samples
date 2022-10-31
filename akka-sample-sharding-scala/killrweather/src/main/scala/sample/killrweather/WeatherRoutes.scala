@@ -49,7 +49,7 @@ private[killrweather] final class WeatherRoutes(system: ActorSystem[_]) {
     path("weather" / LongNumber) { wsid =>
       concat(
         get {
-          parameters(("type".as[WeatherStation.DataType], "function".as[WeatherStation.Function])) { (dataType, function) =>
+          parameters("type".as[WeatherStation.DataType], "function".as[WeatherStation.Function]) { (dataType, function) =>
             complete(query(wsid, dataType, function))
           }
         },

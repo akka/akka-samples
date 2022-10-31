@@ -1,12 +1,12 @@
 organization := "com.lightbend.akka.samples"
 name := "akka-sample-replicated-event-sourcing-scala"
 
-scalaVersion := "2.13.8"
+scalaVersion := "2.13.10"
 
-val AkkaVersion = "2.6.20"
-val AkkaPersistenceCassandraVersion = "1.0.6"
-val AkkaHttpVersion = "10.2.10"
-val AkkaClusterManagementVersion = "1.1.4"
+val AkkaVersion = "2.7.0"
+val AkkaPersistenceCassandraVersion = "1.1.0"
+val AkkaHttpVersion = "10.4.0"
+val AkkaClusterManagementVersion = "1.2.0"
 
 credentials += Credentials(Path.userHome / ".lightbend" / "commercial.credentials")
 resolvers += "com-mvn" at "https://repo.lightbend.com/commercial-releases/"

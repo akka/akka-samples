@@ -1,8 +1,8 @@
 organization := "com.lightbend.akka.samples"
 name := "akka-sample-persistence-scala"
 
-scalaVersion := "2.13.8"
-def akkaVersion = "2.6.20"
+scalaVersion := "2.13.10"
+def akkaVersion = "2.7.0"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-persistence-typed" % akkaVersion,
