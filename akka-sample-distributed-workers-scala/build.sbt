@@ -10,7 +10,7 @@ val LogbackClassicVersion = "1.2.11"
 val ScalaTestVersion = "3.1.1"
 val CommonIoVersion = "2.4"
 
-Global / cancelable := false
+run / fork := true
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-cluster-typed" % AkkaVersion,

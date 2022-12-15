@@ -25,7 +25,6 @@ val `akka-sample-distributed-data-scala` = project
       "ch.qos.logback" % "logback-classic" % LogbackClassicVersion % Test,
       "org.scalatest" %% "scalatest" % ScalaTestVersion % Test),
     fork in run := true,
-    Global / cancelable := false, // ctrl-c
     // disable parallel tests
     parallelExecution in Test := false,
     // show full stack traces and test case durations

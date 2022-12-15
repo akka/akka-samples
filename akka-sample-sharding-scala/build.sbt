@@ -24,8 +24,7 @@ lazy val commonSettings = Seq(
   Compile / scalacOptions ++= commonScalacOptions,
   Compile / javacOptions ++= commonJavacOptions,
   run / javaOptions ++= Seq("-Xms128m", "-Xmx1024m"),
-  run / fork := false,
-  Global / cancelable := false,
+  run / fork := true,
   licenses := Seq(
     ("CC0", url("http://creativecommons.org/publicdomain/zero/1.0"))
   )

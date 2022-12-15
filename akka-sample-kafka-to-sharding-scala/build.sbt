@@ -21,7 +21,7 @@ ThisBuild / resolvers ++= Seq(
   Resolver.bintrayRepo("akka", "snapshots")
 )
 
-Global / cancelable := true // ctrl-c
+run / fork := true
 
 lazy val `akka-sample-kafka-to-sharding` = project.in(file(".")).aggregate(producer, processor, client)
 

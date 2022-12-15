@@ -24,8 +24,7 @@ lazy val `akka-sample-cluster-scala` = project
       "com.typesafe.akka" %% "akka-multi-node-testkit" % AkkaVersion % Test,
       "org.scalatest"     %% "scalatest" % ScalaTestVersion % Test,
       "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test),
-    run / fork := false,
-    Global / cancelable := false,
+    run / fork := true,
     // disable parallel tests
     Test / parallelExecution := false,
     licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))

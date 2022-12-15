@@ -30,6 +30,7 @@ lazy val `akka-sample-cluster-client-grpc-scala` = project
       "com.lightbend.akka" %% "akka-diagnostics" % AkkaDiagnosticsVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % AkkaVersion % Test,
       "org.scalatest" %% "scalatest" % ScalaTestVersion % Test
-    )
+    ),
+    run / fork := true
   )
   .configs(MultiJvm)
