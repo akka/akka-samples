@@ -23,7 +23,7 @@
     </dependency>
     <dependency>
       <groupId>com.lightbend.akka</groupId>
-      <artifactId>akka-diagnostics_${scala.binary.version}</artifactId>
+      <artifactId>akka-diagnostics_2.13</artifactId>
       <version>${akka-diagnostics.version}</version>
     </dependency>
     <dependency>
