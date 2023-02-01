@@ -8,6 +8,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <akka.version>2.7.0</akka.version>
     <akka.grpc.version>0.8.4</akka.grpc.version>
+    <akka-diagnostics.version>2.0.0-M3</akka-diagnostics.version>
   </properties>
 
   <groupId>com.lightbend.akka.samples</groupId>
@@ -45,6 +46,11 @@
       <groupId>com.lightbend.akka.grpc</groupId>
       <artifactId>akka-grpc-runtime_2.13</artifactId>
       <version>${akka.grpc.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.lightbend.akka</groupId>
+      <artifactId>akka-diagnostics_${scala.binary.version}</artifactId>
+      <version>${akka-diagnostics.version}</version>
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>

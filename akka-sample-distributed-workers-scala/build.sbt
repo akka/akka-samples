@@ -3,22 +3,26 @@ name := "akka-distributed-workers"
 version := "1.0"
 
 scalaVersion := "2.13.10"
-val akkaVersion = "2.7.0"
-
-val cassandraPluginVersion = "1.1.0"
+val AkkaVersion = "2.7.0"
+val CassandraPluginVersion = "1.1.0"
+val AkkaDiagnosticsVersion = "2.0.0-M3"
+val LogbackClassicVersion = "1.2.11" 
+val ScalaTestVersion = "3.0.8"
+val CommonIoVersion = "2.4"
 
 Global / cancelable := false
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
-  "com.typesafe.akka" %% "akka-persistence-typed" % akkaVersion,
-  "com.typesafe.akka" %% "akka-persistence-query" % akkaVersion,
-  "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
-  "com.typesafe.akka" %% "akka-persistence-cassandra" % cassandraPluginVersion,
+  "com.typesafe.akka" %% "akka-cluster-typed" % AkkaVersion,
+  "com.typesafe.akka" %% "akka-persistence-typed" % AkkaVersion,
+  "com.typesafe.akka" %% "akka-persistence-query" % AkkaVersion,
+  "com.typesafe.akka" %% "akka-serialization-jackson" % AkkaVersion,
+  "com.typesafe.akka" %% "akka-persistence-cassandra" % CassandraPluginVersion,
   // this allows us to start cassandra from the sample
-  "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % cassandraPluginVersion,
-  "ch.qos.logback" % "logback-classic" % "1.2.11",
+  "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % CassandraPluginVersion,
+  "ch.qos.logback" % "logback-classic" % LogbackClassicVersion,
+  "com.lightbend.akka" %% "akka-diagnostics" % AkkaDiagnostics,
   // test dependencies
-  "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
-  "org.scalatest" %% "scalatest" % "3.0.8" % Test,
-  "commons-io" % "commons-io" % "2.4" % Test)
+  "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
+  "org.scalatest" %% "scalatest" % ScalaTestVersion % Test,
+  "commons-io" % "commons-io" % CommonIoVersion % Test)
