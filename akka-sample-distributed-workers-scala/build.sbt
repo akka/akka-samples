@@ -21,7 +21,7 @@ libraryDependencies ++= Seq(
   // this allows us to start cassandra from the sample
   "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % CassandraPluginVersion,
   "ch.qos.logback" % "logback-classic" % LogbackClassicVersion,
-  "com.lightbend.akka" %% "akka-diagnostics" % AkkaDiagnostics,
+  "com.lightbend.akka" %% "akka-diagnostics" % AkkaDiagnosticsVersion,
   // test dependencies
   "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
   "org.scalatest" %% "scalatest" % ScalaTestVersion % Test,

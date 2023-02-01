@@ -9,7 +9,7 @@ scalaVersion := "2.13.10"
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor-typed" % AkkaVersion,
   "ch.qos.logback" % "logback-classic" % LogbackClassicVersion,
-  "com.lightbend.akka" %% "akka-diagnostics" % AkkaDiagnostics
+  "com.lightbend.akka" %% "akka-diagnostics" % AkkaDiagnosticsVersion
 )
 
 licenses := Seq(

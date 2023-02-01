@@ -19,7 +19,7 @@ val `akka-sample-distributed-data-java` = project
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-typed" % AkkaVersion,
       "com.typesafe.akka" %% "akka-serialization-jackson" % AkkaVersion,
-      "com.lightbend.akka" %% "akka-diagnostics" % AkkaDiagnostics,
+      "com.lightbend.akka" %% "akka-diagnostics" % AkkaDiagnosticsVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % AkkaVersion % Test,
       "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
       "ch.qos.logback" % "logback-classic" % LogbackClassicVersion % Test,
