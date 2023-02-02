@@ -7,6 +7,7 @@ val AkkaVersion = "2.7.0"
 val AkkaPersistenceCassandraVersion = "1.1.0"
 val AkkaHttpVersion = "10.4.0"
 val AkkaClusterManagementVersion = "1.2.0"
+val AkkaDiagnosticsVersion = "2.0.0-M3"
 
 credentials += Credentials(Path.userHome / ".lightbend" / "commercial.credentials")
 resolvers += "com-mvn" at "https://repo.lightbend.com/commercial-releases/"
@@ -22,6 +23,7 @@ libraryDependencies ++= Seq(
   "com.lightbend.akka.management" %% "akka-management" % AkkaClusterManagementVersion,
   "com.lightbend.akka.management" %% "akka-management-cluster-http" % AkkaClusterManagementVersion,
   "com.typesafe.akka" %% "akka-persistence-cassandra" % AkkaPersistenceCassandraVersion,
+  "com.lightbend.akka" %% "akka-diagnostics" % AkkaDiagnosticsVersion,
 
   "ch.qos.logback" % "logback-classic" % "1.2.11",
 
