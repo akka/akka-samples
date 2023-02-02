@@ -8,6 +8,8 @@ val AkkaPersistenceCassandraVersion = "1.1.0"
 val AkkaHttpVersion = "10.4.0"
 val AkkaClusterManagementVersion = "1.2.0"
 val AkkaDiagnosticsVersion = "2.0.0-M3"
+val LogbackClassicVersion = "1.2.11" 
+val ScalaTestVersion = "3.1.1"
 
 credentials += Credentials(Path.userHome / ".lightbend" / "commercial.credentials")
 resolvers += "com-mvn" at "https://repo.lightbend.com/commercial-releases/"
@@ -25,11 +27,11 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-persistence-cassandra" % AkkaPersistenceCassandraVersion,
   "com.lightbend.akka" %% "akka-diagnostics" % AkkaDiagnosticsVersion,
 
-  "ch.qos.logback" % "logback-classic" % "1.2.11",
+  "ch.qos.logback" % "logback-classic" % LogbackClassicVersion,
 
   "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % AkkaPersistenceCassandraVersion,
   "com.typesafe.akka" %% "akka-persistence-testkit" % AkkaVersion % Test,
-  "org.scalatest" %% "scalatest" % "3.0.8" % Test
+  "org.scalatest" %% "scalatest" % ScalaTestVersion % Test
 )
 
 // transitive dependency of akka 2.5x that is brought in by addons but evicted

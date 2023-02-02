@@ -7,7 +7,7 @@ val AkkaVersion = "2.7.0"
 val CassandraPluginVersion = "1.1.0"
 val AkkaDiagnosticsVersion = "2.0.0-M3"
 val LogbackClassicVersion = "1.2.11" 
-val ScalaTestVersion = "3.0.8"
+val ScalaTestVersion = "3.1.1"
 val CommonIoVersion = "2.4"
 
 Global / cancelable := false
