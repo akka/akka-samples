@@ -20,6 +20,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <akka.version>2.7.0</akka.version>
         <akka-http.version>10.1.11</akka-http.version>
+        <akka-diagnostics.version>2.0.0-M3</akka-diagnostics.version>
     </properties>
 
     <dependencies>
@@ -52,6 +53,11 @@
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-http-jackson_2.13</artifactId>
             <version>${akka-http.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lightbend.akka</groupId>
+            <artifactId>akka-diagnostics_2.13</artifactId>
+            <version>${akka-diagnostics.version}</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>

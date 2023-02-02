@@ -1,6 +1,7 @@
 
 val AkkaVersion = "2.7.0"
 val AkkaHttpVersion = "10.4.0"
+val AkkaDiagnostics = "2.0.0-M3"
 val LogbackVersion = "1.2.11"
 
 lazy val commonScalacOptions = Seq(

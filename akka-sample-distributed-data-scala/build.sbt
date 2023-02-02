@@ -1,7 +1,10 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.7.0"
+val AkkaVersion = "2.7.0"
+val AkkaDiagnosticsVersion = "2.0.0-M3"
+val LogbackClassicVersion = "1.2.11" 
+val ScalaTestVersion = "3.1.1"
 
 val `akka-sample-distributed-data-scala` = project
   .in(file("."))
@@ -14,12 +17,13 @@ val `akka-sample-distributed-data-scala` = project
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
     javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m"),
     libraryDependencies ++= Seq(
-      "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
-      "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
-      "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion % Test,
-      "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
-      "ch.qos.logback" % "logback-classic" % "1.2.11" % Test,
-      "org.scalatest" %% "scalatest" % "3.0.8" % Test),
+      "com.typesafe.akka" %% "akka-cluster-typed" % AkkaVersion,
+      "com.typesafe.akka" %% "akka-serialization-jackson" % AkkaVersion,
+      "com.lightbend.akka" %% "akka-diagnostics" % AkkaDiagnosticsVersion,
+      "com.typesafe.akka" %% "akka-multi-node-testkit" % AkkaVersion % Test,
+      "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
+      "ch.qos.logback" % "logback-classic" % LogbackClassicVersion % Test,
+      "org.scalatest" %% "scalatest" % ScalaTestVersion % Test),
     fork in run := true,
     Global / cancelable := false, // ctrl-c
     // disable parallel tests

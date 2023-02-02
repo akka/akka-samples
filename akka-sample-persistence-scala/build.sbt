@@ -2,14 +2,18 @@ organization := "com.lightbend.akka.samples"
 name := "akka-sample-persistence-scala"
 
 scalaVersion := "2.13.10"
-def akkaVersion = "2.7.0"
+val AkkaVersion = "2.7.0"
+val AkkaDiagnosticsVersion = "2.0.0-M3"
+val LogbackClassicVersion = "1.2.11" 
+val ScalaTestVersion = "3.1.1"
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-persistence-typed" % akkaVersion,
-  "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
-  "ch.qos.logback" % "logback-classic" % "1.2.11",
-  "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
-  "org.scalatest" %% "scalatest" % "3.1.0" % Test
+  "com.typesafe.akka" %% "akka-persistence-typed" % AkkaVersion,
+  "com.typesafe.akka" %% "akka-serialization-jackson" % AkkaVersion,
+  "com.lightbend.akka" %% "akka-diagnostics" % AkkaDiagnosticsVersion,
+  "ch.qos.logback" % "logback-classic" % LogbackClassicVersion,
+  "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
+  "org.scalatest" %% "scalatest" % ScalaTestVersion % Test
 )
 
 scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint")
