@@ -7,7 +7,7 @@ val AkkaVersion = "2.7.0"
 val AkkaPersistenceCassandraVersion = "1.1.0"
 val AkkaHttpVersion = "10.4.0"
 val AkkaClusterManagementVersion = "1.2.0"
-val AkkaDiagnosticsVersion = "2.0.0-M3"
+val AkkaDiagnosticsVersion = "2.0.0-M4"
 val LogbackClassicVersion = "1.2.11" 
 val ScalaTestVersion = "3.1.1"
 
