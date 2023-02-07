@@ -12,6 +12,8 @@ libraryDependencies ++= Seq(
   "com.lightbend.akka" %% "akka-diagnostics" % AkkaDiagnosticsVersion
 )
 
+run / fork := true
+
 licenses := Seq(
   ("CC0", url("http://creativecommons.org/publicdomain/zero/1.0"))
 )

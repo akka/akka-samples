@@ -22,4 +22,6 @@ scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlo
 testOptions in Test += Tests.Argument("-oDF")
 logBuffered in Test := false
 
+run / fork := true
+
 licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))

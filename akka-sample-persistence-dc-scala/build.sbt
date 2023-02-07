@@ -39,4 +39,6 @@ dependencyOverrides += "com.typesafe.akka" %% "akka-protobuf" % AkkaVersion
 dependencyOverrides += "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
 dependencyOverrides += "com.typesafe.akka" %% "akka-coordination" % AkkaVersion
 
+run / fork := true
+
 licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
