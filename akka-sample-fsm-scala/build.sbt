@@ -3,7 +3,7 @@ name := "akka-sample-fsm-scala"
 
 val AkkaVersion = "2.7.0"
 val LogbackClassicVersion = "1.2.11"
-val AkkaDiagnosticsVersion = "2.0.0-M4"
+val AkkaDiagnosticsVersion = "2.0.0"
 
 scalaVersion := "2.13.10"
 libraryDependencies ++= Seq(

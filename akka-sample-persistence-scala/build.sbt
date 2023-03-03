@@ -3,7 +3,7 @@ name := "akka-sample-persistence-scala"
 
 scalaVersion := "2.13.10"
 val AkkaVersion = "2.7.0"
-val AkkaDiagnosticsVersion = "2.0.0-M4"
+val AkkaDiagnosticsVersion = "2.0.0"
 val LogbackClassicVersion = "1.2.11" 
 val ScalaTestVersion = "3.1.1"
 
