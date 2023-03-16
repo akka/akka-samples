@@ -34,7 +34,7 @@ object App {
         ctx.system.receptionist ! Receptionist
           .Register(StatsServiceKey, service)
       }
-      if (cluster.selfMember.hasRole(("client"))) {
+      if (cluster.selfMember.hasRole("client")) {
         val serviceRouter =
           ctx.spawn(Routers.group(App.StatsServiceKey), "ServiceRouter")
         ctx.spawn(StatsClient(serviceRouter), "Client")
@@ -50,7 +50,7 @@ object App {
       startup("compute", 0)
       startup("client", 0)
     } else {
-      require(args.size == 2, "Usage: role port")
+      require(args.length == 2, "Usage: role port")
       startup(args(0), args(1).toInt)
     }
   }
