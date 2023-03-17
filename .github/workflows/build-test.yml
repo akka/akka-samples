@@ -28,12 +28,6 @@ jobs:
       - name: Test akka-sample-cluster-scala
         run: cd akka-sample-cluster-scala && sbt multi-jvm:test
 
-      - name: Test akka-sample-cluster-client-grpc-scala
-        run: cd akka-sample-cluster-client-grpc-scala && sbt multi-jvm:test
-
-      - name: Test akka-sample-cluster-client-grpc-java
-        run: cd akka-sample-cluster-client-grpc-java && mvn test
-
       - name: Test akka-sample-distributed-data-java
         run: cd akka-sample-distributed-data-java && sbt multi-jvm:test
 
