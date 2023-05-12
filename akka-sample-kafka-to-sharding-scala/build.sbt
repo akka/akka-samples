@@ -1,7 +1,7 @@
-val AkkaVersion = "2.8.1"
-val AlpakkaKafkaVersion = "3.0.1"
-val AkkaManagementVersion = "1.2.0"
-val AkkaHttpVersion = "10.5.0"
+val AkkaVersion = "2.8.2"
+val AlpakkaKafkaVersion = "4.0.2"
+val AkkaManagementVersion = "1.4.0"
+val AkkaHttpVersion = "10.5.2"
 val EmbeddedKafkaVersion = "2.4.1.1"
 val LogbackVersion = "1.2.11"
 
