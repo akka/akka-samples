@@ -1,7 +1,7 @@
 organization := "com.lightbend.akka.samples"
 name := "akka-sample-fsm-scala"
 
-val AkkaVersion = "2.8.2"
+val AkkaVersion = "2.8.3"
 val LogbackClassicVersion = "1.2.11"
 val AkkaDiagnosticsVersion = "2.0.0"
 
