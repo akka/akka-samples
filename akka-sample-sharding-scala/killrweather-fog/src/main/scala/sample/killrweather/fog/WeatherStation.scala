@@ -37,7 +37,7 @@ private[fog] object WeatherStation {
   /** Starts a device and it's task to initiate reading data at a scheduled rate. */
   def apply(wsid: WeatherStationId, settings: FogSettings, httpPort: Int): Behavior[Command] =
     Behaviors.setup(ctx =>
-      new WeatherStation(ctx, wsid, settings, httpPort).running(httpPort)
+      new WeatherStation(ctx, wsid, settings, httpPort).running
     )
 }
 
@@ -53,7 +53,7 @@ private class WeatherStation(context: ActorContext[WeatherStation.Command], wsid
   }
   private val stationUrl = s"http://${settings.host}:${httpPort}/weather/$wsid"
 
-  def running(httpPort: Int): Behavior[WeatherStation.Command] = {
+  val running: Behavior[WeatherStation.Command] = {
     context.log.infoN(s"Started WeatherStation {} of total {} with weather port {}",
       wsid, settings.weatherStations, httpPort)
 
