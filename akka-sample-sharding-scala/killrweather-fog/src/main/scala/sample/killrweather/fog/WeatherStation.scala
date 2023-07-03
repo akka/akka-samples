@@ -53,7 +53,7 @@ private class WeatherStation(context: ActorContext[WeatherStation.Command], wsid
   }
   private val stationUrl = s"http://${settings.host}:${httpPort}/weather/$wsid"
 
-  val running: Behavior[WeatherStation.Command] = {
+  def running: Behavior[WeatherStation.Command] = {
     context.log.infoN(s"Started WeatherStation {} of total {} with weather port {}",
       wsid, settings.weatherStations, httpPort)
 
