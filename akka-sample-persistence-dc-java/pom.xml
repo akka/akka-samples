@@ -22,6 +22,11 @@
     <name>Lightbend Commercial</name>
     <url>https://lightbend.bintray.com/commercial-releases</url>
    </repository>
+    <repository>
+      <id>akka-repository</id>
+      <name>Akka library repository</name>
+      <url>https://repo.akka.io/maven</url>
+    </repository>
  </repositories>
 
    <properties>

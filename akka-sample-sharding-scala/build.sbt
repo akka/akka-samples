@@ -4,6 +4,8 @@ val AkkaHttpVersion = "10.5.2"
 val AkkaDiagnostics = "2.0.0"
 val LogbackVersion = "1.2.11"
 
+resolvers += "Akka library repository".at("https://repo.akka.io/maven")
+
 lazy val commonScalacOptions = Seq(
   "-deprecation",
   "-feature",

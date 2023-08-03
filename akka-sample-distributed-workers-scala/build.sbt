@@ -12,6 +12,8 @@ val CommonIoVersion = "2.4"
 
 run / fork := true
 
+resolvers += "Akka library repository".at("https://repo.akka.io/maven")
+
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-cluster-typed" % AkkaVersion,
   "com.typesafe.akka" %% "akka-persistence-typed" % AkkaVersion,

@@ -15,6 +15,7 @@ credentials += Credentials(Path.userHome / ".lightbend" / "commercial.credential
 resolvers += "com-mvn" at "https://repo.lightbend.com/commercial-releases/"
 resolvers += Resolver.url("com-ivy",
   url("https://repo.lightbend.com/commercial-releases/"))(Resolver.ivyStylePatterns)
+resolvers += "Akka library repository".at("https://repo.akka.io/maven")
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-cluster-sharding-typed" % AkkaVersion,
