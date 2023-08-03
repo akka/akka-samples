@@ -5,6 +5,8 @@ val AkkaHttpVersion = "10.5.2"
 val EmbeddedKafkaVersion = "2.4.1.1"
 val LogbackVersion = "1.2.11"
 
+resolvers += "Akka library repository".at("https://repo.akka.io/maven")
+
 ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / organization := "com.lightbend.akka.samples"
 ThisBuild / scalacOptions in Compile ++= Seq(

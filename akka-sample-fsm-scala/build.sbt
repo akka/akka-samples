@@ -6,6 +6,9 @@ val LogbackClassicVersion = "1.2.11"
 val AkkaDiagnosticsVersion = "2.0.0"
 
 scalaVersion := "2.13.10"
+
+resolvers += "Akka library repository".at("https://repo.akka.io/maven")
+
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor-typed" % AkkaVersion,
   "ch.qos.logback" % "logback-classic" % LogbackClassicVersion,
