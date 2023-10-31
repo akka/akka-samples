@@ -1,4 +1,4 @@
-val AkkaVersion = "2.8.4"
+val AkkaVersion = "2.8.5"
 val AlpakkaKafkaVersion = "4.0.2"
 val AkkaManagementVersion = "1.4.0"
 val AkkaHttpVersion = "10.5.2"

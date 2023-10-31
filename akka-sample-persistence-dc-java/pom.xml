@@ -31,11 +31,11 @@
 
    <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <akka.version>2.8.4</akka.version>
+    <akka.version>2.8.5</akka.version>
     <akka-persistence-cassandra.version>1.1.1</akka-persistence-cassandra.version>
     <akka-http.version>10.5.2</akka-http.version>
     <akka-management.version>1.4.0</akka-management.version>
-    <akka-diagnostics.version>2.0.0</akka-diagnostics.version>
+    <akka-diagnostics.version>2.0.1</akka-diagnostics.version>
   </properties>
 
    <dependencies>
