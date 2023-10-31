@@ -1,8 +1,8 @@
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val AkkaVersion = "2.8.5"
-val AkkaDiagnosticsVersion = "2.0.1"
+val AkkaVersion = "2.9.0"
+val AkkaDiagnosticsVersion = "2.1.0"
 val LogbackClassicVersion = "1.2.11" 
 val ScalaTestVersion = "3.1.1"
 
@@ -12,7 +12,7 @@ val `akka-sample-distributed-data-scala` = project
   .settings(
     organization := "com.lightbend.akka.samples",
     version := "1.0",
-    scalaVersion := "2.13.10",
+    scalaVersion := "2.13.12",
     scalacOptions in Compile ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
     javaOptions in run ++= Seq("-Xms128m", "-Xmx1024m"),

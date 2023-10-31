@@ -1,13 +1,13 @@
 
-val AkkaVersion = "2.8.5"
-val AkkaHttpVersion = "10.5.2"
+val AkkaVersion = "2.9.0"
+val AkkaHttpVersion = "10.6.0"
 val LogbackVersion = "1.2.11"
 
 resolvers += "Akka library repository".at("https://repo.akka.io/maven")
 
 lazy val buildSettings = Seq(
   organization := "com.lightbend.akka.samples",
-  scalaVersion := "2.13.10"
+  scalaVersion := "2.13.12"
 )
 
 lazy val commonJavacOptions = Seq(
