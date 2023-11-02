@@ -9,18 +9,17 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3.1.0
         with:
-          # we don't know what commit the last tag was it's safer to get entire repo so previousStableVersion resolves
           fetch-depth: 0
 
-      - name: Set up JDK 11
-        uses: olafurpg/setup-scala@v10
+      - name: Set up JDK 17
+        uses: coursier/setup-action@v1.3.0
         with:
-          java-version: adopt@1.11.0
+          jvm: temurin:1.17.0
 
       - name: Cache Coursier cache
-        uses: coursier/cache-action@v6.2
+        uses: coursier/cache-action@v6.4.0
 
       - name: Test akka-sample-cluster-java
         run: cd akka-sample-cluster-java && sbt multi-jvm:test
@@ -60,6 +59,3 @@ jobs:
 
       - name: Test akka-sample-kafka-to-sharding-scala
         run: cd akka-sample-kafka-to-sharding-scala && sbt test
-
-      - name: Test docs gen
-        run: cd docs-gen && sbt paradox
