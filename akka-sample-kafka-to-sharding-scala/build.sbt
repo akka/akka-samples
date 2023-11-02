@@ -30,6 +30,7 @@ lazy val `akka-sample-kafka-to-sharding` = project.in(file(".")).aggregate(produ
 lazy val kafka = project
   .in(file("kafka"))
   .settings(
+    resolvers += "Akka library repository".at("https://repo.akka.io/maven"),
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % LogbackVersion,
       "org.slf4j" % "log4j-over-slf4j" % "1.7.26",
@@ -40,6 +41,7 @@ lazy val client = project
   .in(file("client"))
   .enablePlugins(AkkaGrpcPlugin, JavaAgent)
   .settings(
+    resolvers += "Akka library repository".at("https://repo.akka.io/maven"),
     libraryDependencies ++= Seq(
         "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
         "com.typesafe.akka" %% "akka-discovery" % AkkaVersion))
@@ -48,7 +50,9 @@ lazy val processor = project
   .in(file("processor"))
   .enablePlugins(AkkaGrpcPlugin, JavaAgent)
   .settings(javaAgents += "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test")
-  .settings(libraryDependencies ++= Seq(
+  .settings(
+    resolvers += "Akka library repository".at("https://repo.akka.io/maven"),
+    libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-stream-kafka" % AlpakkaKafkaVersion,
       "com.typesafe.akka" %% "akka-stream-kafka-cluster-sharding" % AlpakkaKafkaVersion,
       "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
@@ -66,7 +70,9 @@ lazy val processor = project
 lazy val producer = project
   .in(file("producer"))
   .settings(PB.targets in Compile := Seq(scalapb.gen() -> (sourceManaged in Compile).value))
-  .settings(libraryDependencies ++= Seq(
+  .settings(
+    resolvers += "Akka library repository".at("https://repo.akka.io/maven"),
+    libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-stream-kafka" % AlpakkaKafkaVersion,
       "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
       "ch.qos.logback" % "logback-classic" % "1.2.11",
