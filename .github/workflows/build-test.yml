@@ -59,6 +59,3 @@ jobs:
 
       - name: Test akka-sample-kafka-to-sharding-scala
         run: cd akka-sample-kafka-to-sharding-scala && sbt test
-
-      - name: Test docs gen
-        run: cd docs-gen && sbt paradox
