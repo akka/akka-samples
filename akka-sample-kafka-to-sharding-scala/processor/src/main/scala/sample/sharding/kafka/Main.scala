@@ -7,7 +7,6 @@ import akka.cluster.typed.{Cluster, SelfUp, Subscribe}
 import akka.http.scaladsl._
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.management.scaladsl.AkkaManagement
-import akka.stream.Materializer
 import com.typesafe.config.{Config, ConfigFactory}
 
 import scala.concurrent.Future
@@ -91,17 +90,13 @@ object Main {
           Behaviors.stopped
       }
 
-
     def startGrpc(system: ActorSystem[_], frontEndPort: Int, region: ActorRef[UserEvents.Command]): Future[Http.ServerBinding] = {
-      val mat = Materializer.createMaterializer(system.toClassic)
       val service: HttpRequest => Future[HttpResponse] =
-        UserServiceHandler(new UserGrpcService(system, region))(mat, system.toClassic)
-      Http()(system.toClassic).bindAndHandleAsync(
-        service,
-        interface = "127.0.0.1",
-        port = frontEndPort,
-        connectionContext = HttpConnectionContext())(mat)
-
+        UserServiceHandler(new UserGrpcService(system, region))(system.toClassic)
+      Http(system).newServerAt(
+          interface = "127.0.0.1",
+          port = frontEndPort)
+        .bind(service)
     }
 
     def config(port: Int, managementPort: Int): Config =
