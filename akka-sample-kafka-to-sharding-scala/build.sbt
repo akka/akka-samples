@@ -39,7 +39,7 @@ lazy val kafka = project
 
 lazy val client = project
   .in(file("client"))
-  .enablePlugins(AkkaGrpcPlugin, JavaAgent)
+  .enablePlugins(AkkaGrpcPlugin)
   .settings(
     resolvers += "Akka library repository".at("https://repo.akka.io/maven"),
     libraryDependencies ++= Seq(
@@ -48,8 +48,7 @@ lazy val client = project
 
 lazy val processor = project
   .in(file("processor"))
-  .enablePlugins(AkkaGrpcPlugin, JavaAgent)
-  .settings(javaAgents += "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test")
+  .enablePlugins(AkkaGrpcPlugin)
   .settings(
     resolvers += "Akka library repository".at("https://repo.akka.io/maven"),
     libraryDependencies ++= Seq(
