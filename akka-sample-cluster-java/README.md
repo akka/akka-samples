@@ -158,3 +158,12 @@ AppOneMaster starts 4 actor systems (cluster members) in the same JVM process. I
 The multi-jvm testkit which allows for starting a cluster with multiple separate JVMs is only available from Scala with
 the Scala build tool `sbt`. Such tests are included for completeness and can be found in [src/multi-jvm](src/multi-jvm). 
 You can run them by typing `sbt multi-jvm:test`.
+
+---
+
+The Akka family of projects is managed by teams at Lightbend with help from the community.
+
+License
+-------
+
+Akka is licensed under the Business Source License 1.1, please see the [Akka License FAQ](https://www.lightbend.com/akka/license-faq).

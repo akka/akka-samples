@@ -1,3 +1,6 @@
+/*
+ * Copyright (C) 2009-2024 Lightbend Inc. <https://www.lightbend.com>
+ */
 package sample.sharding.embeddedkafka
 
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}

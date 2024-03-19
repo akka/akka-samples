@@ -1,3 +1,6 @@
+/*
+ * Copyright (C) 2009-2024 Lightbend Inc. <https://www.lightbend.com>
+ */
 package sample.cluster.simple;
 
 import akka.actor.typed.ActorRef;

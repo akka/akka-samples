@@ -293,3 +293,12 @@ and
 
  You can also find a good overview of the various modules that make up Akka in
  [this section of the official documentation](http://doc.akka.io/docs/akka/current/scala/guide/modules.html#cluster-singleton)
+
+---
+
+The Akka family of projects is managed by teams at Lightbend with help from the community.
+
+License
+-------
+
+Akka is licensed under the Business Source License 1.1, please see the [Akka License FAQ](https://www.lightbend.com/akka/license-faq).
