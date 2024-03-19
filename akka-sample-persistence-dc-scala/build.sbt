@@ -8,7 +8,7 @@ val AkkaPersistenceCassandraVersion = "1.1.0"
 val AkkaHttpVersion = "10.5.2"
 val AkkaClusterManagementVersion = "1.4.0"
 val AkkaDiagnosticsVersion = "2.0.1"
-val LogbackClassicVersion = "1.2.11" 
+val LogbackClassicVersion = "1.2.13"
 val ScalaTestVersion = "3.1.1"
 
 credentials += Credentials(Path.userHome / ".lightbend" / "commercial.credentials")

@@ -4,7 +4,7 @@ name := "akka-sample-persistence-scala"
 scalaVersion := "2.13.12"
 val AkkaVersion = "2.9.2"
 val AkkaDiagnosticsVersion = "2.1.0"
-val LogbackClassicVersion = "1.2.11" 
+val LogbackClassicVersion = "1.2.13"
 val ScalaTestVersion = "3.1.1"
 
 resolvers += "Akka library repository".at("https://repo.akka.io/maven")

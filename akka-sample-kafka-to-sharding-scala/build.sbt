@@ -1,9 +1,9 @@
 val AkkaVersion = "2.9.2"
 val AlpakkaKafkaVersion = "5.0.0"
-val AkkaManagementVersion = "1.5.0"
-val AkkaHttpVersion = "10.6.0"
+val AkkaManagementVersion = "1.5.1"
+val AkkaHttpVersion = "10.6.1"
 val EmbeddedKafkaVersion = "2.4.1.1"
-val LogbackVersion = "1.2.11"
+val LogbackVersion = "1.2.13"
 
 resolvers += "Akka library repository".at("https://repo.akka.io/maven")
 
@@ -74,5 +74,5 @@ lazy val producer = project
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-stream-kafka" % AlpakkaKafkaVersion,
       "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
-      "ch.qos.logback" % "logback-classic" % "1.2.11",
+      "ch.qos.logback" % "logback-classic" % "1.2.13",
       "org.scalatest" %% "scalatest" % "3.0.8" % Test))

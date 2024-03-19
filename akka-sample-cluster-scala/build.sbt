@@ -3,7 +3,7 @@ import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
 val AkkaVersion = "2.9.2"
 val AkkaDiagnosticsVersion = "2.1.0"
-val LogbackClassicVersion = "1.2.11" 
+val LogbackClassicVersion = "1.2.13"
 val ScalaTestVersion = "3.1.1"
 
 lazy val `akka-sample-cluster-scala` = project
