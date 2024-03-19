@@ -9,3 +9,12 @@ It illustrates how the behaviors and transitions can be defined with Akka Typed.
 Start the application by typing `mvn compile exec:java -Dexec.mainClass="sample.DiningHakkers"`. In the log output you can see the actions of the `Hakker` actors.
 
 Read more about Akka Typed in [the documentation](http://doc.akka.io/docs/akka/2.6/).
+
+---
+
+The Akka family of projects is managed by teams at Lightbend with help from the community.
+
+License
+-------
+
+Akka is licensed under the Business Source License 1.1, please see the [Akka License FAQ](https://www.lightbend.com/akka/license-faq).

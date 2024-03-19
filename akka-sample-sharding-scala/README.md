@@ -179,3 +179,12 @@ For example:
 ### Shutting down
 
 Shut down one of the nodes by pressing 'ctrl-c' in one of the terminal windows. The other nodes will detect the failure after a while, which you can see in the log output in the other terminals.
+
+---
+
+The Akka family of projects is managed by teams at Lightbend with help from the community.
+
+License
+-------
+
+Akka is licensed under the Business Source License 1.1, please see the [Akka License FAQ](https://www.lightbend.com/akka/license-faq).

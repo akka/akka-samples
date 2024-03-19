@@ -97,3 +97,12 @@ Open [ReplicatedMetrics.java](src/main/java/sample/distributeddata/ReplicatedMet
 The multi-node test for the `ReplicatedCache` can be found in [ReplicatedMetricsSpec.scala](src/multi-jvm/scala/sample/distributeddata/ReplicatedMetricsSpec.scala).
 
 Note that there are some [Limitations](https://doc.akka.io/docs/akka/2.6/typed/distributed-data.html#limitations) that you should be aware of. For example, Akka Distributed Data is not intended for _Big Data_.
+
+---
+
+The Akka family of projects is managed by teams at Lightbend with help from the community.
+
+License
+-------
+
+Akka is licensed under the Business Source License 1.1, please see the [Akka License FAQ](https://www.lightbend.com/akka/license-faq).

@@ -216,3 +216,11 @@ We've now demonstrated two things:
 * Keeping the processing local, where ever the Kafka partition is consumed the shard will be moved to that location
 * The state for each entity is globally accessible from all nodes 
 
+---
+
+The Akka family of projects is managed by teams at Lightbend with help from the community.
+
+License
+-------
+
+Akka is licensed under the Business Source License 1.1, please see the [Akka License FAQ](https://www.lightbend.com/akka/license-faq).
